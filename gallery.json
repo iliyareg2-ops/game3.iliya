@@ -1,3 +1,94 @@
 {
-  "images": []
+  "images": [
+    {
+      "path": "generated/experiments/attempt_1_weak.png",
+      "step": "1.1",
+      "ts": "2026-08-05T15:14:54+05:00"
+    },
+    {
+      "path": "generated/experiments/attempt_2_strong.png",
+      "step": "1.1",
+      "ts": "2026-08-05T15:16:46+05:00"
+    },
+    {
+      "path": "generated/experiments/user_1.png",
+      "step": "1.1",
+      "ts": "2026-08-05T15:20:38+05:00"
+    },
+    {
+      "path": "generated/experiments/hero_v1.png",
+      "step": "1.2",
+      "ts": "2026-08-05T15:24:55+05:00"
+    },
+    {
+      "path": "generated/experiments/hero_v2.png",
+      "step": "1.2",
+      "ts": "2026-08-05T15:26:32+05:00"
+    },
+    {
+      "path": "generated/experiments/hero_v3.png",
+      "step": "1.2",
+      "ts": "2026-08-05T15:29:27+05:00"
+    },
+    {
+      "path": "generated/experiments/hero_v4.png",
+      "step": "1.2",
+      "ts": "2026-08-05T15:31:53+05:00"
+    },
+    {
+      "path": "generated/experiments/comic_normal_day.png",
+      "step": "1.4",
+      "ts": "2026-08-05T15:53:00+05:00"
+    },
+    {
+      "path": "generated/experiments/comic_call.png",
+      "step": "1.4",
+      "ts": "2026-08-05T15:55:23+05:00"
+    },
+    {
+      "path": "generated/experiments/comic_decision.png",
+      "step": "1.4",
+      "ts": "2026-08-05T15:59:02+05:00"
+    },
+    {
+      "path": "generated/experiments/comic_trouble_first_suspect.png",
+      "step": "1.4",
+      "ts": "2026-08-05T16:01:05+05:00"
+    },
+    {
+      "path": "generated/experiments/comic_trouble_old_man.png",
+      "step": "1.4",
+      "ts": "2026-08-05T16:03:48+05:00"
+    },
+    {
+      "path": "generated/experiments/comic_trouble_girl.png",
+      "step": "1.4",
+      "ts": "2026-08-05T16:05:37+05:00"
+    },
+    {
+      "path": "generated/experiments/comic_trouble_double.png",
+      "step": "1.4",
+      "ts": "2026-08-05T16:07:41+05:00"
+    },
+    {
+      "path": "generated/experiments/comic_decision_agent.png",
+      "step": "1.4",
+      "ts": "2026-08-05T16:09:38+05:00"
+    },
+    {
+      "path": "generated/experiments/comic_trouble_baby_attack.png",
+      "step": "1.4",
+      "ts": "2026-08-05T16:11:41+05:00"
+    },
+    {
+      "path": "generated/experiments/comic_resolve.png",
+      "step": "1.4",
+      "ts": "2026-08-05T16:16:13+05:00"
+    },
+    {
+      "path": "generated/experiments/comic_resolve_v2.png",
+      "step": "1.4",
+      "ts": "2026-08-05T16:19:50+05:00"
+    }
+  ]
 }
