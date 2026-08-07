@@ -89,6 +89,46 @@
       "path": "generated/experiments/comic_resolve_v2.png",
       "step": "1.4",
       "ts": "2026-08-05T16:19:50+05:00"
+    },
+    {
+      "path": "generated/experiments/game_scene_1_clean.png",
+      "step": "2.1",
+      "ts": "2026-08-07T15:36:58+05:00"
+    },
+    {
+      "path": "generated/experiments/game_hero_green.png",
+      "step": "2.1",
+      "ts": "2026-08-07T15:44:00+05:00"
+    },
+    {
+      "path": "generated/experiments/game_hero_sprite.png",
+      "step": "2.1",
+      "ts": "2026-08-07T15:45:00+05:00"
+    },
+    {
+      "path": "generated/experiments/game_scene_2_clean.png",
+      "step": "2.2",
+      "ts": "2026-08-07T16:00:00+05:00"
+    },
+    {
+      "path": "generated/experiments/game_scene_3_clean.png",
+      "step": "2.2",
+      "ts": "2026-08-07T16:20:00+05:00"
+    },
+    {
+      "path": "generated/experiments/game_scene_4_clean.png",
+      "step": "2.2",
+      "ts": "2026-08-07T16:40:00+05:00"
+    },
+    {
+      "path": "generated/experiments/game_scene_5_clean.png",
+      "step": "2.2",
+      "ts": "2026-08-07T17:00:00+05:00"
+    },
+    {
+      "path": "generated/experiments/game_scene_6_clean.png",
+      "step": "2.2",
+      "ts": "2026-08-07T17:20:00+05:00"
     }
   ]
 }

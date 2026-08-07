@@ -67,7 +67,25 @@ const CONFIG = {
   //   сверить с комиксом. Порядок SCENES = порядок кадров истории.
   // В заготовке один кадр-плейсхолдер; наставник заполняет на шагах 2.1–2.4.
   SCENES: [
-    { image: "scenes/placeholder.png" },
+    { image: "scenes/scene_1.png", comic_frame: "../comics/scenes/comic_normal_day.png" },
+    {
+      image: "scenes/scene_2.png",
+      comic_frame: "../comics/scenes/comic_call.png",
+      mechanic: "detective_search",
+      detective: { x: 0.59, y: 0.19 },
+    },
+    {
+      image: "scenes/scene_3.png",
+      comic_frame: "../comics/scenes/comic_decision.png",
+      mechanic: "dialogue_choice",
+    },
+    {
+      image: "scenes/scene_4.png",
+      comic_frame: "../comics/scenes/comic_trouble_first_suspect.png",
+      mechanic: "code_lock",
+    },
+    { image: "scenes/scene_5.png", comic_frame: "../comics/scenes/comic_trouble_old_man.png", mechanic: "timeline" },
+    { image: "scenes/scene_6.png", comic_frame: "../comics/scenes/comic_trouble_girl.png", mechanic: "baby_cipher" },
   ],
 
   // --- активные модули движка (ядро core.js читает) ---
@@ -75,7 +93,7 @@ const CONFIG = {
   // Наставник наращивает по шагам курса (см. level_2_*.md):
   // 2.1 +control (полёт) +transitions (переход «Дальше»), 2.4 +inventory, 2.5 +overlays.
   // Подключение модуля = <script> в index.html + имя в этом списке.
-  MODULES: [],
+  MODULES: ["control", "transitions"],
 
   // --- пример-механика «dodge_collect» (леталка: лови цели, уворачивайся от помех) ---
   // Это образец «своей механики» (см. assets/mechanics/README.md). Числа —
