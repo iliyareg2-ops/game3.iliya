@@ -1,69 +1,103 @@
-<!DOCTYPE html>
-<!--
-  projects/game/index.html — игра ребёнка. Открывается во вкладке «Игра» курса
-  (iframe) и двойным кликом — без сервера, автономна. Конфиг — config.js
-  («настройки игры»), движок и испытания — assets/.
--->
+<!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Моя игра</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Последний гость</title>
   <style>
-    html, body {
-      margin: 0;
-      min-height: 100vh;
-      background: #f5f1ea;
-      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #game-wrap {
-      position: relative;
-      width: max-content;
-    }
-    #game {
-      border: 2px solid #1a1a1a;
-      border-radius: 4px;
-      max-width: 90vmin;
-      max-height: 90vmin;
-      display: block;
-    }
+    :root{--gold:#e9bd68;--ink:#102529;--glass:#102a2bdc;--line:#d9bd7c;--green:#326f52;--blue:#438aa0}
+    *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#08191d;color:#fff;font-family:Inter,Segoe UI,sans-serif}button,input{font:inherit}button{cursor:pointer}#shell{position:relative;width:100%;height:100%;overflow:hidden;background:#173c42}canvas{width:100%;height:100%;display:block;outline:none}.screen{position:absolute;inset:0;z-index:30;display:grid;place-items:center;background:radial-gradient(circle at 50% 28%,#79a697,#285965 46%,#10262d 80%)}.hidden{display:none!important}.card{width:min(590px,90%);padding:38px;text-align:center;background:linear-gradient(145deg,#143436ed,#17282fed);border:1px solid var(--line);box-shadow:0 0 0 5px #193e3b,0 0 0 7px #8a6a3d,0 30px 100px #000b}.card h1{font-family:Georgia,serif;font-size:clamp(43px,7vw,78px);line-height:.9;margin:.15em 0;color:#f0d087;text-shadow:0 5px 15px #000}.card p{line-height:1.6;color:#e6e2d3}.card small{letter-spacing:.22em;color:#b9d9d1}.card input{display:block;width:100%;padding:11px;margin:8px 0 16px;border:2px solid #c7a661;background:#f2ead2;color:#183035}.primary{padding:12px 27px;border:1px solid #ffdd8a;background:linear-gradient(#b56336,#6d3827);color:#fff;border-radius:4px;font-weight:700;box-shadow:0 6px 20px #0007}.primary:hover{filter:brightness(1.2);transform:translateY(-1px)}#hud{position:absolute;inset:0;z-index:8;pointer-events:none}.hud-top{display:flex;justify-content:space-between;align-items:flex-start;padding:14px}.glass{background:var(--glass);border:1px solid var(--line);box-shadow:0 8px 24px #0007;backdrop-filter:blur(5px)}.player-card{padding:10px 14px;min-width:195px}.bar{height:10px;margin-top:6px;background:#38272b;border:1px solid #ae8f56}.bar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#b93e32,#efb449);transition:.2s}.objective{position:absolute;left:50%;top:14px;transform:translateX(-50%);padding:10px 18px;text-align:center;max-width:55%}.inventory{padding:8px 12px;display:flex;gap:13px}.inventory span{white-space:nowrap}.inventory b{color:#f2ce77}.controls{position:absolute;left:14px;bottom:14px;padding:9px 12px;display:flex;gap:9px;font-size:13px}.controls kbd{padding:3px 6px;border:1px solid #ceb575;border-radius:3px;background:#ffffff16}.prompt{position:absolute;left:50%;bottom:78px;transform:translateX(-50%);padding:10px 18px;font-weight:700;opacity:0;transition:.2s}.prompt.show{opacity:1}.toast{position:absolute;z-index:25;left:50%;bottom:130px;transform:translate(-50%,40px);width:min(670px,88%);padding:15px 20px;text-align:center;opacity:0;transition:.3s}.toast.show{opacity:1;transform:translate(-50%,0)}#dialogue{position:absolute;z-index:20;inset:0;background:#06151699;display:grid;place-items:end center;padding:0 20px 35px}.dialogue-box{width:min(900px,95%);padding:20px 24px;display:grid;grid-template-columns:100px 1fr;gap:18px}.portrait{width:90px;height:110px;border:2px solid #d8b972;background:radial-gradient(circle at 50% 32%,#d0a274 0 15%,#5b5143 16% 38%,#28473f 39%);clip-path:polygon(15% 0,85% 0,100% 15%,100% 85%,85% 100%,15% 100%,0 85%,0 15%)}.dialogue-copy h2{font-family:Georgia,serif;color:#f1ce7e;margin:0}.dialogue-copy p{min-height:42px;line-height:1.5}.dialogue-copy button{float:right}.cinematic{position:absolute;z-index:18;inset:0;pointer-events:none;background:white;opacity:0}.cinematic.flash{animation:flash 2s}.meteor-label{position:absolute;z-index:17;top:18%;left:50%;transform:translateX(-50%);font-family:Georgia,serif;font-size:clamp(38px,8vw,85px);color:#ffe6b0;text-shadow:0 0 20px #f04422,0 4px #491d19}.puzzle-screen{position:absolute;inset:0;z-index:22;background:#07191cdd;display:grid;place-items:center;padding:15px;backdrop-filter:blur(7px)}.puzzle-card{width:min(850px,95%);max-height:92vh;overflow:auto;padding:27px;text-align:center}.puzzle-card h2{font-family:Georgia,serif;color:#f0cd7b;font-size:31px}.clue{padding:13px;background:#e3cd9022;border-left:3px solid #e6bf67;line-height:1.5}.rings{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:17px 0}.ring{min-height:100px;border-radius:50%;border:6px double #c99a4d;background:radial-gradient(circle,#3f6f65,#152e31);color:#fff;font-size:18px}.ring strong{display:block;font-size:34px}.pipes{display:grid;grid-template-columns:repeat(3,72px);justify-content:center;gap:7px;margin:18px}.pipe{width:72px;height:72px;background:#173d3b;border:3px solid #9e7844;color:#f7d776;font-size:36px;padding:0}.pipe.fixed{border-color:#54aa91}.locks{color:#ead07f;letter-spacing:2em;margin-left:2em}.puzzle-status{min-height:28px;color:#f1bd6b;font-weight:700}.ending{background:radial-gradient(circle at 50% 35%,#a6784d,#394c42 30%,#101d21 70%)}.ending .card{background:#152b29f2}.bed-mark{font-size:80px;margin:8px;color:#c3a778;text-shadow:0 10px 22px #000}.ending h1{font-size:clamp(36px,6vw,65px)}.ending-note{font-family:Georgia,serif;font-style:italic;font-size:20px}@keyframes flash{0%,100%{opacity:0}35%{opacity:1}65%{opacity:.9}}@media(max-width:700px){.objective{top:72px;max-width:85%;font-size:13px}.inventory{font-size:12px}.controls{font-size:0}.controls kbd{font-size:12px}.dialogue-box{grid-template-columns:65px 1fr;padding:14px}.portrait{width:60px;height:80px}.rings{grid-template-columns:1fr}.ring{min-height:65px;border-radius:15px}.pipes{grid-template-columns:repeat(3,58px)}.pipe{width:58px;height:58px}.card{padding:25px}.hud-top{padding:8px}.player-card{min-width:145px}}
   </style>
-  <!-- overlays.css подключается на шаге курса 2.5 вместе с модулем overlays -->
 </head>
 <body>
-  <div id="game-wrap">
-    <canvas id="game" tabindex="0"></canvas>
-    <!-- оверлеи старта/финала создаёт модуль overlays.js (DOM в его setup) -->
-  </div>
-
-  <!-- порядок важен: настройки -> реестр испытаний -> испытания ->
-       реестр модулей -> ядро.
-       Старт Уровня 2: подключены ТОЛЬКО ядро + реестры. Модули
-       (control/transitions/inventory/overlays) наставник дописывает по шагам
-       курса — каждый одной строкой <script> (см. методички level_2_*.md).
-       overlays добавляет ещё <link assets/overlays.css> в <head>. -->
-  <script src="config.js"></script>
-  <script src="assets/mechanics/mechanics.js"></script>
-  <script src="assets/mechanics/seek.js"></script>
-  <script src="assets/mechanics/fog.js"></script>
-  <script src="assets/mechanics/chase.js"></script>
-  <script src="assets/mechanics/collect.js"></script>
-  <script src="assets/mechanics/arrange.js"></script>
-  <!-- dodge_collect — пример «своей механики» (см. mechanics/README.md); наставник
-       дописывает <script> на 2.4, когда ученик делает своё испытание:
-  <script src="assets/mechanics/dodge_collect.js"></script> -->
-  <script src="assets/modules/registry.js"></script>
-  <!-- Модули поведения (control/transitions/inventory) на старте НЕ подключены —
-       герой просто стоит. Наставник дописывает их по шагам Уровня 2, каждый одной
-       строкой <script> + именем в CONFIG.MODULES (config.js). См. level_2_1.md:
-  <script src="assets/modules/control.js"></script>
-  <script src="assets/modules/transitions.js"></script>
-  <script src="assets/modules/inventory.js"></script>
-  -->
-
-  <script src="assets/core.js"></script>
+<div id="shell">
+  <canvas id="game" width="1200" height="720" tabindex="0"></canvas>
+  <section id="start" class="screen"><div class="card"><small>ПРИКЛЮЧЕНИЕ В НЕЗНАКОМОМ МИРЕ</small><h1>Последний гость</h1><p>Космическая капсула падает на неизвестную планету. Впереди — пляж, маленькая деревня и дорога, которой ещё нет на карте.</p><label>Имя путешественника<input id="nameInput" maxlength="18" value="Арен"></label><button id="startBtn" class="primary">Открыть капсулу</button><p><small>WASD — движение · Shift — бег · Пробел — прыжок · E — действие</small></p></div></section>
+  <div id="hud" class="hidden"><div class="hud-top"><div class="player-card glass"><b id="heroName">Арен</b><div class="bar"><i id="health"></i></div></div><div class="inventory glass"><span>🍎 Еда: <b id="food">0</b></span><span>💧 Вода: <b id="water">0</b></span></div></div><div id="objective" class="objective glass">Осмотрись на пляже</div><div class="controls glass"><span><kbd>WASD</kbd> идти</span><span><kbd>Shift</kbd> бег</span><span><kbd>Space</kbd> прыжок</span><span><kbd>E</kbd> действие</span></div><div id="prompt" class="prompt glass"></div></div>
+  <div id="toast" class="toast glass"></div><div id="flash" class="cinematic"></div><div id="meteorLabel" class="meteor-label hidden"></div>
+  <div id="dialogue" class="hidden"><div class="dialogue-box glass"><div id="portrait" class="portrait"></div><div class="dialogue-copy"><h2 id="speaker"></h2><p id="speech"></p><button id="dialogueNext" class="primary">Дальше</button></div></div></div>
+  <div id="puzzle" class="puzzle-screen hidden"><div class="puzzle-card card"><small>ДВЕРЬ ГОРНОГО БУНКЕРА</small><h2>Три знака и три потока</h2><p class="clue">«Когда луна встала между двумя вершинами, белый волк пошёл к северной звезде».</p><div class="rings"><button class="ring" data-ring="0"></button><button class="ring" data-ring="1"></button><button class="ring" data-ring="2"></button></div><p>Затем поверни медные дорожки так, чтобы энергия из центра дошла до трёх замков.</p><div class="locks">🔒 🔒 🔒</div><div id="pipes" class="pipes"></div><div id="puzzleStatus" class="puzzle-status"></div><button id="puzzleCheck" class="primary">Подать энергию</button></div></div>
+  <section id="ending" class="screen ending hidden"><div class="card"><small>КОНЕЦ</small><div class="bed-mark">▱</div><h1>Он больше не проснулся</h1><p id="endingCopy"></p><p class="ending-note">Был ли это старик, новый метеорит, бандиты или зверь — никто никогда не узнает.</p><button id="restartBtn" class="primary">Начать сначала</button></div></section>
+</div>
+<script>
+"use strict";
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const canvas=$('#game'),ctx=canvas.getContext('2d'),keys={};
+const WORLD_W=2200,player={x:250,y:525,z:0,vz:0,dir:1,walk:0,hp:100};
+let scene=0,camera=0,running=false,last=0,near=null,dialogueDone=null,meteor=null,meteorTimer=0;
+const state={name:'Арен',friend:false,villageWarned:false,impact:false,food:0,water:0,bunker:false,stole:false,metOldMan:false,slept:false};
+const SCENES=[
+ {name:'Пляж падения',objective:'Найди кого-нибудь, кто знает дорогу'},
+ {name:'Дорога к деревне',objective:'Иди по тропе к первому поселению'},
+ {name:'Маленькая деревня',objective:'Поговори с жителями'},
+ {name:'После падения',objective:'Ищи выживших и собери припасы'},
+ {name:'Горный склон',objective:'Найди еду и убежище в горах'},
+ {name:'Горный бункер',objective:'Осмотри склад и поговори с хозяином'}
+];
+const objects={
+  0:[{id:'capsule',x:180,y:500,type:'capsule',label:'Осмотреть капсулу'},{id:'friend',x:1500,y:505,type:'friend',label:'Поговорить с человеком'}],
+  1:[{id:'fox',x:730,y:475,type:'fox',label:'Посмотреть на лису'},{id:'sign',x:1420,y:490,type:'sign',label:'Прочитать указатель'}],
+  2:[{id:'villager',x:610,y:505,type:'villager',label:'Поговорить с жительницей'},{id:'elder',x:1250,y:500,type:'elder',label:'Поговорить со старостой'},{id:'well',x:1710,y:520,type:'well',label:'Набрать воды'}],
+  3:[{id:'ruin',x:480,y:520,type:'ruin',label:'Осмотреть разрушенный дом'},{id:'foodRuin',x:1050,y:530,type:'food',label:'Поднять уцелевшую еду'},{id:'tracks',x:1570,y:540,type:'tracks',label:'Осмотреть следы'}],
+  4:[{id:'berries1',x:470,y:500,type:'berries',label:'Собрать ягоды'},{id:'goat',x:900,y:465,type:'goat',label:'Посмотреть на горного козла'},{id:'berries2',x:1280,y:515,type:'berries',label:'Собрать ягоды'},{id:'door',x:1880,y:455,type:'door',label:'Открыть дверь бункера'}],
+  5:[{id:'shelfFood',x:430,y:485,type:'shelfFood',label:'Взять еду со склада'},{id:'shelfWater',x:700,y:485,type:'shelfWater',label:'Взять воду со склада'},{id:'oldman',x:1250,y:505,type:'oldman',label:'Поговорить со стариком'},{id:'bed',x:1780,y:535,type:'bed',label:'Лечь спать'}]
+};
+const removed=new Set();
+addEventListener('keydown',e=>{keys[e.code]=true;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyE'&&running&&near)interact(near);});
+addEventListener('keyup',e=>keys[e.code]=false);
+function startGame(){state.name=$('#nameInput').value.trim()||'Арен';Object.assign(state,{friend:false,villageWarned:false,impact:false,food:0,water:0,bunker:false,stole:false,metOldMan:false,slept:false});removed.clear();scene=0;player.x=260;player.y=525;player.z=0;camera=0;meteor=null;$('#heroName').textContent=state.name;updateInventory();$('#start').classList.add('hidden');$('#ending').classList.add('hidden');$('#hud').classList.remove('hidden');running=true;setObjective('Выйди из капсулы и осмотрись на пляже');sayToast('Незнакомый воздух пахнет морской солью. Вдалеке виден человек.');canvas.focus();last=performance.now();requestAnimationFrame(loop)}
+function setObjective(t){$('#objective').textContent=t}function updateInventory(){$('#food').textContent=state.food;$('#water').textContent=state.water}
+function sayToast(t,ms=3200){let x=$('#toast');x.textContent=t;x.classList.add('show');clearTimeout(sayToast.t);sayToast.t=setTimeout(()=>x.classList.remove('show'),ms)}
+function dialogue(name,lines,onDone){let i=0;$('#speaker').textContent=name;$('#speech').textContent=lines[0];$('#dialogue').classList.remove('hidden');running=false;$('#dialogueNext').textContent=lines.length>1?'Дальше':'Закрыть';$('#dialogueNext').onclick=()=>{i++;if(i<lines.length){$('#speech').textContent=lines[i];$('#dialogueNext').textContent=i===lines.length-1?'Закрыть':'Дальше'}else{$('#dialogue').classList.add('hidden');running=true;onDone?.();canvas.focus();last=performance.now();requestAnimationFrame(loop)}}}
+function interact(o){if(removed.has(scene+':'+o.id))return;switch(o.id){
+ case'capsule':sayToast('Корпус расколот. Навигация не работает, но аварийный маяк ещё мигает.');break;
+ case'friend':dialogue('Незнакомец',['Ты не местный — это ясно даже без дымящейся капсулы.','Первое поселение стоит за дюнами. Иди всё время на север по широкой тропе — не заблудишься.','Меня зовут Дан. Удачи тебе, путешественник.'],()=>{state.friend=true;setObjective('Следуй вправо по дороге к деревне')});break;
+ case'fox':sayToast('Лиса спокойно смотрит на пришельца, затем исчезает в высокой траве.');break;
+ case'sign':sayToast('На указателе вырезано: «Речная деревня — прямо».');break;
+ case'villager':dialogue('Жительница',['Ты пришёл с пляжа? Ночью небо вспыхнуло, а потом земля задрожала.','Поговори со старостой. Он всё утро смотрит в подзорную трубу.']);break;
+ case'elder':if(!state.villageWarned)dialogue('Староста',['Ты сильнее обычного человека? Тогда, может быть, у нас есть надежда.','К деревне летит огромный метеорит. Мы пробовали всё. Останови его… пожалуйста.'],()=>{state.villageWarned=true;setObjective('Метеорит уже слишком близко');startMeteor()});else sayToast('Староста больше не смотрит на тебя — только в небо.');break;
+ case'well':if(!removed.has(scene+':well')){state.water++;removed.add(scene+':well');updateInventory();sayToast('Ты набрал флягу чистой воды.')}break;
+ case'ruin':sayToast('Под камнями тихо. Здесь нет выживших.');break;
+ case'foodRuin':state.food++;removed.add(scene+':foodRuin');updateInventory();sayToast('Найдена запечатанная пачка сухой еды.');break;
+ case'tracks':sayToast('Следы уходят к горам. Возможно, кто-то всё-таки успел уйти.');setObjective('Иди к горам и продолжай искать выживших');break;
+ case'berries1':case'berries2':state.food++;removed.add(scene+':'+o.id);updateInventory();sayToast('Съедобные синие ягоды. Теперь еды немного больше.');break;
+ case'goat':sayToast('Горный козёл не боится тебя. Он смотрит в сторону металлической двери.');break;
+ case'door':openPuzzle();break;
+ case'shelfFood':state.food+=2;state.stole=true;removed.add(scene+':shelfFood');updateInventory();sayToast('Ты быстро прячешь несколько упаковок еды.');break;
+ case'shelfWater':state.water+=2;state.stole=true;removed.add(scene+':shelfWater');updateInventory();sayToast('На полке достаточно воды на много дней. Ты берёшь две фляги.');break;
+ case'oldman':if(!state.metOldMan){dialogue('Старик Марен',[state.stole?'Я заметил, как ты взял припасы. Не бойся — после того, что случилось снаружи, я бы сделал так же.':'Я уже давно не слышал шагов за этой дверью. Значит, головоломка ещё кого-то помнит.','Садись. Еды хватит на двоих. Расскажешь за ужином, откуда ты свалился.','Можешь оставаться здесь сколько захочешь. Кровать у дальней стены — тебе нужно отдохнуть.'],()=>{state.metOldMan=true;setObjective('После ужина ложись на кровать')})}else sayToast('Старик добродушно улыбается и кивает в сторону кровати.');break;
+ case'bed':if(!state.metOldMan)return sayToast('Сначала стоит поговорить с хозяином бункера.');endGame();break;}}
+function startMeteor(){meteor={x:1500,y:-250};meteorTimer=360;$('#meteorLabel').textContent='Слишком поздно';$('#meteorLabel').classList.remove('hidden')}
+function changeScene(next){scene=next;player.x=next===5?180:120;player.y=525;camera=0;near=null;$('#prompt').classList.remove('show');setObjective(SCENES[next].objective);if(next===1)sayToast('Дан указал верную дорогу. Путь свободен.');if(next===2)sayToast('Над маленькой деревней неспокойно мерцает небо.');if(next===3)sayToast(`${state.name} приходит в себя среди горячей пыли. Его тело выдержало удар.`);if(next===4)sayToast('Горы тихи. Здесь нужно искать еду и следы выживших.');if(next===5)sayToast('За дверью — огромный склад еды, воды и оборудования.')}
+function update(dt){let moveX=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0),moveY=(keys.KeyS||keys.ArrowDown?1:0)-(keys.KeyW||keys.ArrowUp?1:0),speed=(keys.ShiftLeft||keys.ShiftRight?6.4:3.8);if(moveX||moveY){let n=Math.hypot(moveX,moveY);player.x+=moveX/n*speed;player.y+=moveY/n*speed*.7;player.walk+=speed*.12;if(moveX)player.dir=Math.sign(moveX)}if(keys.Space&&player.z===0)player.vz=10.5;player.z+=player.vz;player.vz-=.65;if(player.z<0){player.z=0;player.vz=0}player.x=Math.max(35,Math.min(WORLD_W-35,player.x));player.y=Math.max(390,Math.min(610,player.y));camera+=(Math.max(0,Math.min(WORLD_W-1200,player.x-600))-camera)*.08;
+ if(scene===0&&player.x>2100){if(!state.friend){player.x=2050;sayToast('Без знания дороги легко потеряться. Стоит поговорить с человеком на пляже.')}else changeScene(1)}else if(scene===1&&player.x>2100)changeScene(2);else if(scene===2&&state.impact&&player.x>2100)changeScene(3);else if(scene===3&&player.x>2100)changeScene(4);
+ if(meteor){meteorTimer--;meteor.x-=3.1;meteor.y+=2.2;if(meteorTimer<210){$('#meteorLabel').classList.add('hidden')}if(meteorTimer<=0){meteor=null;state.impact=true;$('#flash').classList.remove('flash');void $('#flash').offsetWidth;$('#flash').classList.add('flash');setTimeout(()=>changeScene(3),1150)}}
+ findNear()}
+function findNear(){near=null;let best=120;(objects[scene]||[]).forEach(o=>{if(removed.has(scene+':'+o.id))return;let d=Math.hypot(player.x-o.x,(player.y-o.y)*1.3);if(d<best){best=d;near=o}});let p=$('#prompt');if(near){p.textContent='E — '+near.label;p.classList.add('show')}else p.classList.remove('show')}
+function draw(){drawBackground();drawObjects();if(meteor)drawMeteor();drawPlayer()}
+function drawBackground(){let palettes=[['#63a9c0','#e3c984','#4d936b'],['#66a0ad','#d6bd7a','#4e8a5f'],['#6d9eb2','#c6b26d','#467552'],['#755c4c','#b17c4e','#4d4a39'],['#6f8b98','#968565','#4c694d'],['#304b48','#6d5a3b','#39423b']][scene],g=ctx.createLinearGradient(0,0,0,720);g.addColorStop(0,palettes[0]);g.addColorStop(.62,palettes[1]);g.addColorStop(1,palettes[2]);ctx.fillStyle=g;ctx.fillRect(0,0,1200,720);if(scene===5)drawBunker();else{drawSky();if(scene===0)drawBeach();if(scene===1)drawRoad();if(scene===2)drawVillage(false);if(scene===3)drawVillage(true);if(scene===4)drawMountains()}}
+function drawSky(){ctx.fillStyle='#fff1b7';ctx.beginPath();ctx.arc(1020,105,45,0,7);ctx.fill();for(let i=0;i<10;i++){let x=((i*277-camera*.12)%1500)-100,y=80+(i%4)*55;ctx.fillStyle='#ffffff88';ctx.beginPath();ctx.ellipse(x,y,48,10,0,0,7);ctx.fill()}}
+function drawBeach(){ctx.fillStyle='#4a91a4';ctx.fillRect(0,430,1200,160);ctx.fillStyle='#e4cb8d';ctx.beginPath();ctx.moveTo(0,470);for(let x=0;x<1250;x+=80)ctx.quadraticCurveTo(x+40,445+(x%160?15:0),x+80,470);ctx.lineTo(1200,720);ctx.lineTo(0,720);ctx.fill();for(let i=0;i<8;i++)tree(i*310-camera*.5+60,430,1)}
+function drawRoad(){ctx.fillStyle='#4f8056';ctx.fillRect(0,370,1200,350);ctx.strokeStyle='#ceb77e';ctx.lineWidth=90;ctx.beginPath();ctx.moveTo(-50,570);ctx.bezierCurveTo(350,470,780,620,1250,500);ctx.stroke();for(let i=0;i<13;i++)tree(i*180-(camera%180),425+(i%3)*20,.8+(i%2)*.25)}
+function drawVillage(ruined){ctx.fillStyle=ruined?'#5a5140':'#4a7b53';ctx.fillRect(0,390,1200,330);for(let i=0;i<8;i++){let x=i*300-(camera%300)-100,y=ruined?475:430;if(ruined){ctx.fillStyle='#765742';ctx.fillRect(x,y,160,75);ctx.fillStyle='#4d392f';ctx.beginPath();ctx.moveTo(x-15,y);ctx.lineTo(x+40,y-65);ctx.lineTo(x+145,y-20);ctx.fill()}else house(x,y,i%3)}ctx.strokeStyle='#c8b477';ctx.lineWidth=65;ctx.beginPath();ctx.moveTo(-30,590);ctx.lineTo(1230,535);ctx.stroke()}
+function drawMountains(){ctx.fillStyle='#526b5e';ctx.fillRect(0,430,1200,290);for(let i=0;i<8;i++){let x=i*300-(camera*.25%300)-120,h=210+(i%3)*60;ctx.fillStyle=i%2?'#657468':'#50675d';ctx.beginPath();ctx.moveTo(x,440);ctx.lineTo(x+145,440-h);ctx.lineTo(x+320,440);ctx.fill();ctx.fillStyle='#d9d6c7';ctx.beginPath();ctx.moveTo(x+145,440-h);ctx.lineTo(x+105,330-h/2);ctx.lineTo(x+184,340-h/2);ctx.fill()}ctx.strokeStyle='#a38b62';ctx.lineWidth=55;ctx.beginPath();ctx.moveTo(-20,585);ctx.bezierCurveTo(400,510,750,640,1220,500);ctx.stroke()}
+function drawBunker(){ctx.fillStyle='#34443e';ctx.fillRect(0,0,1200,720);ctx.fillStyle='#6b593e';ctx.fillRect(0,120,1200,420);for(let i=0;i<9;i++){let x=i*180-(camera%180);ctx.fillStyle='#9b7947';ctx.fillRect(x,260,120,14);ctx.fillStyle='#7f3f2f';for(let j=0;j<4;j++)ctx.fillRect(x+j*29,220+(j%2)*18,22,38)}ctx.fillStyle='#4b4035';ctx.fillRect(0,540,1200,180);ctx.fillStyle='#e8c66e';for(let i=0;i<6;i++){ctx.beginPath();ctx.arc(i*240-(camera%240)+70,115,8,0,7);ctx.fill()}}
+function drawObjects(){let list=(objects[scene]||[]).filter(o=>!removed.has(scene+':'+o.id)).sort((a,b)=>a.y-b.y);for(const o of list)drawObject(o,o.x-camera,o.y)}
+function drawObject(o,x,y){if(x<-160||x>1360)return;ctx.save();ctx.translate(x,y);switch(o.type){case'capsule':ctx.rotate(-.16);ctx.fillStyle='#d7d3c2';ctx.beginPath();ctx.ellipse(0,-40,75,110,0,0,7);ctx.fill();ctx.fillStyle='#3e7788';ctx.beginPath();ctx.ellipse(0,-70,45,45,0,0,7);ctx.fill();ctx.fillStyle='#b04c35';ctx.fillRect(-65,25,130,18);break;case'friend':case'villager':case'elder':case'oldman':drawPerson(o.type);break;case'fox':animal('#bd6a38',.65);break;case'goat':animal('#d2c4a0',.85);break;case'sign':ctx.fillStyle='#67452e';ctx.fillRect(-7,-85,14,90);ctx.fillRect(-55,-80,110,38);ctx.fillStyle='#e0c67d';ctx.font='16px sans-serif';ctx.fillText('ДЕРЕВНЯ',-43,-55);break;case'well':ctx.fillStyle='#867661';ctx.fillRect(-45,-45,90,45);ctx.strokeStyle='#a28d6e';ctx.lineWidth=12;ctx.beginPath();ctx.arc(0,-65,48,3.1,6.3);ctx.stroke();break;case'ruin':ctx.fillStyle='#765742';ctx.fillRect(-65,-55,130,55);ctx.fillStyle='#4c3930';ctx.rotate(.2);ctx.fillRect(-85,-75,170,24);break;case'food':case'shelfFood':ctx.fillStyle='#d2a74b';ctx.fillRect(-30,-35,60,35);ctx.fillStyle='#7b3e2d';ctx.fillRect(-22,-28,44,9);break;case'tracks':ctx.fillStyle='#463a2e';for(let i=0;i<4;i++){ctx.beginPath();ctx.ellipse(i*22-38,-i*5,8,13,.5,0,7);ctx.fill()}break;case'berries':ctx.fillStyle='#347044';ctx.beginPath();ctx.arc(0,-22,45,0,7);ctx.fill();ctx.fillStyle='#5966b9';for(let i=0;i<9;i++){ctx.beginPath();ctx.arc((i%3)*16-16,Math.floor(i/3)*13-38,6,0,7);ctx.fill()}break;case'door':ctx.fillStyle='#4a4e4a';ctx.fillRect(-80,-145,160,145);ctx.strokeStyle='#c08e49';ctx.lineWidth=8;ctx.strokeRect(-65,-130,130,130);ctx.fillStyle='#d5b159';ctx.beginPath();ctx.arc(0,-65,24,0,7);ctx.fill();break;case'shelfWater':ctx.fillStyle='#68aac0';for(let i=0;i<3;i++){ctx.fillRect(i*24-33,-48,17,48);ctx.fillStyle='#b4e5ec';ctx.fillRect(i*24-30,-43,11,10);ctx.fillStyle='#68aac0'}break;case'bed':ctx.fillStyle='#775640';ctx.fillRect(-80,-35,160,35);ctx.fillStyle='#c1a97c';ctx.fillRect(-75,-60,150,35);ctx.fillStyle='#e2d3ad';ctx.fillRect(-70,-57,45,24);break}ctx.restore()}
+function drawPerson(type){let colors={friend:'#5f7956',villager:'#8c554a',elder:'#68507c',oldman:'#556b52'},c=colors[type];ctx.fillStyle=c;ctx.fillRect(-20,-75,40,70);ctx.fillStyle='#c89468';ctx.beginPath();ctx.arc(0,-92,18,0,7);ctx.fill();ctx.fillStyle=type==='oldman'?'#ddd3b9':'#46372f';ctx.beginPath();ctx.arc(0,-99,19,3.1,6.4);ctx.fill();if(type==='oldman'){ctx.fillStyle='#ddd3b9';ctx.beginPath();ctx.moveTo(-14,-88);ctx.lineTo(0,-62);ctx.lineTo(14,-88);ctx.fill()}ctx.strokeStyle='#4b382b';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(-10,-8);ctx.lineTo(-14,8);ctx.moveTo(10,-8);ctx.lineTo(14,8);ctx.stroke()}
+function animal(color,scale){ctx.scale(scale,scale);ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(0,-25,55,28,0,0,7);ctx.fill();ctx.beginPath();ctx.arc(45,-48,24,0,7);ctx.fill();ctx.beginPath();ctx.moveTo(34,-66);ctx.lineTo(40,-86);ctx.lineTo(50,-65);ctx.fill();ctx.strokeStyle=color;ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(-48,-30);ctx.quadraticCurveTo(-85,-70,-98,-40);ctx.stroke()}
+function tree(x,y,s){ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.fillStyle='#5e422d';ctx.fillRect(-9,-90,18,100);ctx.fillStyle='#2c6848';for(let i=0;i<3;i++){ctx.beginPath();ctx.arc((i-1)*25,-100-(i%2)*22,42,0,7);ctx.fill()}ctx.restore()}
+function house(x,y,n){ctx.fillStyle=['#c59058','#bd714f','#d1a45e'][n];ctx.fillRect(x,y-100,190,100);ctx.fillStyle='#70422f';ctx.beginPath();ctx.moveTo(x-20,y-100);ctx.lineTo(x+95,y-180);ctx.lineTo(x+210,y-100);ctx.fill();ctx.fillStyle='#7ab0a1';ctx.fillRect(x+35,y-70,45,40);ctx.fillStyle='#563826';ctx.fillRect(x+125,y-70,38,70)}
+function drawPlayer(){let x=player.x-camera,y=player.y-player.z,bob=player.z?0:Math.sin(player.walk)*3;ctx.save();ctx.translate(x,y+bob);ctx.scale(player.dir,1);ctx.fillStyle='#243c49';ctx.fillRect(-18,-73,36,65);ctx.fillStyle='#c9976d';ctx.beginPath();ctx.arc(0,-91,20,0,7);ctx.fill();ctx.fillStyle='#302b2a';ctx.beginPath();ctx.arc(0,-99,21,3.1,6.3);ctx.fill();ctx.fillStyle='#6f4b35';ctx.fillRect(-28,-65,12,50);ctx.strokeStyle='#202b33';ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(-10,-8);ctx.lineTo(-12+Math.sin(player.walk)*8,14);ctx.moveTo(10,-8);ctx.lineTo(12-Math.sin(player.walk)*8,14);ctx.stroke();ctx.fillStyle='#7faeb5';ctx.beginPath();ctx.arc(-28,-69,8,0,7);ctx.fill();ctx.restore()}
+function drawMeteor(){let x=meteor.x,y=meteor.y;let g=ctx.createRadialGradient(x,y,5,x,y,85);g.addColorStop(0,'#fff5c4');g.addColorStop(.25,'#ffb23d');g.addColorStop(.65,'#e44629');g.addColorStop(1,'transparent');ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,90,0,7);ctx.fill();ctx.strokeStyle='#f06b32';ctx.lineWidth=35;ctx.beginPath();ctx.moveTo(x+25,y-25);ctx.lineTo(x+220,y-220);ctx.stroke()}
+const ringOptions=[[['△△','Две вершины'],['≋','Волны'],['☀','Солнце']],[['◐','Полумесяц'],['●','Полная луна'],['☆','Звезда']],[['◆','Белый волк'],['♞','Олень'],['▲','Ворон']]],ringPos=[0,0,0],pipeTypes=['━','┃','━','✣','┃','━','━','┃','━'],pipeRot=[1,0,1,0,0,1,0,1,0];
+function renderPuzzle(){$$('[data-ring]').forEach((b,i)=>{let x=ringOptions[i][ringPos[i]];b.innerHTML=`<strong>${x[0]}</strong>${x[1]}`});let box=$('#pipes');box.innerHTML='';pipeTypes.forEach((t,i)=>{let b=document.createElement('button');b.className='pipe'+(i===4?' fixed':'');b.textContent=t;b.style.transform=`rotate(${pipeRot[i]*90}deg)`;b.onclick=()=>{if(i===4)return;pipeRot[i]=(pipeRot[i]+1)%2;b.style.transform=`rotate(${pipeRot[i]*90}deg)`};box.append(b)})}
+function openPuzzle(){$('#puzzle').classList.remove('hidden');running=false;renderPuzzle();$('#puzzleStatus').textContent=''}
+$$('[data-ring]').forEach((b,i)=>b.onclick=()=>{ringPos[i]=(ringPos[i]+1)%3;renderPuzzle()});
+$('#puzzleCheck').onclick=()=>{let ringsOk=ringPos.join()==='0,1,0',pipesOk=pipeRot.join()==='0,1,0,0,0,1,0,1,0';if(ringsOk&&pipesOk){state.bunker=true;$('#puzzleStatus').textContent='Три замка открыты. Механизм оживает.';setTimeout(()=>{$('#puzzle').classList.add('hidden');running=true;changeScene(5);last=performance.now();requestAnimationFrame(loop)},900)}else if(!ringsOk)$('#puzzleStatus').textContent='Каменные кольца не отвечают. Перечитай высеченную историю.';else $('#puzzleStatus').textContent='Энергия гаснет в одном из поворотов. Проверь направления дорожек.'};
+function endGame(){state.slept=true;running=false;$('#hud').classList.add('hidden');$('#endingCopy').textContent=`После ужина ${state.name} думает о том, как повезло встретить доброго человека. Старик улыбается, указывает на кровать, и путешественник засыпает.`;setTimeout(()=>$('#ending').classList.remove('hidden'),500)}
+function loop(now){if(!running)return;let dt=Math.min(2,(now-last)/16.67||1);last=now;update(dt);draw();requestAnimationFrame(loop)}
+$('#startBtn').onclick=startGame;$('#restartBtn').onclick=()=>{$('#ending').classList.add('hidden');$('#start').classList.remove('hidden')};draw();
+</script>
 </body>
 </html>
