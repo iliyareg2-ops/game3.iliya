@@ -5,6 +5,13 @@ Mechanics.register("detective_search", () => {
   let found = false;
   let phoneOpen = false;
 
+  function gameCode() {
+    if (!window.DETECTIVE_GAME_CODE) {
+      window.DETECTIVE_GAME_CODE = String(Math.floor(Math.random() * 989) + 11);
+    }
+    return window.DETECTIVE_GAME_CODE;
+  }
+
   function pointFromEvent(e) {
     const rect = canvas.getBoundingClientRect();
     return {
@@ -90,7 +97,7 @@ Mechanics.register("detective_search", () => {
           ctx.stroke();
           ctx.fillStyle = "rgba(255,235,150,.92)";
           ctx.font = "700 26px system-ui";
-          ctx.fillText("17", clue.x, clue.y);
+          ctx.fillText(gameCode(), clue.x, clue.y);
         }
         ctx.restore();
 
@@ -113,7 +120,7 @@ Mechanics.register("detective_search", () => {
       ctx.fill();
       ctx.fillStyle = found ? "#fff4bd" : "#fff";
       ctx.font = found ? "700 25px system-ui" : "700 24px system-ui";
-      ctx.fillText(found ? "Улика найдена: номер 17" : "Найди скрытый номер на карте", 450, 58);
+      ctx.fillText(found ? `Улика найдена: номер ${gameCode()}` : "Найди скрытый номер на карте", 450, 58);
 
       if (phoneOpen) {
         ctx.fillStyle = "rgba(12,16,24,.94)";

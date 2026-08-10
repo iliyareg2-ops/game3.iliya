@@ -100,6 +100,9 @@ Modules.register("transitions", () => {
       const st = GameAPI.sceneState();
       const atEdge = inExitZone(bubble);
 
+      // На последнем кадре завершение показывает сама финальная сцена.
+      if (st.atLast && st.complete) return;
+
       // кадр НЕ пройден: у края — красный намёк (вне края молчим, чтобы не шуметь).
       // Это «место» pickup-hint инвентаря — он рисует свою подсказку отдельно.
       if (!st.complete) {

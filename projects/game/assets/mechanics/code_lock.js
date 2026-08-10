@@ -2,7 +2,12 @@
 Mechanics.register("code_lock", () => {
   let cfg, canvas, controller;
   let entered = "", solved = false, message = "";
-  const answer = "17";
+  function answer() {
+    if (!window.DETECTIVE_GAME_CODE) {
+      window.DETECTIVE_GAME_CODE = String(Math.floor(Math.random() * 989) + 11);
+    }
+    return window.DETECTIVE_GAME_CODE;
+  }
 
   function point(e) {
     const r = canvas.getBoundingClientRect();
@@ -44,10 +49,10 @@ Mechanics.register("code_lock", () => {
         if (solved) return;
         const key = keyAt(point(e).x, point(e).y);
         if (!key) return;
-        if (/^\d$/.test(key) && entered.length < 2) entered += key;
+        if (/^\d$/.test(key) && entered.length < 3) entered += key;
         if (key === "⌫") entered = entered.slice(0, -1);
         if (key === "✓") {
-          if (entered === answer) {
+          if (entered === answer()) {
             solved = true;
             message = "Папка открыта: внутри фотография с уликой.";
             window.DETECTIVE_FLAGS = window.DETECTIVE_FLAGS || {};
@@ -74,11 +79,11 @@ Mechanics.register("code_lock", () => {
       ctx.fillText("ЗАПЕРТАЯ ПАПКА", 275, 205);
       ctx.fillStyle = "#fff";
       ctx.font = "700 31px system-ui";
-      ctx.fillText("Введи двузначный код", 275, 265);
+      ctx.fillText("Введи найденный код", 275, 265);
       rounded(ctx, 125, 315, 300, 95, 18, "rgba(255,255,255,.08)");
       ctx.fillStyle = "#fff4bd";
       ctx.font = "800 52px ui-monospace, monospace";
-      ctx.fillText(entered.padEnd(2, "•"), 275, 362);
+      ctx.fillText(entered.padEnd(answer().length, "•"), 275, 362);
       ctx.fillStyle = "#c9d1df";
       ctx.font = "21px system-ui";
       ctx.fillText("Подсказка из телефона:", 275, 470);
