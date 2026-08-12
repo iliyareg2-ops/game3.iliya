@@ -86,6 +86,8 @@ const CONFIG = {
     },
     { image: "scenes/scene_5.png", comic_frame: "../comics/scenes/comic_trouble_old_man.png", mechanic: "timeline" },
     { image: "scenes/scene_6.png", comic_frame: "../comics/scenes/comic_trouble_girl.png", mechanic: "baby_cipher" },
+    { image: "scenes/scene_7.png", comic_frame: "../comics/scenes/comic_trouble_double.png", mechanic: "double_alibi" },
+    { image: "scenes/scene_8.png", comic_frame: "../comics/scenes/comic_decision_agent.png" },
   ],
 
   // --- активные модули движка (ядро core.js читает) ---

@@ -130,3 +130,31 @@ Mechanics.register("dialogue_choice", () => {
     reset() { interviewed = new Set(); lastChosen = ""; },
   };
 });
+
+/* Проверка алиби двойника по камерам аэропорта. */
+Mechanics.register("double_alibi", () => {
+  let cfg, canvas, controller, selected = new Set(), solved = false, message = "";
+  const records = [
+    { id: "arrival", text: "Камера прилёта: 18:42", correct: true },
+    { id: "passport", text: "Паспортный контроль: 19:03", correct: true },
+    { id: "exit", text: "Выход из аэропорта: 19:18", correct: true },
+    { id: "cafe", text: "Чек из кафе: 17:10", correct: false },
+    { id: "park", text: "Камера у парка: 18:55", correct: false },
+    { id: "taxi", text: "Заказ такси: 20:40", correct: false },
+  ];
+  const point = (e) => { const r = canvas.getBoundingClientRect(); return { x:(e.clientX-r.left)*cfg.canvasW/r.width, y:(e.clientY-r.top)*cfg.canvasH/r.height }; };
+  const box = (c,x,y,w,h,fill,stroke="rgba(255,255,255,.18)") => { c.beginPath(); c.roundRect(x,y,w,h,14); c.fillStyle=fill; c.fill(); c.strokeStyle=stroke; c.lineWidth=2; c.stroke(); };
+  return {
+    init(_ctx,_cfg) {
+      cfg=_cfg; canvas=document.getElementById("game"); selected=new Set(); solved=false; message="";
+      if(window.__doubleAlibiCtl) window.__doubleAlibiCtl.abort(); controller=new AbortController(); window.__doubleAlibiCtl=controller;
+      canvas.addEventListener("pointerdown",e=>{ if(solved)return; const p=point(e);
+        records.forEach((item,i)=>{const col=i%2,row=Math.floor(i/2),x=95+col*370,y=340+row*105;if(p.x>=x&&p.x<=x+340&&p.y>=y&&p.y<=y+78){selected.has(item.id)?selected.delete(item.id):selected.size<3&&selected.add(item.id);message="";}});
+        if(p.x>315&&p.x<585&&p.y>700&&p.y<770){if(selected.size!==3){message="Выбери три записи с камер.";return;} const ok=records.filter(x=>x.correct).every(x=>selected.has(x.id)); if(ok){solved=true;message="Алиби подтверждено: двойник только прилетел в страну.";}else message="Одна запись не подходит. Проверь место и время.";}
+      },{signal:controller.signal});
+    },
+    update(){},
+    draw(c){c.save();c.fillStyle="rgba(8,10,16,.58)";c.fillRect(0,0,cfg.canvasW,cfg.canvasH);box(c,55,45,790,800,"rgba(20,24,34,.96)","#d8b86c");c.textAlign="center";c.textBaseline="middle";c.fillStyle="#d8b86c";c.font="800 23px system-ui";c.fillText("ПРОВЕРКА АЛИБИ",450,90);c.fillStyle="#fff";c.font="800 30px system-ui";c.fillText("Проверь камеры аэропорта",450,140);c.fillStyle="#c9d1df";c.font="20px system-ui";c.fillText("Двойник говорит, что был в другой стране. Найди 3 подтверждения.",450,195);records.forEach((item,i)=>{const col=i%2,row=Math.floor(i/2),x=95+col*370,y=340+row*105,on=selected.has(item.id);box(c,x,y,340,78,on?"rgba(42,92,63,.95)":"rgba(55,63,80,.96)",on?"#75e09a":"rgba(255,255,255,.18)");c.fillStyle="#fff";c.font="700 18px system-ui";c.fillText(`${on?"✓ ":""}${item.text}`,x+170,y+39);});box(c,315,700,270,70,solved?"rgba(42,100,62,.96)":"rgba(80,63,30,.96)",solved?"#75e09a":"#d8b86c");c.fillStyle="#fff";c.font="800 22px system-ui";c.fillText(solved?"Алиби подтверждено":"Проверить записи",450,735);if(message){c.fillStyle=solved?"#75e09a":"#ffd37a";c.font="700 18px system-ui";c.fillText(message,450,810);}c.restore();},
+    isComplete(){return solved;}, reset(){selected=new Set();solved=false;message="";}
+  };
+});
