@@ -159,6 +159,21 @@
       "path": "generated/experiments/asyl_pixel_emotions_9_green.png",
       "step": "2.2",
       "ts": "2026-08-12T00:02:00+05:00"
+    },
+    {
+      "path": "generated/experiments/space_capsule_meteor_cover.png",
+      "step": "2.2",
+      "ts": "2026-08-12T12:00:00+05:00"
+    },
+    {
+      "path": "generated/experiments/detective_puzzle_cover.png",
+      "step": "2.2",
+      "ts": "2026-08-12T12:10:00+05:00"
+    },
+    {
+      "path": "generated/experiments/comic_asyl_detective_cover.png",
+      "step": "2.2",
+      "ts": "2026-08-12T12:20:00+05:00"
     }
   ]
 }
