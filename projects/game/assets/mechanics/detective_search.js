@@ -55,6 +55,7 @@ Mechanics.register("detective_search", () => {
         const p = pointFromEvent(e);
         if (inPhone(p.x, p.y)) {
           phoneOpen = !phoneOpen;
+          window.showAsylEmotion?.(phoneOpen ? "thinking" : "neutral", 1200);
           return;
         }
         if (phoneOpen) {
@@ -62,7 +63,7 @@ Mechanics.register("detective_search", () => {
           return;
         }
         const clue = cluePosition();
-        if (Math.hypot(p.x - clue.x, p.y - clue.y) < 58) found = true;
+        if (Math.hypot(p.x - clue.x, p.y - clue.y) < 58) { found = true; window.showAsylEmotion?.("happy", 2200); }
       }, opts);
     },
 

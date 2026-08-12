@@ -49,16 +49,18 @@ Mechanics.register("code_lock", () => {
         if (solved) return;
         const key = keyAt(point(e).x, point(e).y);
         if (!key) return;
-        if (/^\d$/.test(key) && entered.length < 3) entered += key;
+        if (/^\d$/.test(key) && entered.length < 3) { entered += key; window.showAsylEmotion?.("determined", 500); }
         if (key === "⌫") entered = entered.slice(0, -1);
         if (key === "✓") {
           if (entered === answer()) {
             solved = true;
             message = "Папка открыта: внутри фотография с уликой.";
+            window.showAsylEmotion?.("happy", 2200);
             window.DETECTIVE_FLAGS = window.DETECTIVE_FLAGS || {};
             window.DETECTIVE_FLAGS.folderOpened = true;
           } else {
             message = "Код не подошёл. Вспомни номер на карте.";
+            window.showAsylEmotion?.("sad", 2200);
             entered = "";
           }
         }

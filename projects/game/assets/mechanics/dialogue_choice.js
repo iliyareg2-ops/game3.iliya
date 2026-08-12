@@ -69,6 +69,8 @@ Mechanics.register("dialogue_choice", () => {
         }
         interviewed.add(pick.id);
         lastChosen = pick.id;
+        const reactions = { teen:"neutral", old_man:"angry", girl:"surprised", double:"confused" };
+        window.showAsylEmotion?.(reactions[pick.id], 1800);
         window.DETECTIVE_FLAGS.interviewed = [...interviewed];
       }, { signal: controller.signal });
     },

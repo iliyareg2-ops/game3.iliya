@@ -35,7 +35,7 @@ Mechanics.register("alibi_matrix", () => {
     solved=rotations.every((r,i)=>tiles[i].type==="straight"
       ? r%2===tiles[i].target%2
       : r===tiles[i].target);
-    if(solved){window.DETECTIVE_FLAGS=window.DETECTIVE_FLAGS||{};window.DETECTIVE_FLAGS.doubleCleared=true;}
+    if(solved){window.DETECTIVE_FLAGS=window.DETECTIVE_FLAGS||{};window.DETECTIVE_FLAGS.doubleCleared=true;window.showAsylEmotion?.("happy",2200);}
   }
   return {
     init(_ctx,_cfg){
@@ -45,7 +45,7 @@ Mechanics.register("alibi_matrix", () => {
       controller=new AbortController();window.__alibiMatrixController=controller;
       canvas.addEventListener("pointerdown",e=>{
         if(solved)return;const i=tileAt(point(e).x,point(e).y);if(i<0)return;
-        rotations[i]=(rotations[i]+1)%4;moves++;check();
+        rotations[i]=(rotations[i]+1)%4;moves++;window.showAsylEmotion?.(moves%3===0?"confused":"thinking",700);check();
       },{signal:controller.signal});
     },
     update(){},

@@ -2,7 +2,18 @@
 Mechanics.register("accusation_board", () => {
   let cfg, canvas, controller, dossier;
   let pieces = [], selected = -1, solved = false, moves = 0;
-  const initial = [4,0,7,2,8,1,5,3,6];
+
+  function shuffledPieces(){
+    let result;
+    do {
+      result=[0,1,2,3,4,5,6,7,8];
+      for(let i=result.length-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [result[i],result[j]]=[result[j],result[i]];
+      }
+    } while(result.every((piece,i)=>piece===i));
+    return result;
+  }
 
   function point(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*cfg.canvasW/r.width,y:(e.clientY-r.top)*cfg.canvasH/r.height};}
   function box(ctx,x,y,w,h,fill,stroke="rgba(255,255,255,.2)"){ctx.beginPath();ctx.roundRect(x,y,w,h,14);ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke();}
@@ -25,16 +36,16 @@ Mechanics.register("accusation_board", () => {
   }
   function check(){
     solved=pieces.every((piece,i)=>piece===i);
-    if(solved){window.DETECTIVE_FLAGS=window.DETECTIVE_FLAGS||{};window.DETECTIVE_FLAGS.accusedOldMan=true;}
+    if(solved){window.DETECTIVE_FLAGS=window.DETECTIVE_FLAGS||{};window.DETECTIVE_FLAGS.accusedOldMan=true;window.showAsylEmotion?.("happy",2200);}
   }
   return {
     init(_ctx,_cfg){
-      cfg=_cfg;canvas=document.getElementById("game");dossier=createDossier();pieces=[...initial];selected=-1;solved=false;moves=0;
+      cfg=_cfg;canvas=document.getElementById("game");dossier=createDossier();pieces=shuffledPieces();selected=-1;solved=false;moves=0;
       if(window.__accusationController)window.__accusationController.abort();controller=new AbortController();window.__accusationController=controller;
       canvas.addEventListener("pointerdown",e=>{
         if(solved)return;const index=tileAt(point(e).x,point(e).y);if(index<0)return;
         if(selected<0){selected=index;return}if(selected===index){selected=-1;return}
-        [pieces[selected],pieces[index]]=[pieces[index],pieces[selected]];selected=-1;moves++;check();
+        [pieces[selected],pieces[index]]=[pieces[index],pieces[selected]];selected=-1;moves++;window.showAsylEmotion?.(moves%3===0?"confused":"determined",700);check();
       },{signal:controller.signal});
     },
     update(){},
@@ -49,6 +60,6 @@ Mechanics.register("accusation_board", () => {
       ctx.fillStyle=solved?"#75e09a":"#ffd37a";ctx.font="800 19px system-ui";ctx.fillText(solved?"Досье восстановлено: агент получает приказ задержать старика":"Собери портрет и имя подозреваемого",450,770);
       ctx.fillStyle="#9ba7bb";ctx.font="17px system-ui";ctx.fillText(`Перестановок: ${moves}`,450,810);ctx.restore();
     },
-    isComplete(){return solved},reset(){pieces=[...initial];selected=-1;solved=false;moves=0}
+    isComplete(){return solved},reset(){pieces=shuffledPieces();selected=-1;solved=false;moves=0}
   };
 });
