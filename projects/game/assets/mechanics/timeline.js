@@ -2,7 +2,7 @@
 Mechanics.register("timeline", () => {
   let cfg, canvas, controller;
   let selected = new Set(), solved = false, message = "";
-  const evidence = [
+  const baseEvidence = [
     { id: "camera", text: "Камера метро: старик там в 19:25", contradiction: true },
     { id: "weather", text: "Прогноз: вечером шёл дождь", contradiction: false },
     { id: "receipt", text: "Чек магазина у метро: 19:40", contradiction: true },
@@ -10,6 +10,12 @@ Mechanics.register("timeline", () => {
     { id: "ticket", text: "Вход в парк по его билету: 20:10", contradiction: true },
     { id: "bus", text: "Последний автобус ушёл в 21:30", contradiction: false },
   ];
+  let evidence = [];
+  function shuffle(items) {
+    const result=[...items];
+    for(let i=result.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[result[i],result[j]]=[result[j],result[i]]}
+    return result;
+  }
 
   function point(e) {
     const r = canvas.getBoundingClientRect();
@@ -28,7 +34,7 @@ Mechanics.register("timeline", () => {
   }
   return {
     init(_ctx,_cfg) {
-      cfg=_cfg; canvas=document.getElementById("game"); selected=new Set(); solved=false; message="";
+      cfg=_cfg; canvas=document.getElementById("game"); selected=new Set(); solved=false; message=""; evidence=shuffle(baseEvidence);
       if(window.__timelineCtl)window.__timelineCtl.abort(); controller=new AbortController(); window.__timelineCtl=controller;
       canvas.addEventListener("pointerdown",e=>{
         if(solved)return; const p=point(e); const item=evidenceAt(p.x,p.y);
@@ -59,6 +65,6 @@ Mechanics.register("timeline", () => {
       ctx.restore();
     },
     isComplete(){return solved},
-    reset(){selected=new Set();solved=false;message=""}
+    reset(){selected=new Set();solved=false;message="";evidence=shuffle(baseEvidence)}
   };
 });

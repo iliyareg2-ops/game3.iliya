@@ -133,12 +133,17 @@
     {
       "path": "generated/experiments/game_scene_7_clean.png",
       "step": "2.2",
-      "ts": "2026-08-08T15:30:00+05:00"
+      "ts": "2026-08-10T12:00:00+05:00"
     },
     {
       "path": "generated/experiments/game_scene_8_clean.png",
       "step": "2.2",
-      "ts": "2026-08-08T15:35:00+05:00"
+      "ts": "2026-08-10T12:20:00+05:00"
+    },
+    {
+      "path": "generated/experiments/game_scene_9_clean.png",
+      "step": "2.2",
+      "ts": "2026-08-10T12:40:00+05:00"
     }
   ]
 }
