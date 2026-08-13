@@ -180,6 +180,8 @@
     { "path": "generated/experiments/car_reference_red_blueprint.jpg", "step": "2.2", "ts": "2026-08-13T00:02:00+05:00" },
     { "path": "generated/experiments/car_reference_silver_blueprint.jpg", "step": "2.2", "ts": "2026-08-13T00:03:00+05:00" },
     { "path": "generated/experiments/road_signs_reference.png", "step": "2.2", "ts": "2026-08-13T21:21:16+05:00" },
-    { "path": "generated/experiments/asyl_runner_sky.jpeg", "step": "2.2", "ts": "2026-08-13T21:30:00+05:00" }
+    { "path": "generated/experiments/asyl_runner_sky.jpeg", "step": "2.2", "ts": "2026-08-13T21:30:00+05:00" },
+    { "path": "generated/experiments/asyl-runner-cover.png", "step": "2.2", "ts": "2026-08-14T12:00:00+05:00" },
+    { "path": "generated/experiments/asyl-runner-cover-baby.png", "step": "2.2", "ts": "2026-08-14T12:10:00+05:00" }
   ]
 }
