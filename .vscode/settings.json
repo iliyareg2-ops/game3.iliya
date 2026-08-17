@@ -37,7 +37,7 @@
   "javascript.validate.enable": false,
   "problems.decorations.enabled": false,
 
-  "breadcrumbs.enabled": false,
+  "breadcrumbs.enabled": true,
   "explorer.compactFolders": false,
   "explorer.openEditors.visible": 0,
   "telemetry.telemetryLevel": "off",
