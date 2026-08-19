@@ -359,8 +359,8 @@
     /* 🔘 FORZA HORIZON 5 / GT7 CIRCULAR DIGITAL SPEEDOMETER & TACHOMETER */
     .gauge-container {
       position: relative;
-      width: 240px;
-      height: 240px;
+      width: 220px;
+      height: 220px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -371,78 +371,30 @@
       inset: 0;
       width: 100%;
       height: 100%;
+      transform: rotate(-90deg);
     }
 
-    .right-hud-cluster {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 10px;
-    }
-
-    .nitro-pill {
-      background: rgba(15, 23, 42, 0.92);
-      border: 1px solid rgba(56, 189, 248, 0.35);
-      border-radius: 12px;
-      padding: 8px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      min-width: 220px;
-      backdrop-filter: blur(16px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65), 0 0 15px rgba(56, 189, 248, 0.15);
-    }
-
-    .nitro-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .nitro-label {
-      font-size: 11px;
-      font-weight: 900;
-      color: #38bdf8;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      text-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
-    }
-
-    .nitro-pct {
-      font-size: 11px;
-      font-weight: 900;
-      color: #f8fafc;
-      letter-spacing: 0.05em;
-    }
-
-    .nitro-track {
-      width: 100%;
-      height: 8px;
-      background: rgba(2, 6, 23, 0.85);
-      border-radius: 6px;
-      overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8);
-    }
-
-    #hud-nitro-bar {
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, #0284c7, #38bdf8);
-      border-radius: 6px;
-      box-shadow: 0 0 12px rgba(56, 189, 248, 0.9);
-      transition: width 0.08s linear;
-    }
-
-    .gauge-rpm-bg {
+    .gauge-bg-circle {
       fill: none;
       stroke: rgba(255, 255, 255, 0.08);
-      stroke-width: 9;
-      stroke-dasharray: 398 199;
-      stroke-dashoffset: 0;
+      stroke-width: 8;
+    }
+
+    .gauge-nitro-bg {
+      fill: none;
+      stroke: rgba(56, 189, 248, 0.15);
+      stroke-width: 4.5;
+    }
+
+    .gauge-nitro-bar {
+      fill: none;
+      stroke: #38bdf8;
+      stroke-width: 4.5;
       stroke-linecap: round;
-      transform: rotate(150deg);
-      transform-origin: 120px 120px;
+      stroke-dasharray: 424 142;
+      stroke-dashoffset: 140;
+      filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.9));
+      transition: stroke-dashoffset 0.06s linear;
     }
 
     .gauge-rpm-bar {
@@ -450,18 +402,16 @@
       stroke: url(#rpmGradient);
       stroke-width: 9;
       stroke-linecap: round;
-      stroke-dasharray: 398 199;
-      stroke-dashoffset: 398;
-      transform: rotate(150deg);
-      transform-origin: 120px 120px;
+      stroke-dasharray: 376 190;
+      stroke-dashoffset: 376;
       filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.5));
       transition: stroke-dashoffset 0.04s linear;
     }
 
     .gauge-center-dial {
       position: relative;
-      width: 176px;
-      height: 176px;
+      width: 170px;
+      height: 170px;
       background: radial-gradient(circle, rgba(15, 23, 42, 0.95) 0%, rgba(2, 6, 23, 0.98) 100%);
       border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 50%;
@@ -469,7 +419,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85), inset 0 0 20px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(0, 0, 0, 0.6);
     }
 
     .gauge-gear-badge {
@@ -766,44 +716,35 @@
         <span class="radar-tag">GPS RADAR</span>
       </div>
 
-      <!-- 🔘 SPEEDO & NITRO CLUSTER -->
-      <div class="right-hud-cluster">
-        <!-- ⚡ Горизонтальная полоска нитро как было -->
-        <div class="nitro-pill">
-          <div class="nitro-header">
-            <span class="nitro-label">⚡ НИТРО (SHIFT)</span>
-            <span class="nitro-pct" id="hud-nitro-pct">100%</span>
-          </div>
-          <div class="nitro-track">
-            <div id="hud-nitro-bar"></div>
-          </div>
-        </div>
+      <!-- 🔘 FORZA HORIZON 5 / GT7 CIRCULAR DIGITAL SPEEDOMETER & TACHOMETER (with tightly wrapping nitro arc) -->
+      <div class="gauge-container">
+        <svg class="gauge-svg" viewBox="0 0 200 200">
+          <defs>
+            <!-- RPM Gradient: Cyan -> Green -> Orange -> Red -->
+            <linearGradient id="rpmGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#38bdf8" />
+              <stop offset="50%" stop-color="#22c55e" />
+              <stop offset="80%" stop-color="#f59e0b" />
+              <stop offset="100%" stop-color="#ef4444" />
+            </linearGradient>
+          </defs>
 
-        <!-- 🔘 FORZA HORIZON 5 / GT7 CIRCULAR DIGITAL SPEEDOMETER & TACHOMETER -->
-        <div class="gauge-container">
-          <svg class="gauge-svg" viewBox="0 0 240 240">
-            <defs>
-              <linearGradient id="rpmGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#38bdf8" />
-                <stop offset="50%" stop-color="#22c55e" />
-                <stop offset="75%" stop-color="#f59e0b" />
-                <stop offset="100%" stop-color="#ef4444" />
-              </linearGradient>
-            </defs>
+          <!-- Outer N2O Nitro Track & Arc (Radius 90 - wraps tight around speedo circle) -->
+          <circle class="gauge-nitro-bg" cx="100" cy="100" r="90" stroke-dasharray="424 142" stroke-dashoffset="140" />
+          <circle id="svg-nitro-arc" class="gauge-nitro-bar" cx="100" cy="100" r="90" stroke-dasharray="424 142" stroke-dashoffset="140" />
 
-            <!-- Middle RPM Tachometer Track & Arc (Radius 95) -->
-            <circle class="gauge-rpm-bg" cx="120" cy="120" r="95" />
-            <circle id="svg-rpm-arc" class="gauge-rpm-bar" cx="120" cy="120" r="95" />
-          </svg>
+          <!-- Middle RPM Tachometer Track & Arc (Radius 80) -->
+          <circle class="gauge-bg-circle" cx="100" cy="100" r="80" stroke-dasharray="376 190" stroke-dashoffset="125" />
+          <circle id="svg-rpm-arc" class="gauge-rpm-bar" cx="100" cy="100" r="80" stroke-dasharray="376 190" stroke-dashoffset="376" />
+        </svg>
 
-          <!-- Center Dial Window -->
-          <div class="gauge-center-dial">
-            <div id="hud-shift-flash"></div>
-            <div class="gauge-gear-badge" id="hud-gear">1</div>
-            <span class="gauge-speed-num" id="hud-speed">0</span>
-            <span class="gauge-unit-label">KM / H</span>
-            <span class="gauge-rpm-label" id="hud-rpm-val">1200 RPM</span>
-          </div>
+        <!-- Center Dial Window -->
+        <div class="gauge-center-dial">
+          <div id="hud-shift-flash"></div>
+          <div class="gauge-gear-badge" id="hud-gear">1</div>
+          <span class="gauge-speed-num" id="hud-speed">0</span>
+          <span class="gauge-unit-label">KM / H</span>
+          <span class="gauge-rpm-label" id="hud-rpm-val">1200 RPM</span>
         </div>
       </div>
     </div>

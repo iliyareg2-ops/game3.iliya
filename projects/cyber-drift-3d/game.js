@@ -207,7 +207,7 @@ export class CyberDriftGame {
     this.skillBadgeEl = document.getElementById("hud-skill-badge");
 
     this.svgRpmArc = document.getElementById("svg-rpm-arc");
-    this.nitroPctEl = document.getElementById("hud-nitro-pct");
+    this.svgNitroArc = document.getElementById("svg-nitro-arc");
     this.hudPosBadge = document.getElementById("hud-pos-badge");
     this.rpmValEl = document.getElementById("hud-rpm-val");
     this.shiftFlashEl = document.getElementById("hud-shift-flash");
@@ -676,20 +676,22 @@ export class CyberDriftGame {
     if (this.gearEl) this.gearEl.textContent = gear;
     if (this.scoreEl) this.scoreEl.textContent = this.car.totalScore;
 
-    // ⚡ Горизонтальная шкала нитро
-    const nitroVal = Math.round(this.car.nitroFuel);
-    if (this.nitroBarEl) this.nitroBarEl.style.width = `${nitroVal}%`;
-    if (this.nitroPctEl) this.nitroPctEl.textContent = `${nitroVal}%`;
-
-    // 🔘 SVG CIRCULAR TACHOMETER (Forza Horizon 5 Style)
+    // 🔘 SVG CIRCULAR TACHOMETER & CURVED NITRO GAUGE (Forza Horizon 5 Style)
     const rpm = Math.floor(1200 + ((spd % 65) / 65) * 7200 + (this.car.throttleInput > 0 ? 800 : 0));
     const rpmRatio = Math.min(1.0, Math.max(0, (rpm - 1000) / 8000));
     if (this.svgRpmArc) {
-      // 398 when 0% (empty) -> 0 when 100% (full)
-      const targetRpmOffset = (1.0 - rpmRatio) * 398;
+      // Stroke dasharray 376: 376 (empty) -> 125 (full)
+      const targetRpmOffset = 376 - (rpmRatio * 251);
       this.svgRpmArc.style.strokeDashoffset = targetRpmOffset;
     }
     if (this.rpmValEl) this.rpmValEl.textContent = `${rpm} RPM`;
+
+    // ⚡ Semi-Circular Nitro Arc (Radius 90 - wraps tight around speedo): 424 (0% empty) -> 140 (100% full)
+    const nitroRatio = Math.max(0, Math.min(1, this.car.nitroFuel / 100));
+    if (this.svgNitroArc) {
+      const targetNitroOffset = 424 - (nitroRatio * 284);
+      this.svgNitroArc.style.strokeDashoffset = targetNitroOffset;
+    }
 
     if (this.shiftFlashEl) {
       this.shiftFlashEl.style.opacity = (rpmRatio > 0.88 && spd > 30) ? "0.9" : "0.0";
