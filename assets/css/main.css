@@ -66,15 +66,18 @@ html, body {
 #tab-gallery,
 #tab-comic,
 #tab-game,
+#tab-jet3d,
 #tab-site {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  height: 100%;
 }
 #tab-gallery[hidden],
 #tab-comic[hidden],
 #tab-game[hidden],
+#tab-jet3d[hidden],
 #tab-site[hidden] {
   display: none;
 }
