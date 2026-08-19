@@ -193,11 +193,11 @@ export class CyberDriftGame {
         if (this.car.isWarpSpeed) {
           this.car.stage = 4;
           cyberAudio.playScoreChime();
-          this.showBanner("🌌 СКОРОСТЬ 9999999999999999999 КМ/Ч АКТИВИРОВАНА! 🚀", 4000);
-          this.showSkillBadge("🌌 9999999999999999999 KM/H WARP SPEED");
+          this.showBanner("🚀 СКОРОСТЬ 11,000 КМ/Ч АКТИВИРОВАНА! ⚡", 4000);
+          this.showSkillBadge("🚀 11,000 KM/H HYPER OVERDRIVE");
         } else {
           this.car.stage = 0;
-          this.showBanner("🛑 СКОРОСТЬ 9999999999999999999 КМ/Ч ВЫКЛЮЧЕНА", 2000);
+          this.showBanner("🛑 Режим 11,000 КМ/Ч выключен", 2000);
         }
       }
 
@@ -372,7 +372,7 @@ export class CyberDriftGame {
       });
     });
 
-    // 11. ⚡ Performance Tuning Stages (1 / 2 / 3 / 4 Warp)
+    // 11. ⚡ Performance Tuning Stages (1 / 2 / 3 / 4 Hyper 11000)
     document.querySelectorAll("[data-stage]").forEach((btn) => {
       btn.addEventListener("click", () => {
         document.querySelectorAll("[data-stage]").forEach((b) => b.classList.remove("active"));
@@ -384,11 +384,11 @@ export class CyberDriftGame {
           "Stage 1 ECU (+15% Power)",
           "Stage 2 Twin-Turbo (+30% Power)",
           "Stage 3 Pro NOS (+55% Power, 360+ km/h!)",
-          "🌌 WARP DRIVE (9999999999999999999 KM/H!)"
+          "🚀 HYPER DRIVE (11,000 KM/H!)"
         ];
         this.showSkillBadge(`⚡ ТЮНИНГ: ${stageNames[stageNum]}`);
         if (stageNum === 4) {
-          this.showBanner("🌌 СКОРОСТЬ 9999999999999999999 КМ/Ч ГОТОВА К ЗАПУСКУ! 🚀", 4000);
+          this.showBanner("🚀 СКОРОСТЬ 11,000 КМ/Ч ГОТОВА К ЗАПУСКУ! ⚡", 4000);
         }
       });
     });
@@ -805,10 +805,10 @@ export class CyberDriftGame {
     const spd = Math.round(Math.abs(this.car.speed));
     if (this.speedEl) {
       if (this.car.isWarpSpeed && (spd > 15 || this.keys.forward || this.keys.nitro)) {
-        this.speedEl.textContent = "9999999999999999999";
-        this.speedEl.style.fontSize = "16px";
-        this.speedEl.style.letterSpacing = "0.02em";
-        this.speedEl.style.background = "linear-gradient(90deg, #f43f5e, #a855f7, #06b6d4, #10b981, #facc15)";
+        this.speedEl.textContent = "11,000";
+        this.speedEl.style.fontSize = "38px";
+        this.speedEl.style.letterSpacing = "0.04em";
+        this.speedEl.style.background = "linear-gradient(90deg, #38bdf8, #818cf8, #f43f5e, #facc15)";
         this.speedEl.style.webkitBackgroundClip = "text";
         this.speedEl.style.webkitTextFillColor = "transparent";
       } else {
@@ -822,7 +822,7 @@ export class CyberDriftGame {
     }
 
     let gear = "1";
-    if (this.car.isWarpSpeed) gear = "🌌";
+    if (this.car.isWarpSpeed) gear = "🚀";
     else if (this.car.speed < -0.5) gear = "R";
     else if (spd < 5) gear = "N";
     else if (spd < 65) gear = "1";
