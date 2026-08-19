@@ -26,7 +26,6 @@ export class CityTrackManager {
     this.isRaining = timeOfDay === "RAINSTORM";
     this.rainParticles = null;
     this.rainGeom = null;
-    this.dustParticles = null;
     this.nitroPickups = [];
     this.onNitroPickupCallback = null;
     this.onSpeedTrapCallback = null;
@@ -38,7 +37,6 @@ export class CityTrackManager {
     this.buildTrackEnvironment();
     this.buildMinimalistStudioGarage();
     this.buildRainSystem();
-    this.buildAtmosphericDustSystem();
   }
 
   // 🎨 ULTRA-HD 2048x2048 PBR TEXTURE GENERATOR
@@ -192,7 +190,6 @@ export class CityTrackManager {
     this.isRaining = timeOfDay === "RAINSTORM";
 
     if (this.rainParticles) this.rainParticles.visible = this.isRaining;
-    if (this.dustParticles) this.dustParticles.visible = !this.isRaining;
     cyberAudio.setRainActive(this.isRaining);
 
     if (timeOfDay === "SUNSET") {
@@ -1401,32 +1398,6 @@ export class CityTrackManager {
     this.scene.add(this.rainParticles);
   }
 
-  // ✨ ATMOSPHERIC DUST & SUN POLLEN PARTICLES
-  buildAtmosphericDustSystem() {
-    const dustCount = 450;
-    this.dustGeom = new THREE.BufferGeometry();
-    const positions = new Float32Array(dustCount * 3);
-
-    for (let i = 0; i < dustCount; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 180;
-      positions[i * 3 + 1] = Math.random() * 25 + 0.5;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 180;
-    }
-
-    this.dustGeom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    const dustMat = new THREE.PointsMaterial({
-      color: 0xfffaed,
-      size: 0.45,
-      transparent: true,
-      opacity: 0.5,
-      blending: THREE.AdditiveBlending,
-    });
-
-    this.dustParticles = new THREE.Points(this.dustGeom, dustMat);
-    this.dustParticles.visible = !this.isRaining;
-    this.scene.add(this.dustParticles);
-  }
-
   getClosestU(pos) {
     let closestU = 0;
     let minDistSq = Infinity;
@@ -1586,19 +1557,7 @@ export class CityTrackManager {
       posAttr.needsUpdate = true;
     }
 
-    // 2. Atmospheric Dust Motes
-    if (!this.isRaining && this.dustParticles) {
-      this.dustParticles.position.copy(playerPos);
-      const posAttr = this.dustGeom.attributes.position;
-      for (let i = 0; i < posAttr.count; i++) {
-        let y = posAttr.getY(i) + delta * 0.4;
-        if (y > 25) y = 0.5;
-        posAttr.setY(i, y);
-      }
-      posAttr.needsUpdate = true;
-    }
-
-    // 3. AI RIVALS
+    // 2. AI RIVALS
     for (let i = 0; i < this.aiRivals.length; i++) {
       const rival = this.aiRivals[i];
       if (isRaceRunning) {
