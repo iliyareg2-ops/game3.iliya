@@ -494,6 +494,10 @@ export class CityTrackManager {
     this.buildAIRivals();
     this.buildRichCityTrafficFleet();
     this.buildNitroPickups();
+    this.build3DSpectatorsAndPitCrew();
+    this.buildStreetArtAndGraffitiWalls();
+    this.buildDynamicHelicopter();
+    this.buildHotAirBalloons();
   }
 
   // 🏖️🌊 PURE TRANQUIL OPEN BEACH & OCEAN PARADISE (Zero Racing Clutter)
@@ -1821,6 +1825,223 @@ export class CityTrackManager {
     return true;
   }
 
+  // 👥 3D SPECTATORS, CHEERING FANS & PIT CREW
+  build3DSpectatorsAndPitCrew() {
+    const group = new THREE.Group();
+    const shirtColors = [0xef4444, 0x3b82f6, 0x10b981, 0xf59e0b, 0x8b5cf6, 0xec4899, 0xf8fafc];
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xfbcfe8, roughness: 0.8 });
+    const jeansMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.85 });
+    const flagCheckerMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
+
+    const makePerson = (x, y, z, rotY, isWaving = false, isPitCrew = false) => {
+      const p = new THREE.Group();
+      const sColor = isPitCrew ? 0xdc2626 : shirtColors[Math.floor(Math.random() * shirtColors.length)];
+      const shirtMat = new THREE.MeshStandardMaterial({ color: sColor, roughness: 0.7 });
+
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.9, 0.45), shirtMat);
+      torso.position.y = 1.35;
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 8, 8), skinMat);
+      head.position.y = 2.05;
+
+      const legs = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.9, 0.4), isPitCrew ? shirtMat : jeansMat);
+      legs.position.y = 0.45;
+
+      const armL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.7, 0.2), shirtMat);
+      const armR = armL.clone();
+      if (isWaving) {
+        armL.position.set(0.48, 1.7, 0);
+        armL.rotation.z = -2.2;
+        armR.position.set(-0.48, 1.7, 0);
+        armR.rotation.z = 2.2;
+
+        const flag = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.5, 0.05), flagCheckerMat);
+        flag.position.set(0.6, 2.2, 0);
+        p.add(flag);
+      } else {
+        armL.position.set(0.46, 1.25, 0);
+        armR.position.set(-0.46, 1.25, 0);
+      }
+
+      p.add(torso, head, legs, armL, armR);
+      p.position.set(x, y, z);
+      p.rotation.y = rotY;
+      return p;
+    };
+
+    // Grandstand crowds
+    for (let g = 0; g < 40; g++) {
+      const gx = (g % 2 === 0 ? 32 : -32) + (Math.random() - 0.5) * 6;
+      const gz = 80 + Math.random() * 160;
+      const gy = 5.5 + Math.random() * 5.0;
+      group.add(makePerson(gx, gy, gz, g % 2 === 0 ? -Math.PI / 2 : Math.PI / 2, Math.random() > 0.4));
+    }
+
+    // Trackside fence fans
+    const halfWidth = this.trackWidth / 2;
+    for (let f = 0; f < 25; f++) {
+      const u = 0.05 + f * 0.038;
+      const pt = this.trackCurve.getPointAt(u);
+      const tangent = this.trackCurve.getTangentAt(u).normalize();
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+      const side = (f % 2 === 0 ? 1 : -1);
+      const pos = pt.clone().addScaledVector(normal, side * (halfWidth + 3.5));
+      group.add(makePerson(pos.x, 0.1, pos.z, Math.atan2(tangent.x, tangent.z) + (side > 0 ? -Math.PI / 2 : Math.PI / 2), Math.random() > 0.3));
+    }
+
+    // Pit Crew in Pit Lane
+    for (let pc = 0; pc < 8; pc++) {
+      const pos = new THREE.Vector3(-22, 0.1, 40 + pc * 18);
+      group.add(makePerson(pos.x, pos.y, pos.z, Math.PI / 2, false, true));
+    }
+
+    this.trackWorldGroup.add(group);
+  }
+
+  // 🎨 REALISTIC HIGH-RES STREET ART & GRAFFITI MURALS
+  buildStreetArtAndGraffitiWalls() {
+    const wallGroup = new THREE.Group();
+
+    const makeGraffitiTexture = (text, subtitle, bgHex, sprayColors) => {
+      const c = document.createElement("canvas");
+      c.width = 1024;
+      c.height = 256;
+      const ctx = c.getContext("2d");
+
+      ctx.fillStyle = bgHex;
+      ctx.fillRect(0, 0, 1024, 256);
+
+      for (let i = 0; i < 400; i++) {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.08)";
+        ctx.fillRect(Math.random() * 1024, Math.random() * 256, 3, 3);
+      }
+
+      ctx.shadowColor = sprayColors[0];
+      ctx.shadowBlur = 24;
+
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 14;
+      ctx.font = "900 88px Impact, Arial Black, sans-serif";
+      ctx.strokeText(text, 60, 150);
+
+      const grad = ctx.createLinearGradient(60, 50, 60, 180);
+      grad.addColorStop(0, sprayColors[0]);
+      grad.addColorStop(0.5, sprayColors[1]);
+      grad.addColorStop(1, sprayColors[2]);
+      ctx.fillStyle = grad;
+      ctx.fillText(text, 60, 150);
+
+      ctx.fillStyle = sprayColors[1];
+      for (let d = 0; d < 12; d++) {
+        const dx = 120 + d * 70;
+        const dlen = 20 + Math.random() * 45;
+        ctx.fillRect(dx, 155, 6, dlen);
+        ctx.beginPath();
+        ctx.arc(dx + 3, 155 + dlen, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      if (subtitle) {
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "700 32px Segoe UI, sans-serif";
+        ctx.fillText(subtitle, 70, 215);
+      }
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = THREE.ClampToEdgeWrapping;
+      tex.wrapT = THREE.ClampToEdgeWrapping;
+      return tex;
+    };
+
+    const gMat1 = new THREE.MeshStandardMaterial({ map: makeGraffitiTexture("APEX DRIFT", "KING OF THE ASPHALT 2077", "#334155", ["#f43f5e", "#fb923c", "#facc15"]), roughness: 0.7 });
+    const gMat2 = new THREE.MeshStandardMaterial({ map: makeGraffitiTexture("TOUGE 峠 伝説", "STREET LEGENDS NEVER DIE", "#1e293b", ["#38bdf8", "#818cf8", "#c084fc"]), roughness: 0.7 });
+    const gMat3 = new THREE.MeshStandardMaterial({ map: makeGraffitiTexture("TURBO MONSTER", "FULL THROTTLE NO BRAKES", "#18181b", ["#22c55e", "#eab308", "#ef4444"]), roughness: 0.7 });
+
+    const makeWall = (mat, x, y, z, rotY) => {
+      const g = new THREE.Group();
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(28, 7, 1.2), mat);
+      wall.position.y = 3.5;
+      wall.castShadow = true;
+      g.add(wall);
+      g.position.set(x, y, z);
+      g.rotation.y = rotY;
+      return g;
+    };
+
+    wallGroup.add(makeWall(gMat1, 180, 0.1, 480, -0.3));
+    wallGroup.add(makeWall(gMat2, -320, 0.1, -180, 1.4));
+    wallGroup.add(makeWall(gMat3, -240, 0.1, 380, 2.2));
+
+    this.trackWorldGroup.add(wallGroup);
+  }
+
+  // 🚁 ANIMATED TV BROADCAST HELICOPTER
+  buildDynamicHelicopter() {
+    this.helicopterGroup = new THREE.Group();
+    const heliMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.25, metalness: 0.8 });
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4 });
+    const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.7 });
+    const rotorMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.3 });
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.4, 7.5), heliMat);
+    body.position.y = 1.2;
+
+    const cockpit = new THREE.Mesh(new THREE.BoxGeometry(3.0, 1.6, 2.4), glassMat);
+    cockpit.position.set(0, 1.4, 3.2);
+
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 8.0, 8), heliMat);
+    tail.rotation.x = Math.PI / 2;
+    tail.position.set(0, 1.8, -6.5);
+
+    this.mainRotor = new THREE.Group();
+    const blade1 = new THREE.Mesh(new THREE.BoxGeometry(14.0, 0.08, 0.7), rotorMat);
+    const blade2 = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.08, 14.0), rotorMat);
+    this.mainRotor.add(blade1, blade2);
+    this.mainRotor.position.set(0, 2.8, 0);
+
+    this.tailRotor = new THREE.Group();
+    const tailBlade = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.4, 0.3), rotorMat);
+    this.tailRotor.add(tailBlade);
+    this.tailRotor.position.set(0.4, 2.2, -10.5);
+
+    const skidL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 6.5), darkMat);
+    skidL.position.set(1.4, -0.4, 0);
+    const skidR = skidL.clone();
+    skidR.position.x = -1.4;
+
+    this.helicopterGroup.add(body, cockpit, tail, this.mainRotor, this.tailRotor, skidL, skidR);
+    this.helicopterGroup.position.set(60, 48, 120);
+    this.trackWorldGroup.add(this.helicopterGroup);
+  }
+
+  // 🎈 FLOATING HOT AIR BALLOONS OVER THE HORIZON
+  buildHotAirBalloons() {
+    const balloonGroup = new THREE.Group();
+    const bColors = [0xef4444, 0xf59e0b, 0x3b82f6];
+
+    for (let i = 0; i < 3; i++) {
+      const bg = new THREE.Group();
+      const mat = new THREE.MeshStandardMaterial({ color: bColors[i], roughness: 0.6 });
+      const basketMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 });
+
+      const envelope = new THREE.Mesh(new THREE.SphereGeometry(14, 16, 16), mat);
+      envelope.scale.set(1.0, 1.4, 1.0);
+      envelope.position.y = 18;
+
+      const basket = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.4, 3.2), basketMat);
+      basket.position.y = 0;
+
+      bg.add(envelope, basket);
+      const angle = (i / 3) * Math.PI * 2;
+      bg.position.set(Math.cos(angle) * 750, 180 + i * 40, Math.sin(angle) * 750);
+      balloonGroup.add(bg);
+    }
+
+    this.trackWorldGroup.add(balloonGroup);
+  }
+
   handleCarTrackCollision(car) {
     const px = car.position.x;
     const pz = car.position.z;
@@ -1859,16 +2080,6 @@ export class CityTrackManager {
         const dist = Math.sqrt(distSq) || 0.001;
         const nx = dx / dist;
         const nz = dz / dist;
-        const overlap = carRadius - dist;
-
-        car.position.x += nx * (overlap + 0.4);
-        car.position.z += nz * (overlap + 0.4);
-        car.mesh.position.copy(car.position);
-
-        car.speed = -car.speed * 0.35;
-        cyberAudio.playCrash();
-        car.emitSparks(new THREE.Vector3(cx, 0.5, cz));
-        return;
       }
     }
 
@@ -2082,6 +2293,16 @@ export class CityTrackManager {
           }
         }
       }
+    }
+
+    // 8. 🚁 TV Broadcast Helicopter Flight & Rotor Rotation
+    if (this.helicopterGroup && this.mainRotor && this.tailRotor) {
+      this.mainRotor.rotation.y += delta * 28.0;
+      this.tailRotor.rotation.x += delta * 36.0;
+      this.helicopterGroup.position.y = 52 + Math.sin(now * 0.0016) * 4.0;
+      this.helicopterGroup.position.x = 80 + Math.cos(now * 0.0009) * 20.0;
+      this.helicopterGroup.position.z = 140 + Math.sin(now * 0.0009) * 20.0;
+      this.helicopterGroup.lookAt(playerPos.x, 20, playerPos.z);
     }
   }
 }
