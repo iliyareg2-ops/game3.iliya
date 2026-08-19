@@ -268,21 +268,55 @@ export class CityTrackManager {
         new THREE.Vector3(-70, 0.10, -180),
       ];
     } else if (this.trackIndex === 2) {
-      // 🌴 3. MIAMI VICE COASTLINE
+      // 🌴 3. MIAMI BEACH OCEANFRONT
       trackPoints = [
         new THREE.Vector3(0, 0.10, 0),
-        new THREE.Vector3(0, 0.10, 450),
-        new THREE.Vector3(180, 0.10, 620),
-        new THREE.Vector3(480, 0.10, 540),
-        new THREE.Vector3(560, 0.10, 220),
-        new THREE.Vector3(460, 0.10, -120),
-        new THREE.Vector3(300, 0.10, -450),
-        new THREE.Vector3(-50, 0.10, -580),
-        new THREE.Vector3(-380, 0.10, -440),
-        new THREE.Vector3(-540, 0.10, -150),
-        new THREE.Vector3(-480, 0.10, 220),
-        new THREE.Vector3(-280, 0.10, 420),
+        new THREE.Vector3(0, 0.10, 520),
+        new THREE.Vector3(180, 0.10, 720),
+        new THREE.Vector3(460, 0.10, 640),
+        new THREE.Vector3(560, 0.10, 280),
+        new THREE.Vector3(480, 0.10, -120),
+        new THREE.Vector3(320, 0.10, -520),
+        new THREE.Vector3(-60, 0.10, -680),
+        new THREE.Vector3(-420, 0.10, -520),
+        new THREE.Vector3(-580, 0.10, -180),
+        new THREE.Vector3(-520, 0.10, 260),
+        new THREE.Vector3(-300, 0.10, 480),
+        new THREE.Vector3(-70, 0.10, -180),
+      ];
+    } else if (this.trackIndex === 3) {
+      // 🌃 4. NEON NIGHT METROPOLIS
+      trackPoints = [
+        new THREE.Vector3(0, 0.10, 0),
+        new THREE.Vector3(0, 0.10, 420),
+        new THREE.Vector3(220, 0.10, 420),
+        new THREE.Vector3(440, 0.10, 420),
+        new THREE.Vector3(440, 0.10, 120),
+        new THREE.Vector3(440, 0.10, -280),
+        new THREE.Vector3(220, 0.10, -480),
+        new THREE.Vector3(-120, 0.10, -480),
+        new THREE.Vector3(-380, 0.10, -480),
+        new THREE.Vector3(-380, 0.10, -140),
+        new THREE.Vector3(-380, 0.10, 240),
+        new THREE.Vector3(-180, 0.10, 360),
         new THREE.Vector3(-60, 0.10, -160),
+      ];
+    } else if (this.trackIndex === 4) {
+      // 🌾 5. STEPPE & CANYON HIGHWAY
+      trackPoints = [
+        new THREE.Vector3(0, 0.10, 0),
+        new THREE.Vector3(0, 0.10, 600),
+        new THREE.Vector3(240, 0.10, 850),
+        new THREE.Vector3(620, 0.10, 750),
+        new THREE.Vector3(750, 0.10, 320),
+        new THREE.Vector3(620, 0.10, -220),
+        new THREE.Vector3(380, 0.10, -650),
+        new THREE.Vector3(-80, 0.10, -820),
+        new THREE.Vector3(-550, 0.10, -650),
+        new THREE.Vector3(-750, 0.10, -220),
+        new THREE.Vector3(-650, 0.10, 350),
+        new THREE.Vector3(-380, 0.10, 600),
+        new THREE.Vector3(-80, 0.10, -220),
       ];
     } else {
       // 🏎️ 1. F1 AUTODROME
@@ -315,10 +349,15 @@ export class CityTrackManager {
       this.trackSamplePoints.push(this.trackCurve.getPointAt(i / divisions));
     }
 
-    // Natural Grass & Runoff Ground Plane
-    const groundGeom = new THREE.PlaneGeometry(3800, 3800);
+    // Natural Grass, Sand, Rock or Steppe Ground Plane
+    const groundGeom = new THREE.PlaneGeometry(4200, 4200);
     groundGeom.rotateX(-Math.PI / 2);
-    const groundColor = this.trackIndex === 1 ? 0x223824 : (this.trackIndex === 2 ? 0x2d3748 : 0x283626);
+    let groundColor = 0x283626; // F1 Grass
+    if (this.trackIndex === 1) groundColor = 0x1e2e20; // Touge mountain forest
+    else if (this.trackIndex === 2) groundColor = 0xdfc28c; // Miami golden beach sand
+    else if (this.trackIndex === 3) groundColor = 0x0f172a; // Night metropolis asphalt
+    else if (this.trackIndex === 4) groundColor = 0xb45309; // Steppe / Canyon sandstone
+
     const groundMat = new THREE.MeshStandardMaterial({
       color: groundColor,
       roughness: 0.85,
@@ -607,25 +646,47 @@ export class CityTrackManager {
       return g;
     };
 
-    const count = 45;
+    const makeCactus = (x, z) => {
+      const g = new THREE.Group();
+      const cactusMat = new THREE.MeshStandardMaterial({ color: 0x2e5a27, roughness: 0.8 });
+      const mainStem = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 7, 8), cactusMat);
+      mainStem.position.y = 3.5;
+      const arm1 = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.4, 0.4), cactusMat);
+      arm1.position.set(1.2, 4.2, 0);
+      const armUp1 = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 2.5, 8), cactusMat);
+      armUp1.position.set(2.2, 5.2, 0);
+      const arm2 = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.4, 0.4), cactusMat);
+      arm2.position.set(-1.1, 3.2, 0);
+      const armUp2 = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 2.2, 8), cactusMat);
+      armUp2.position.set(-2.0, 4.0, 0);
+      g.add(mainStem, arm1, armUp1, arm2, armUp2);
+      g.position.set(x, 0.10, z);
+      return g;
+    };
+
+    const count = 55;
     for (let i = 0; i < count; i++) {
       const u = i / count;
       const pt = this.trackCurve.getPointAt(u);
       const tangent = this.trackCurve.getTangentAt(u).normalize();
       const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
 
-      const offsetL = halfWidth + 8.0 + Math.random() * 18.0;
-      const offsetR = -(halfWidth + 8.0 + Math.random() * 18.0);
+      const offsetL = halfWidth + 8.0 + Math.random() * 22.0;
+      const offsetR = -(halfWidth + 8.0 + Math.random() * 22.0);
 
       const posL = pt.clone().addScaledVector(normal, offsetL);
       const posR = pt.clone().addScaledVector(normal, offsetR);
 
       if (this.trackIndex === 2) {
-        // Miami Coast Palms
+        // 🌴 Miami Coast Palms
         foliageGroup.add(makePalm(posL.x, posL.z));
         if (i % 2 === 0) foliageGroup.add(makePalm(posR.x, posR.z));
+      } else if (this.trackIndex === 4) {
+        // 🌾 Steppe Cacti & Arid Flora
+        foliageGroup.add(makeCactus(posL.x, posL.z));
+        if (i % 2 === 0) foliageGroup.add(makeCactus(posR.x, posR.z));
       } else {
-        // Autodrome & Touge Conifers / Park Trees
+        // 🏎️ Autodrome & Touge Conifers / Park Trees
         foliageGroup.add(makePine(posL.x, posL.z));
         if (i % 2 === 0) foliageGroup.add(makePine(posR.x, posR.z));
       }
@@ -903,6 +964,21 @@ export class CityTrackManager {
   }
 
   buildDiverseBuildings() {
+    // For Steppe (4) and Touge (1), we use natural cliffs & mountains instead of skyscrapers
+    if (this.trackIndex === 4 || this.trackIndex === 1) {
+      if (this.trackIndex === 4) this.buildSteppeCanyons();
+      if (this.trackIndex === 1) this.buildTougeMountainRocks();
+      return;
+    }
+
+    if (this.trackIndex === 2) {
+      this.buildOceanAndBeach();
+    }
+
+    if (this.trackIndex === 3) {
+      this.buildNightCityElements();
+    }
+
     const cityGroup = new THREE.Group();
 
     const getMinDistToTrack = (x, z) => {
@@ -918,12 +994,15 @@ export class CityTrackManager {
     let bldgIndex = 0;
     for (let x = -800; x <= 800; x += 120) {
       for (let z = -800; z <= 800; z += 120) {
+        // If Miami beach, leave eastern/southern ocean side open
+        if (this.trackIndex === 2 && (x > 180 || z < -200)) continue;
+
         const distToTrack = getMinDistToTrack(x, z);
         if (distToTrack < 56) continue;
 
         bldgIndex++;
         const facadeMat = this.facadeMats[bldgIndex % this.facadeMats.length];
-        const height = 100 + Math.random() * 220;
+        const height = (this.trackIndex === 2 ? 60 + Math.random() * 90 : 100 + Math.random() * 240);
         const w = 48;
         const d = 48;
 
@@ -937,6 +1016,167 @@ export class CityTrackManager {
     }
 
     this.trackWorldGroup.add(cityGroup);
+  }
+
+  // 🌊🌴 REALISTIC 3D AZURE OCEAN & COASTAL BEACH (Miami Coast)
+  buildOceanAndBeach() {
+    const oceanGroup = new THREE.Group();
+
+    // Vast animated ocean plane
+    const oceanGeom = new THREE.PlaneGeometry(3600, 3600, 48, 48);
+    oceanGeom.rotateX(-Math.PI / 2);
+    const oceanMat = new THREE.MeshPhysicalMaterial({
+      color: 0x0284c7,
+      metalness: 0.85,
+      roughness: 0.12,
+      transmission: 0.5,
+      transparent: true,
+      opacity: 0.88,
+      reflectivity: 0.95,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.1,
+    });
+    this.oceanMesh = new THREE.Mesh(oceanGeom, oceanMat);
+    this.oceanMesh.position.set(900, -0.25, -200);
+    oceanGroup.add(this.oceanMesh);
+
+    // Luxury Yachts & Sailboats on Ocean
+    const hullMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2 });
+    const deckMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.4 });
+    const glassBlue = new THREE.MeshPhysicalMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.5 });
+
+    const makeYacht = (x, z, rot) => {
+      const g = new THREE.Group();
+      const hull = new THREE.Mesh(new THREE.BoxGeometry(14, 4, 38), hullMat);
+      hull.position.y = 1.2;
+      const cabin = new THREE.Mesh(new THREE.BoxGeometry(10, 5, 20), deckMat);
+      cabin.position.set(0, 4.5, -3);
+      const bridge = new THREE.Mesh(new THREE.BoxGeometry(8, 3, 10), glassBlue);
+      bridge.position.set(0, 7.5, 0);
+      g.add(hull, cabin, bridge);
+      g.position.set(x, 0.0, z);
+      g.rotation.y = rot;
+      return g;
+    };
+
+    oceanGroup.add(makeYacht(650, 200, 0.4));
+    oceanGroup.add(makeYacht(820, -150, -0.6));
+    oceanGroup.add(makeYacht(1100, 400, 1.2));
+    oceanGroup.add(makeYacht(950, -450, 2.1));
+
+    // Beach Sun Parasols / Umbrellas & Loungers
+    const umbrellaMat1 = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.6 });
+    const umbrellaMat2 = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.6 });
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.8 });
+
+    for (let b = 0; b < 30; b++) {
+      const g = new THREE.Group();
+      const uPole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3.2, 8), poleMat);
+      uPole.position.y = 1.6;
+      const uCone = new THREE.Mesh(new THREE.ConeGeometry(2.4, 0.8, 12), (b % 2 === 0 ? umbrellaMat1 : umbrellaMat2));
+      uCone.position.y = 3.2;
+      g.add(uPole, uCone);
+      g.position.set(380 + Math.random() * 180, 0.10, -500 + b * 45 + Math.random() * 15);
+      oceanGroup.add(g);
+    }
+
+    this.trackWorldGroup.add(oceanGroup);
+  }
+
+  // 🌾🏜️ VAST STEPPE & CANYON ROCK MESAS (Steppe Highway)
+  buildSteppeCanyons() {
+    const canyonGroup = new THREE.Group();
+    const rockMat = new THREE.MeshStandardMaterial({
+      color: 0x9a3412,
+      roughness: 0.95,
+      metalness: 0.05,
+    });
+    const mesaMat = new THREE.MeshStandardMaterial({
+      color: 0xc2410c,
+      roughness: 0.9,
+      metalness: 0.05,
+    });
+
+    const makeMesa = (x, z, scaleX, scaleY, scaleZ) => {
+      const g = new THREE.Group();
+      const base = new THREE.Mesh(new THREE.BoxGeometry(scaleX, scaleY, scaleZ), rockMat);
+      base.position.y = scaleY / 2;
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(scaleX * 0.45, scaleX * 0.55, scaleY * 0.4, 10), mesaMat);
+      cap.position.y = scaleY + (scaleY * 0.2);
+      g.add(base, cap);
+      g.position.set(x, 0, z);
+      g.rotation.y = Math.random() * Math.PI;
+      return g;
+    };
+
+    // Spawn massive canyon plateaus outside the track
+    const canyonSpawns = [
+      { x: 550, z: 200, sx: 240, sy: 90, sz: 280 },
+      { x: -550, z: 200, sx: 260, sy: 110, sz: 320 },
+      { x: 350, z: -550, sx: 280, sy: 85, sz: 300 },
+      { x: -450, z: -550, sx: 320, sy: 130, sz: 340 },
+      { x: 950, z: -200, sx: 400, sy: 150, sz: 450 },
+      { x: -950, z: -100, sx: 420, sy: 160, sz: 480 },
+      { x: 0, z: 950, sx: 500, sy: 140, sz: 350 },
+      { x: 0, z: -980, sx: 550, sy: 170, sz: 380 },
+    ];
+
+    for (const c of canyonSpawns) {
+      canyonGroup.add(makeMesa(c.x, c.z, c.sx, c.sy, c.sz));
+      this.colliders.push({ minX: c.x - c.sx / 2, maxX: c.x + c.sx / 2, minZ: c.z - c.sz / 2, maxZ: c.z + c.sz / 2 });
+    }
+
+    this.trackWorldGroup.add(canyonGroup);
+  }
+
+  // 🏔️ TOUGE MOUNTAIN ROCK FORMATIONS
+  buildTougeMountainRocks() {
+    const mountainGroup = new THREE.Group();
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.95 });
+
+    for (let i = 0; i < 35; i++) {
+      const u = i / 35;
+      const pt = this.trackCurve.getPointAt(u);
+      const tangent = this.trackCurve.getTangentAt(u).normalize();
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+      const offset = (i % 2 === 0 ? 55 + Math.random() * 30 : -(55 + Math.random() * 30));
+      const pos = pt.clone().addScaledVector(normal, offset);
+
+      const h = 40 + Math.random() * 80;
+      const r = 25 + Math.random() * 30;
+      const rock = new THREE.Mesh(new THREE.ConeGeometry(r, h, 6), rockMat);
+      rock.position.set(pos.x, h / 2, pos.z);
+      rock.rotation.y = Math.random() * Math.PI;
+      mountainGroup.add(rock);
+
+      this.colliders.push({ minX: pos.x - r, maxX: pos.x + r, minZ: pos.z - r, maxZ: pos.z + r });
+    }
+
+    this.trackWorldGroup.add(mountainGroup);
+  }
+
+  // 🌃 NIGHT METROPOLIS NEON SIGNS & ILLUMINATED ROOFS
+  buildNightCityElements() {
+    const nightGroup = new THREE.Group();
+    const neonColors = [0x38bdf8, 0xec4899, 0xa855f7, 0x22c55e, 0xf59e0b];
+
+    for (let k = 0; k < 18; k++) {
+      const color = neonColors[k % neonColors.length];
+      const neonMat = new THREE.MeshStandardMaterial({
+        color: color,
+        emissive: color,
+        emissiveIntensity: 1.8,
+      });
+
+      const crown = new THREE.Mesh(new THREE.BoxGeometry(42, 2.5, 42), neonMat);
+      const u = (k / 18);
+      const pt = this.trackCurve.getPointAt(u);
+      crown.position.set(pt.x + (k % 2 === 0 ? 90 : -90), 120 + (k * 6), pt.z + (k % 3 === 0 ? 70 : -70));
+      nightGroup.add(crown);
+    }
+
+    this.trackWorldGroup.add(nightGroup);
   }
 
   buildSpeedTrapCameras() {
@@ -1006,9 +1246,9 @@ export class CityTrackManager {
 
   buildAIRivals() {
     const rivalsData = [
-      { name: "Akira [GT-R]", color: 0x1d4ed8, u: 0.008, lane: -5.5, baseSpeedU: 0.018 },
-      { name: "Ghost [911]", color: 0x1e293b, u: 0.008, lane: 5.5, baseSpeedU: 0.019 },
-      { name: "⚡ Razor [M3 GTR]", color: 0x15803d, u: 0.0025, lane: -5.5, baseSpeedU: 0.017 },
+      { name: "Akira [GT-R]", color: 0x1d4ed8, u: 0.008, lane: -5.5, baseSpeedU: 0.027 },
+      { name: "Ghost [911]", color: 0x1e293b, u: 0.008, lane: 5.5, baseSpeedU: 0.028 },
+      { name: "⚡ Razor [M3 GTR]", color: 0x15803d, u: 0.0025, lane: -5.5, baseSpeedU: 0.026 },
     ];
 
     const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
@@ -1566,12 +1806,12 @@ export class CityTrackManager {
         if (diffU < -0.5) diffU += 1.0;
 
         let targetSpeedMultiplier = 1.0;
-        if (diffU > 0.05) {
-          targetSpeedMultiplier = 0.85;
-        } else if (diffU < -0.05) {
-          targetSpeedMultiplier = 1.15;
+        if (diffU > 0.08) {
+          targetSpeedMultiplier = 0.94;
+        } else if (diffU < -0.04) {
+          targetSpeedMultiplier = 1.12;
         } else {
-          targetSpeedMultiplier = 0.95 + (i * 0.03);
+          targetSpeedMultiplier = 0.98 + (i * 0.02);
         }
 
         rival.currentSpeedU = THREE.MathUtils.lerp(rival.currentSpeedU, rival.baseSpeedU * targetSpeedMultiplier, delta * 1.5);
@@ -1580,7 +1820,12 @@ export class CityTrackManager {
         rival.u = (rival.u + rival.currentSpeedU * delta) % 1.0;
         if (prevU > 0.85 && rival.u < 0.15) rival.lapsCompleted++;
       } else {
-        rival.currentSpeedU = 0;
+        if (this.gameMode === "FREE_ROAM") {
+          rival.currentSpeedU = THREE.MathUtils.lerp(rival.currentSpeedU, rival.baseSpeedU * 0.7, delta);
+          rival.u = (rival.u + rival.currentSpeedU * delta) % 1.0;
+        } else {
+          rival.currentSpeedU = 0;
+        }
       }
 
       const pt = this.trackCurve.getPointAt(rival.u);
@@ -1596,6 +1841,11 @@ export class CityTrackManager {
       if (rival.namePlate) {
         rival.namePlate.lookAt(playerPos.x, 3.4, playerPos.z);
       }
+    }
+
+    // 3. Realistic Animated Ocean Water Oscillation
+    if (this.oceanMesh && this.trackIndex === 2) {
+      this.oceanMesh.position.y = -0.25 + Math.sin(now * 0.002) * 0.12;
     }
 
     // 4. Speed Trap Cameras
