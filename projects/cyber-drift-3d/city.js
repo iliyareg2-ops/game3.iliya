@@ -1374,9 +1374,9 @@ export class CityTrackManager {
 
   buildAIRivals() {
     const rivalsData = [
-      { name: "Akira [GT-R]", color: 0x1d4ed8, u: 0.008, lane: -5.5, baseSpeedU: 0.024 },
-      { name: "Ghost [911]", color: 0x1e293b, u: 0.008, lane: 5.5, baseSpeedU: 0.025 },
-      { name: "⚡ Razor [M3 GTR]", color: 0x15803d, u: 0.0025, lane: -5.5, baseSpeedU: 0.023 },
+      { name: "Akira [GT-R]", color: 0x1d4ed8, u: 0.008, lane: -5.5, baseSpeedU: 0.015 },
+      { name: "Ghost [911]", color: 0x1e293b, u: 0.008, lane: 5.5, baseSpeedU: 0.016 },
+      { name: "⚡ Razor [M3 GTR]", color: 0x15803d, u: 0.0025, lane: -5.5, baseSpeedU: 0.014 },
     ];
 
     const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
@@ -1934,12 +1934,12 @@ export class CityTrackManager {
         const diffProgress = rivalTotal - playerTotal;
 
         let targetSpeedMultiplier = 1.0;
-        if (diffProgress > 0.04) {
-          targetSpeedMultiplier = 0.90;
-        } else if (diffProgress < -0.04) {
-          targetSpeedMultiplier = 1.16;
+        if (diffProgress > 0.03) {
+          targetSpeedMultiplier = 0.88; // Slow down when ahead so player can easily battle & overtake!
+        } else if (diffProgress < -0.05) {
+          targetSpeedMultiplier = 1.06; // Gentle catch-up when behind
         } else {
-          targetSpeedMultiplier = 0.98 + (i * 0.02);
+          targetSpeedMultiplier = 0.95 + (i * 0.02);
         }
 
         rival.currentSpeedU = THREE.MathUtils.lerp(rival.currentSpeedU, rival.baseSpeedU * targetSpeedMultiplier, delta * 2.0);
