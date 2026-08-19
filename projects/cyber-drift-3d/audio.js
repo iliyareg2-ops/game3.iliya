@@ -148,21 +148,6 @@ class CyberAudioEngine {
   _setupTurboSpoolWhine() {
     this.turboGain = this.ctx.createGain();
     this.turboGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
-
-    this.turboOsc = this.ctx.createOscillator();
-    this.turboOsc.type = "sine";
-    this.turboOsc.frequency.setValueAtTime(800, this.ctx.currentTime);
-
-    const filter = this.ctx.createBiquadFilter();
-    filter.type = "bandpass";
-    filter.frequency.setValueAtTime(2200, this.ctx.currentTime);
-    filter.Q.setValueAtTime(4.0, this.ctx.currentTime);
-
-    this.turboOsc.connect(filter);
-    filter.connect(this.turboGain);
-    this.turboGain.connect(this.masterGain);
-
-    this.turboOsc.start();
   }
 
   _setupGrandstandCrowd() {
@@ -476,14 +461,6 @@ class CyberAudioEngine {
 
     const targetEngineVol = 0.42 + (rpmRatio * 0.42);
     this.engineGain.gain.setTargetAtTime(targetEngineVol, t, 0.06);
-
-    // Turbo Spool
-    if (this.turboGain && this.turboOsc) {
-      const turboPitch = 800 + (rpmRatio * 2400) + (isNitro ? 800 : 0);
-      this.turboOsc.frequency.setTargetAtTime(turboPitch, t, 0.08);
-      const turboVol = (throttle > 0 && speedKmH > 60) ? (0.15 + rpmRatio * 0.22) : 0.0;
-      this.turboGain.gain.setTargetAtTime(turboVol, t, 0.08);
-    }
 
     const targetTire = Math.min(0.55, driftRatio * 0.6);
     this.tireGain.gain.setTargetAtTime(targetTire, t, 0.08);
