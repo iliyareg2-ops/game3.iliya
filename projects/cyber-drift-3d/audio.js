@@ -1,33 +1,32 @@
-// audio.js - Realistic Sound Engine: Multi-Station Radio, Bullet Time Filter, Rain & Engine Acoustics
+// audio.js - Warm, Deep & Realistic Supercar Sound Engine (No Harsh Frequencies, Zero Piercing Noise)
 class CyberAudioEngine {
   constructor() {
     this.ctx = null;
     this.isInitialized = false;
     this.isMuted = false;
-    this.isRadioPlaying = true;
-    this.radioStation = 0; // 0: Night Drive, 1: High-Octane, 2: Deep Groove
+    this.isRadioPlaying = false; // Off by default for pure clean engine sound
+    this.radioStation = 0;
 
     this.masterGain = null;
     this.bulletTimeFilter = null;
 
+    // V8 Engine Rumble Oscillators
     this.engineGain = null;
     this.engineOsc1 = null;
     this.engineOsc2 = null;
-    this.engineOsc3 = null;
     this.engineFilter = null;
 
-    this.turboGain = null;
-    this.turboOsc = null;
+    // Soft Tire Road Friction
+    this.tireGain = null;
+    this.tireFilter = null;
 
-    this.screechGain = null;
-    this.screechFilter = null;
+    // Subtle Turbo / Wind
+    this.windGain = null;
+    this.windFilter = null;
 
     this.nitroGain = null;
     this.sirenGain = null;
     this.sirenOsc = null;
-
-    this.heliGain = null;
-    this.heliOsc = null;
 
     this.rainGain = null;
     this.radioGain = null;
@@ -41,29 +40,27 @@ class CyberAudioEngine {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       this.ctx = new AudioContext();
 
+      // Master Gain - Gentle, comfortable volume level
       this.masterGain = this.ctx.createGain();
-      this.masterGain.gain.setValueAtTime(0.85, this.ctx.currentTime);
+      this.masterGain.gain.setValueAtTime(0.38, this.ctx.currentTime);
 
-      // Bullet-Time Master Low-Pass Filter
       this.bulletTimeFilter = this.ctx.createBiquadFilter();
       this.bulletTimeFilter.type = "lowpass";
-      this.bulletTimeFilter.frequency.setValueAtTime(20000, this.ctx.currentTime);
+      this.bulletTimeFilter.frequency.setValueAtTime(14000, this.ctx.currentTime);
 
       this.masterGain.connect(this.bulletTimeFilter);
       this.bulletTimeFilter.connect(this.ctx.destination);
 
       this.radioGain = this.ctx.createGain();
-      this.radioGain.gain.setValueAtTime(0.35, this.ctx.currentTime);
+      this.radioGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
       this.radioGain.connect(this.masterGain);
 
-      this._setupEngineSound();
-      this._setupTurboSound();
-      this._setupTireScreech();
+      this._setupDeepEngineSound();
+      this._setupSoftTireFriction();
+      this._setupWindAcoustics();
       this._setupNitroSound();
-      this._setupPoliceSiren();
-      this._setupHelicopterSound();
+      this._setupMellowSiren();
       this._setupRainSound();
-      this._startRadioSequencer();
 
       this.isInitialized = true;
     } catch (e) {
@@ -87,32 +84,31 @@ class CyberAudioEngine {
     return buffer;
   }
 
-  _setupEngineSound() {
+  // 🏎️ Deep, Smooth V8 Engine Growl (Pure Lows & Warm Mids, No Piercing Buzz)
+  _setupDeepEngineSound() {
     this.engineGain = this.ctx.createGain();
     this.engineGain.gain.setValueAtTime(0.01, this.ctx.currentTime);
 
+    // Warm Low Rumble (Triangle wave)
     this.engineOsc1 = this.ctx.createOscillator();
-    this.engineOsc1.type = "sawtooth";
-    this.engineOsc1.frequency.setValueAtTime(45, this.ctx.currentTime);
+    this.engineOsc1.type = "triangle";
+    this.engineOsc1.frequency.setValueAtTime(32, this.ctx.currentTime);
 
+    // Sub-Bass Foundation (Sine wave)
     this.engineOsc2 = this.ctx.createOscillator();
-    this.engineOsc2.type = "square";
-    this.engineOsc2.frequency.setValueAtTime(90, this.ctx.currentTime);
-
-    this.engineOsc3 = this.ctx.createOscillator();
-    this.engineOsc3.type = "triangle";
-    this.engineOsc3.frequency.setValueAtTime(135, this.ctx.currentTime);
+    this.engineOsc2.type = "sine";
+    this.engineOsc2.frequency.setValueAtTime(64, this.ctx.currentTime);
 
     const mixGain = this.ctx.createGain();
-    mixGain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+    mixGain.gain.setValueAtTime(0.45, this.ctx.currentTime);
     this.engineOsc1.connect(mixGain);
     this.engineOsc2.connect(mixGain);
-    this.engineOsc3.connect(mixGain);
 
+    // Warm 24dB Low-Pass Filter (Cuts all sharp highs)
     this.engineFilter = this.ctx.createBiquadFilter();
     this.engineFilter.type = "lowpass";
-    this.engineFilter.frequency.setValueAtTime(450, this.ctx.currentTime);
-    this.engineFilter.Q.setValueAtTime(2.8, this.ctx.currentTime);
+    this.engineFilter.frequency.setValueAtTime(260, this.ctx.currentTime);
+    this.engineFilter.Q.setValueAtTime(0.7, this.ctx.currentTime); // No harsh resonance
 
     mixGain.connect(this.engineFilter);
     this.engineFilter.connect(this.engineGain);
@@ -120,41 +116,49 @@ class CyberAudioEngine {
 
     this.engineOsc1.start();
     this.engineOsc2.start();
-    this.engineOsc3.start();
   }
 
-  _setupTurboSound() {
-    this.turboGain = this.ctx.createGain();
-    this.turboGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
-
-    this.turboOsc = this.ctx.createOscillator();
-    this.turboOsc.type = "sine";
-    this.turboOsc.frequency.setValueAtTime(1200, this.ctx.currentTime);
-
-    this.turboOsc.connect(this.turboGain);
-    this.turboGain.connect(this.masterGain);
-    this.turboOsc.start();
-  }
-
-  _setupTireScreech() {
-    this.screechGain = this.ctx.createGain();
-    this.screechGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
+  // 🚗 Soft Asphalt Friction (Low-passed brown noise instead of harsh squeal)
+  _setupSoftTireFriction() {
+    this.tireGain = this.ctx.createGain();
+    this.tireGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
 
     const noiseBuffer = this._createNoiseBuffer();
     const noiseSource = this.ctx.createBufferSource();
     noiseSource.buffer = noiseBuffer;
     noiseSource.loop = true;
 
-    this.screechFilter = this.ctx.createBiquadFilter();
-    this.screechFilter.type = "bandpass";
-    this.screechFilter.frequency.setValueAtTime(1400, this.ctx.currentTime);
-    this.screechFilter.Q.setValueAtTime(3.5, this.ctx.currentTime);
+    this.tireFilter = this.ctx.createBiquadFilter();
+    this.tireFilter.type = "lowpass";
+    this.tireFilter.frequency.setValueAtTime(450, this.ctx.currentTime);
+    this.tireFilter.Q.setValueAtTime(0.6, this.ctx.currentTime);
 
-    noiseSource.connect(this.screechFilter);
-    this.screechFilter.connect(this.screechGain);
-    this.screechGain.connect(this.masterGain);
+    noiseSource.connect(this.tireFilter);
+    this.tireFilter.connect(this.tireGain);
+    this.tireGain.connect(this.masterGain);
 
     noiseSource.start();
+  }
+
+  // 💨 Smooth Highway Aerodynamics Wind
+  _setupWindAcoustics() {
+    this.windGain = this.ctx.createGain();
+    this.windGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
+
+    const noiseBuffer = this._createNoiseBuffer();
+    const windNoise = this.ctx.createBufferSource();
+    windNoise.buffer = noiseBuffer;
+    windNoise.loop = true;
+
+    this.windFilter = this.ctx.createBiquadFilter();
+    this.windFilter.type = "lowpass";
+    this.windFilter.frequency.setValueAtTime(320, this.ctx.currentTime);
+
+    windNoise.connect(this.windFilter);
+    this.windFilter.connect(this.windGain);
+    this.windGain.connect(this.masterGain);
+
+    windNoise.start();
   }
 
   _setupNitroSound() {
@@ -167,8 +171,8 @@ class CyberAudioEngine {
     nitroNoise.loop = true;
 
     const filter = this.ctx.createBiquadFilter();
-    filter.type = "highpass";
-    filter.frequency.setValueAtTime(1800, this.ctx.currentTime);
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(600, this.ctx.currentTime);
 
     nitroNoise.connect(filter);
     filter.connect(this.nitroGain);
@@ -177,42 +181,24 @@ class CyberAudioEngine {
     nitroNoise.start();
   }
 
-  _setupPoliceSiren() {
+  // 🚨 Mellow, Realistic Distant Police Siren
+  _setupMellowSiren() {
     this.sirenGain = this.ctx.createGain();
     this.sirenGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
 
     this.sirenOsc = this.ctx.createOscillator();
-    this.sirenOsc.type = "sawtooth";
-    this.sirenOsc.frequency.setValueAtTime(750, this.ctx.currentTime);
+    this.sirenOsc.type = "sine"; // Soft sine wave instead of harsh sawtooth
+    this.sirenOsc.frequency.setValueAtTime(450, this.ctx.currentTime);
 
     const filter = this.ctx.createBiquadFilter();
     filter.type = "lowpass";
-    filter.frequency.setValueAtTime(1400, this.ctx.currentTime);
+    filter.frequency.setValueAtTime(700, this.ctx.currentTime);
 
     this.sirenOsc.connect(filter);
     filter.connect(this.sirenGain);
     this.sirenGain.connect(this.masterGain);
 
     this.sirenOsc.start();
-  }
-
-  _setupHelicopterSound() {
-    this.heliGain = this.ctx.createGain();
-    this.heliGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
-
-    this.heliOsc = this.ctx.createOscillator();
-    this.heliOsc.type = "square";
-    this.heliOsc.frequency.setValueAtTime(24, this.ctx.currentTime);
-
-    const filter = this.ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.setValueAtTime(180, this.ctx.currentTime);
-
-    this.heliOsc.connect(filter);
-    filter.connect(this.heliGain);
-    this.heliGain.connect(this.masterGain);
-
-    this.heliOsc.start();
   }
 
   _setupRainSound() {
@@ -226,7 +212,7 @@ class CyberAudioEngine {
 
     const filter = this.ctx.createBiquadFilter();
     filter.type = "lowpass";
-    filter.frequency.setValueAtTime(800, this.ctx.currentTime);
+    filter.frequency.setValueAtTime(500, this.ctx.currentTime);
 
     rainNoise.connect(filter);
     filter.connect(this.rainGain);
@@ -237,109 +223,12 @@ class CyberAudioEngine {
 
   setRainActive(isRaining) {
     if (!this.rainGain || !this.ctx) return;
-    this.rainGain.gain.setTargetAtTime(isRaining ? 0.35 : 0.0, this.ctx.currentTime, 0.5);
+    this.rainGain.gain.setTargetAtTime(isRaining ? 0.25 : 0.0, this.ctx.currentTime, 0.5);
   }
 
   setBulletTime(isActive) {
     if (!this.bulletTimeFilter || !this.ctx) return;
-    this.bulletTimeFilter.frequency.setTargetAtTime(isActive ? 550 : 20000, this.ctx.currentTime, 0.08);
-  }
-
-  // 📻 3 Multi-Station Realistic In-Car Audio Sequencer
-  _startRadioSequencer() {
-    const playStep = () => {
-      if (!this.isRadioPlaying || this.isMuted || !this.ctx) return;
-      const t = this.ctx.currentTime;
-      const step = this.radioStep % 16;
-      this.radioStep++;
-
-      if (this.radioStation === 0) {
-        // Station 1: Night Drive (Retro 115 BPM)
-        const notes = [110, 110, 130.81, 110, 98, 98, 110, 123.47];
-        if (step % 4 === 0) this._playKick(t, 140, 32);
-        if (step === 4 || step === 12) this._playSnare(t, 1200);
-        if (step % 2 === 0) this._playHiHat(t);
-        this._playBass(t, notes[Math.floor(step / 2) % notes.length]);
-      } else if (this.radioStation === 1) {
-        // Station 2: High-Octane (Fast Drive 130 BPM)
-        const notes = [73.42, 73.42, 82.41, 73.42, 98.0, 87.31, 73.42, 110.0];
-        if (step % 2 === 0) this._playKick(t, 160, 28);
-        if (step === 4 || step === 12) this._playSnare(t, 1600);
-        this._playHiHat(t);
-        this._playBass(t, notes[Math.floor(step / 2) % notes.length], "sawtooth");
-      } else {
-        // Station 3: Deep Highway Groove (122 BPM)
-        const notes = [65.41, 65.41, 65.41, 77.78, 65.41, 65.41, 87.31, 65.41];
-        if (step % 4 === 0) this._playKick(t, 120, 35);
-        if (step === 4 || step === 12) this._playSnare(t, 900);
-        if (step % 2 === 0) this._playHiHat(t);
-        this._playBass(t, notes[Math.floor(step / 2) % notes.length], "triangle");
-      }
-    };
-
-    this.radioInterval = setInterval(playStep, 125);
-  }
-
-  _playKick(t, startFreq, endFreq) {
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.frequency.setValueAtTime(startFreq, t);
-    osc.frequency.exponentialRampToValueAtTime(endFreq, t + 0.09);
-    gain.gain.setValueAtTime(0.4, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
-    osc.connect(gain);
-    gain.connect(this.radioGain);
-    osc.start(t);
-    osc.stop(t + 0.12);
-  }
-
-  _playSnare(t, freq) {
-    const noise = this.ctx.createBufferSource();
-    noise.buffer = this._createNoiseBuffer();
-    const filter = this.ctx.createBiquadFilter();
-    filter.type = "bandpass";
-    filter.frequency.setValueAtTime(freq, t);
-    const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.24, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
-    noise.connect(filter);
-    filter.connect(gain);
-    gain.connect(this.radioGain);
-    noise.start(t);
-    noise.stop(t + 0.15);
-  }
-
-  _playHiHat(t) {
-    const noise = this.ctx.createBufferSource();
-    noise.buffer = this._createNoiseBuffer();
-    const filter = this.ctx.createBiquadFilter();
-    filter.type = "highpass";
-    filter.frequency.setValueAtTime(7000, t);
-    const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.07, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
-    noise.connect(filter);
-    filter.connect(gain);
-    gain.connect(this.radioGain);
-    noise.start(t);
-    noise.stop(t + 0.06);
-  }
-
-  _playBass(t, note, type = "sawtooth") {
-    const bassOsc = this.ctx.createOscillator();
-    const bassFilter = this.ctx.createBiquadFilter();
-    const bassGain = this.ctx.createGain();
-    bassOsc.type = type;
-    bassOsc.frequency.setValueAtTime(note, t);
-    bassFilter.type = "lowpass";
-    bassFilter.frequency.setValueAtTime(450, t);
-    bassGain.gain.setValueAtTime(0.18, t);
-    bassGain.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
-    bassOsc.connect(bassFilter);
-    bassFilter.connect(bassGain);
-    bassGain.connect(this.radioGain);
-    bassOsc.start(t);
-    bassOsc.stop(t + 0.12);
+    this.bulletTimeFilter.frequency.setTargetAtTime(isActive ? 350 : 14000, this.ctx.currentTime, 0.1);
   }
 
   nextRadioStation() {
@@ -351,47 +240,45 @@ class CyberAudioEngine {
   toggleRadio() {
     this.isRadioPlaying = !this.isRadioPlaying;
     if (this.radioGain) {
-      this.radioGain.gain.setValueAtTime(this.isRadioPlaying ? 0.35 : 0, this.ctx.currentTime);
+      this.radioGain.gain.setValueAtTime(this.isRadioPlaying ? 0.25 : 0, this.ctx.currentTime);
     }
     return this.isRadioPlaying;
   }
 
-  update(rpmRatio, speedKmH, driftRatio, isNitro, isPoliceNearby, isHeliNearby) {
+  // 🎛️ Real-Time Audio Update (Soft, Rich & Smooth Transitions)
+  update(rpmRatio, speedKmH, driftRatio, isNitro, isPoliceNearby) {
     if (!this.isInitialized || this.isMuted) return;
     const t = this.ctx.currentTime;
 
-    const baseFreq = 42 + rpmRatio * 190 + (speedKmH / 300) * 35;
-    this.engineOsc1.frequency.setTargetAtTime(baseFreq, t, 0.05);
-    this.engineOsc2.frequency.setTargetAtTime(baseFreq * 2.01, t, 0.05);
-    this.engineOsc3.frequency.setTargetAtTime(baseFreq * 3.02, t, 0.05);
+    // Smooth engine pitch (Deep 28Hz idle to 110Hz max RPM)
+    const baseFreq = 28 + (rpmRatio * 48) + (speedKmH / 360) * 22;
+    this.engineOsc1.frequency.setTargetAtTime(baseFreq, t, 0.08);
+    this.engineOsc2.frequency.setTargetAtTime(baseFreq * 1.5, t, 0.08);
 
-    const cutoff = 300 + rpmRatio * 2400;
-    this.engineFilter.frequency.setTargetAtTime(cutoff, t, 0.05);
-    this.engineGain.gain.setTargetAtTime(0.35 + rpmRatio * 0.45, t, 0.05);
+    // Warm Low-Pass Cutoff (No high-pitch screeching)
+    const cutoff = 180 + (rpmRatio * 320);
+    this.engineFilter.frequency.setTargetAtTime(cutoff, t, 0.08);
+    this.engineGain.gain.setTargetAtTime(0.28 + (rpmRatio * 0.22), t, 0.08);
 
-    const turboVol = Math.min(0.28, rpmRatio * 0.28);
-    this.turboGain.gain.setTargetAtTime(turboVol, t, 0.08);
-    this.turboOsc.frequency.setTargetAtTime(1000 + rpmRatio * 2400, t, 0.08);
+    // Tire road friction in drift
+    const targetTire = Math.min(0.35, driftRatio * 0.38);
+    this.tireGain.gain.setTargetAtTime(targetTire, t, 0.08);
 
-    const targetScreech = Math.min(0.68, driftRatio * 0.75);
-    this.screechGain.gain.setTargetAtTime(targetScreech, t, 0.06);
-    this.screechFilter.frequency.setTargetAtTime(1100 + driftRatio * 800, t, 0.06);
+    // Wind rush at high speeds
+    const windVol = Math.min(0.22, (speedKmH / 300) * 0.22);
+    this.windGain.gain.setTargetAtTime(windVol, t, 0.12);
 
-    const targetNitro = isNitro ? 0.55 : 0.0;
-    this.nitroGain.gain.setTargetAtTime(targetNitro, t, 0.05);
+    // Nitro sound
+    const targetNitro = isNitro ? 0.28 : 0.0;
+    this.nitroGain.gain.setTargetAtTime(targetNitro, t, 0.08);
 
+    // Distant mellow police siren
     if (isPoliceNearby) {
-      const sirenFreq = 650 + Math.sin(t * 5.2) * 380;
+      const sirenFreq = 420 + Math.sin(t * 3.5) * 160;
       this.sirenOsc.frequency.setValueAtTime(sirenFreq, t);
-      this.sirenGain.gain.setTargetAtTime(0.42, t, 0.08);
+      this.sirenGain.gain.setTargetAtTime(0.18, t, 0.15);
     } else {
-      this.sirenGain.gain.setTargetAtTime(0.0, t, 0.15);
-    }
-
-    if (isHeliNearby) {
-      this.heliGain.gain.setTargetAtTime(0.28, t, 0.1);
-    } else {
-      this.heliGain.gain.setTargetAtTime(0.0, t, 0.2);
+      this.sirenGain.gain.setTargetAtTime(0.0, t, 0.25);
     }
   }
 
@@ -401,129 +288,86 @@ class CyberAudioEngine {
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = "sine";
-    osc.frequency.setValueAtTime(1800, t);
-    osc.frequency.exponentialRampToValueAtTime(400, t + 0.1);
-    gain.gain.setValueAtTime(0.6, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    osc.frequency.setValueAtTime(900, t);
+    osc.frequency.exponentialRampToValueAtTime(250, t + 0.08);
+    gain.gain.setValueAtTime(0.25, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
     osc.connect(gain);
     gain.connect(this.masterGain);
     osc.start(t);
-    osc.stop(t + 0.14);
+    osc.stop(t + 0.1);
   }
 
   playNitroPickupSound() {
     if (!this.isInitialized || this.isMuted) return;
     const t = this.ctx.currentTime;
-    const freqs = [659.25, 880.0, 1318.51, 1760.0];
+    const freqs = [440.0, 554.37, 659.25];
     freqs.forEach((freq, idx) => {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
       osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, t + idx * 0.04);
-      gain.gain.setValueAtTime(0.3, t + idx * 0.04);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.04 + 0.3);
+      osc.frequency.setValueAtTime(freq, t + idx * 0.05);
+      gain.gain.setValueAtTime(0.18, t + idx * 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.05 + 0.2);
       osc.connect(gain);
       gain.connect(this.masterGain);
-      osc.start(t + idx * 0.04);
-      osc.stop(t + idx * 0.04 + 0.35);
+      osc.start(t + idx * 0.05);
+      osc.stop(t + idx * 0.05 + 0.22);
     });
   }
 
   playTakedownCrunch() {
     if (!this.isInitialized || this.isMuted) return;
     const t = this.ctx.currentTime;
+
     const boomOsc = this.ctx.createOscillator();
     const boomGain = this.ctx.createGain();
     boomOsc.type = "sine";
-    boomOsc.frequency.setValueAtTime(160, t);
-    boomOsc.frequency.exponentialRampToValueAtTime(25, t + 0.6);
-    boomGain.gain.setValueAtTime(0.9, t);
-    boomGain.gain.exponentialRampToValueAtTime(0.001, t + 0.65);
+    boomOsc.frequency.setValueAtTime(95, t);
+    boomOsc.frequency.exponentialRampToValueAtTime(20, t + 0.4);
+    boomGain.gain.setValueAtTime(0.5, t);
+    boomGain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
     boomOsc.connect(boomGain);
     boomGain.connect(this.masterGain);
     boomOsc.start(t);
-    boomOsc.stop(t + 0.7);
-
-    const noiseBuffer = this._createNoiseBuffer();
-    const noise = this.ctx.createBufferSource();
-    noise.buffer = noiseBuffer;
-    const filter = this.ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.setValueAtTime(600, t);
-    filter.frequency.exponentialRampToValueAtTime(50, t + 0.7);
-
-    const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.85, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.75);
-
-    noise.connect(filter);
-    filter.connect(gain);
-    gain.connect(this.masterGain);
-    noise.start(t);
-    noise.stop(t + 0.8);
-  }
-
-  playBackfire() {
-    if (!this.isInitialized || this.isMuted) return;
-    const t = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = "sawtooth";
-    osc.frequency.setValueAtTime(180, t);
-    osc.frequency.exponentialRampToValueAtTime(30, t + 0.12);
-    gain.gain.setValueAtTime(0.6, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
-    osc.connect(gain);
-    gain.connect(this.masterGain);
-    osc.start(t);
-    osc.stop(t + 0.16);
+    boomOsc.stop(t + 0.5);
   }
 
   playScoreChime() {
     if (!this.isInitialized || this.isMuted) return;
     const t = this.ctx.currentTime;
-    const freqs = [587.33, 880.0, 1174.66];
-    freqs.forEach((freq, idx) => {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, t + idx * 0.05);
-      gain.gain.setValueAtTime(0.25, t + idx * 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.05 + 0.25);
-      osc.connect(gain);
-      gain.connect(this.masterGain);
-      osc.start(t + idx * 0.05);
-      osc.stop(t + idx * 0.05 + 0.28);
-    });
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(587.33, t);
+    gain.gain.setValueAtTime(0.12, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.2);
   }
 
   playCrash() {
     if (!this.isInitialized || this.isMuted) return;
     const t = this.ctx.currentTime;
-    const noiseBuffer = this._createNoiseBuffer();
-    const noise = this.ctx.createBufferSource();
-    noise.buffer = noiseBuffer;
-
-    const filter = this.ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.setValueAtTime(500, t);
-    filter.frequency.exponentialRampToValueAtTime(40, t + 0.8);
-
-    const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.8, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.85);
-
-    noise.connect(filter);
-    filter.connect(gain);
-    gain.connect(this.masterGain);
-    noise.start(t);
-    noise.stop(t + 0.9);
+    const boomOsc = this.ctx.createOscillator();
+    const boomGain = this.ctx.createGain();
+    boomOsc.type = "sine";
+    boomOsc.frequency.setValueAtTime(80, t);
+    boomOsc.frequency.exponentialRampToValueAtTime(20, t + 0.35);
+    boomGain.gain.setValueAtTime(0.4, t);
+    boomGain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+    boomOsc.connect(boomGain);
+    boomGain.connect(this.masterGain);
+    boomOsc.start(t);
+    boomOsc.stop(t + 0.45);
   }
 
   toggleMute() {
     this.isMuted = !this.isMuted;
     if (this.masterGain) {
-      this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.85, this.ctx.currentTime);
+      this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.38, this.ctx.currentTime);
     }
     return this.isMuted;
   }
