@@ -1,747 +1,404 @@
-// car.js - Space = Drift, Shift = Nitro Boost, Smooth Grip Turns, Tire Skidmarks & Crash Responses
+// car.js - Realistic Supercar Physics with Airborne Jump Gravity, Focus Energy & Automotive Tuning
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
 export class CyberCar {
-  constructor(scene, carType = 0) {
+  constructor(scene, carTypeIndex = 0) {
     this.scene = scene;
-    this.mesh = new THREE.Group();
-    this.bodySubGroup = new THREE.Group();
-    this.mesh.add(this.bodySubGroup);
+    this.carTypeIndex = carTypeIndex;
 
-    this.carType = carType; // 0: Apex GT, 1: Phantom Drift, 2: Hyperion X
-
-    // Customization
-    this.bodyColor = 0xe11d48;
-    this.underglowColor = 0x00f0ff;
-    this.carMaterials = [];
-
-    // Wheels & Parts
-    this.wheels = [];
-    this.frontLeftWheelGroup = new THREE.Group();
-    this.frontRightWheelGroup = new THREE.Group();
-    this.rearLeftWheelGroup = new THREE.Group();
-    this.rearRightWheelGroup = new THREE.Group();
-    this.exhaustTips = [];
-    this.flameCones = [];
-
-    // Particles & Decals
-    this.smokeParticles = [];
-    this.sparkParticles = [];
-    this.skidmarks = [];
-
-    // ==========================================
-    // 🏎️ DRIVING STATS (SPACE=DRIFT, SHIFT=NITRO)
-    // ==========================================
     this.position = new THREE.Vector3(0, 0.12, 0);
-    this.heading = 0; // World heading angle (radians)
-    this.speed = 0; // km/h
-
-    this.maxSpeed = 255; // km/h
-    this.nitroMaxSpeed = 360; // km/h
-    this.maxReverseSpeed = -65; // km/h
-    this.accelRate = 130; // km/h per second
-    this.nitroAccelRate = 270; // km/h per second
-    this.brakeRate = 220; // km/h per second
-    this.coastDecelRate = 40; // Natural drag
-    this.baseTurnSpeed = 1.35; // Gentle, smooth turning rate
-
-    this.throttleInput = 0; // -1 (brake/rev) to +1 (gas)
-    this.steerInput = 0;
-    this.driftActive = false; // SPACE = DRIFT
-    this.nitroActive = false; // SHIFT = NITRO
-    this.nitroFuel = 100;
-
-    this.steerAngle = 0;
+    this.heading = 0;
+    this.speed = 0;
+    this.angularVelocity = 0;
     this.driftAngle = 0;
-    this.isDrifting = false;
-    this.driftMultiplier = 1.0;
-    this.currentDriftScore = 0;
+    this.verticalVelocity = 0; // Stunt ramp jumping
+
     this.totalScore = 0;
+    this.currentDriftScore = 0;
+    this.driftMultiplier = 1.0;
+    this.isDrifting = false;
 
-    this.bodyRoll = 0;
-    this.bodyPitch = 0;
-    this.rpm = 1000;
-    this.gear = 1;
+    this.nitroFuel = 100;
+    this.nitroActive = false;
+    this.focusEnergy = 100; // Bullet-Time Focus
 
-    this.buildCarModel();
-    this.createCarLights();
-    this.createExhaustFlames();
-    this.createSmokeParticles();
-    this.createSparkParticles();
-    this.createSkidmarks();
+    this.spoilerType = 0; // 0: GT Wing, 1: Ducktail, 2: Aerofoil
+    this.wheelType = 0;   // 0: BBS Mesh, 1: 5-Spoke, 2: Monoblock
+    this.finishType = "metallic"; // 'metallic', 'matte', 'pearlescent'
+
+    this.throttleInput = 0;
+    this.steerInput = 0;
+    this.driftActive = false;
+
+    this.mesh = new THREE.Group();
     this.scene.add(this.mesh);
+
+    this.wheels = [];
+    this.spoilerMesh = null;
+    this.initCarModel();
+    this.initParticleSystems();
+    this.initSkidmarks();
   }
 
-  buildCarModel() {
-    while (this.bodySubGroup.children.length > 0) {
-      this.bodySubGroup.remove(this.bodySubGroup.children[0]);
+  initCarModel() {
+    while (this.mesh.children.length > 0) {
+      this.mesh.remove(this.mesh.children[0]);
     }
     this.wheels = [];
-    this.exhaustTips = [];
-    this.flameCones = [];
-    this.carMaterials = [];
 
-    this.bodyMat = new THREE.MeshPhysicalMaterial({
-      color: this.bodyColor,
-      metalness: 0.35,
-      roughness: 0.12,
-      clearcoat: 1.0,
-      clearcoatRoughness: 0.06,
-      emissive: this.bodyColor,
-      emissiveIntensity: 0.22,
-    });
-    this.carMaterials.push(this.bodyMat);
-
-    this.carbonMat = new THREE.MeshStandardMaterial({
-      color: 0x181a20,
-      metalness: 0.65,
-      roughness: 0.35,
-    });
-
-    this.glassMat = new THREE.MeshStandardMaterial({
-      color: 0x0a1c2e,
-      metalness: 0.95,
+    const bodyMat = this._getPaintMaterial();
+    const carbonMat = new THREE.MeshStandardMaterial({ color: 0x181a20, roughness: 0.45, metalness: 0.3 });
+    const glassMat = new THREE.MeshPhysicalMaterial({
+      color: 0x0f172a,
       roughness: 0.05,
+      metalness: 0.9,
+      transmission: 0.65,
       transparent: true,
-      opacity: 0.72,
+      opacity: 0.85,
     });
 
-    this.chromeMat = new THREE.MeshStandardMaterial({
-      color: 0xf8fafc,
-      metalness: 0.95,
-      roughness: 0.08,
-    });
+    const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.72, 9.4), bodyMat);
+    chassis.position.y = 0.55;
+    chassis.castShadow = true;
+    chassis.receiveShadow = true;
+    this.mesh.add(chassis);
 
-    this.titaniumTipMat = new THREE.MeshStandardMaterial({
-      color: 0x0284c7,
-      metalness: 0.9,
-      roughness: 0.15,
-    });
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.65, 4.4), glassMat);
+    cabin.position.set(0, 1.15, -0.3);
+    this.mesh.add(cabin);
 
-    this.caliperMat = new THREE.MeshStandardMaterial({
-      color: 0xdc2626,
-      metalness: 0.7,
-      roughness: 0.2,
-    });
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.06, 3.5), carbonMat);
+    roof.position.set(0, 1.48, -0.3);
+    this.mesh.add(roof);
 
-    this.discMat = new THREE.MeshStandardMaterial({
-      color: 0x94a3b8,
-      metalness: 0.9,
-      roughness: 0.25,
-    });
+    // Front Bumper Splitter & Diffuser
+    const splitter = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.1, 1.2), carbonMat);
+    splitter.position.set(0, 0.22, 4.6);
+    const diffuser = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.25, 0.8), carbonMat);
+    diffuser.position.set(0, 0.35, -4.7);
+    this.mesh.add(splitter, diffuser);
 
-    this.tireMat = new THREE.MeshStandardMaterial({
-      color: 0x1c1d22,
-      roughness: 0.85,
-    });
+    // Headlights & Taillights
+    const hlGeom = new THREE.BoxGeometry(0.9, 0.25, 0.1);
+    const hlMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const hlL = new THREE.Mesh(hlGeom, hlMat);
+    hlL.position.set(1.45, 0.65, 4.71);
+    const hlR = hlL.clone();
+    hlR.position.x = -1.45;
 
-    this.rimMat = new THREE.MeshStandardMaterial({
-      color: 0xf1f5f9,
-      metalness: 0.92,
-      roughness: 0.18,
-      emissive: 0x1e293b,
-      emissiveIntensity: 0.2,
-    });
+    const tlGeom = new THREE.BoxGeometry(3.8, 0.18, 0.1);
+    const tlMat = new THREE.MeshBasicMaterial({ color: 0xff0022 });
+    const tl = new THREE.Mesh(tlGeom, tlMat);
+    tl.position.set(0, 0.65, -4.71);
+    this.mesh.add(hlL, hlR, tl);
 
-    this.headlightMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    this.haloRingMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
-    this.taillightMat = new THREE.MeshBasicMaterial({ color: 0xff0022 });
+    // Headlight Projector Cones
+    const beamGeom = new THREE.ConeGeometry(8.5, 55, 16, 1, true);
+    beamGeom.rotateX(-Math.PI / 2);
+    const beamMat = new THREE.MeshBasicMaterial({ color: 0xfffae6, transparent: true, opacity: 0.12, side: THREE.DoubleSide });
+    const beamL = new THREE.Mesh(beamGeom, beamMat);
+    beamL.position.set(1.45, 0.65, 28);
+    const beamR = new THREE.Mesh(beamGeom, beamMat);
+    beamR.position.set(-1.45, 0.65, 28);
+    this.mesh.add(beamL, beamR);
 
-    if (this.carType === 0) {
-      this._buildApexGT();
-    } else if (this.carType === 1) {
-      this._buildPhantomDrifter();
-    } else {
-      this._buildHyperionX();
+    this._buildSpoiler(carbonMat);
+    this._buildWheels();
+
+    this.mesh.position.copy(this.position);
+  }
+
+  _getPaintMaterial() {
+    let roughness = 0.15;
+    let metalness = 0.85;
+    let clearcoat = 1.0;
+
+    if (this.finishType === "matte") {
+      roughness = 0.65;
+      metalness = 0.1;
+      clearcoat = 0.0;
+    } else if (this.finishType === "pearlescent") {
+      roughness = 0.25;
+      metalness = 0.95;
+      clearcoat = 1.0;
     }
 
-    this._buildInterior();
-    this._buildWheels();
-    this.createCarLights();
-  }
-
-  _buildApexGT() {
-    const chassisGeom = new THREE.BoxGeometry(4.4, 0.7, 9.4);
-    const chassis = new THREE.Mesh(chassisGeom, this.bodyMat);
-    chassis.position.y = 0.58;
-    chassis.castShadow = true;
-    this.bodySubGroup.add(chassis);
-
-    const bumper = new THREE.Mesh(new THREE.BoxGeometry(4.35, 0.45, 1.2), this.carbonMat);
-    bumper.position.set(0, 0.42, 4.4);
-    this.bodySubGroup.add(bumper);
-
-    const intercooler = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.3, 0.2), this.chromeMat);
-    intercooler.position.set(0, 0.38, 4.95);
-    this.bodySubGroup.add(intercooler);
-
-    const splitter = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.08, 1.2), this.carbonMat);
-    splitter.position.set(0, 0.24, 4.6);
-    this.bodySubGroup.add(splitter);
-
-    const hood = new THREE.Mesh(new THREE.BoxGeometry(4.1, 0.32, 3.4), this.bodyMat);
-    hood.position.set(0, 0.78, 2.6);
-    this.bodySubGroup.add(hood);
-
-    const leftMirror = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.25, 0.35), this.carbonMat);
-    leftMirror.position.set(2.35, 1.12, 0.9);
-    const rightMirror = leftMirror.clone();
-    rightMirror.position.x = -2.35;
-    this.bodySubGroup.add(leftMirror, rightMirror);
-
-    const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.75, 4.6), this.glassMat);
-    cabin.position.set(0, 1.22, -0.4);
-    cabin.castShadow = true;
-    this.bodySubGroup.add(cabin);
-
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(3.45, 0.08, 3.5), this.carbonMat);
-    roof.position.set(0, 1.62, -0.4);
-    this.bodySubGroup.add(roof);
-
-    const diffuser = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.35, 1.0), this.carbonMat);
-    diffuser.position.set(0, 0.38, -4.5);
-    this.bodySubGroup.add(diffuser);
-
-    const tipGeom = new THREE.CylinderGeometry(0.18, 0.18, 0.6, 12);
-    tipGeom.rotateX(Math.PI / 2);
-    const tipPositions = [
-      new THREE.Vector3(1.3, 0.38, -4.85),
-      new THREE.Vector3(0.9, 0.38, -4.85),
-      new THREE.Vector3(-0.9, 0.38, -4.85),
-      new THREE.Vector3(-1.3, 0.38, -4.85),
-    ];
-    tipPositions.forEach((pos) => {
-      const tip = new THREE.Mesh(tipGeom, this.titaniumTipMat);
-      tip.position.copy(pos);
-      this.bodySubGroup.add(tip);
-      this.exhaustTips.push(pos);
+    return new THREE.MeshPhysicalMaterial({
+      color: this.bodyColorHex || 0xe11d48,
+      metalness: metalness,
+      roughness: roughness,
+      clearcoat: clearcoat,
+      clearcoatRoughness: 0.1,
     });
-
-    const wing = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.08, 1.0), this.carbonMat);
-    wing.position.set(0, 1.52, -4.3);
-    const stand1 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.6, 0.2), this.carbonMat);
-    stand1.position.set(1.4, 1.22, -4.3);
-    const stand2 = stand1.clone();
-    stand2.position.x = -1.4;
-    this.bodySubGroup.add(wing, stand1, stand2);
-
-    const haloGeom = new THREE.TorusGeometry(0.24, 0.04, 8, 16);
-    const leftHalo = new THREE.Mesh(haloGeom, this.haloRingMat);
-    leftHalo.position.set(1.6, 0.74, 4.75);
-    const rightHalo = leftHalo.clone();
-    rightHalo.position.x = -1.6;
-
-    const bulbGeom = new THREE.SphereGeometry(0.14, 8, 8);
-    const leftBulb = new THREE.Mesh(bulbGeom, this.headlightMat);
-    leftBulb.position.set(1.6, 0.74, 4.72);
-    const rightBulb = leftBulb.clone();
-    rightBulb.position.x = -1.6;
-
-    this.bodySubGroup.add(leftHalo, rightHalo, leftBulb, rightBulb);
-
-    const tLight = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.16, 0.1), this.taillightMat);
-    tLight.position.set(0, 0.74, -4.72);
-    this.bodySubGroup.add(tLight);
   }
 
-  _buildPhantomDrifter() {
-    const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.72, 9.6), this.bodyMat);
-    chassis.position.y = 0.56;
-    chassis.castShadow = true;
-    this.bodySubGroup.add(chassis);
+  _buildSpoiler(carbonMat) {
+    if (this.spoilerMesh) this.mesh.remove(this.spoilerMesh);
 
-    const frontFlares = new THREE.Mesh(new THREE.BoxGeometry(5.35, 0.55, 2.4), this.carbonMat);
-    frontFlares.position.set(0, 0.64, 2.7);
-    const rFlares = frontFlares.clone();
-    rFlares.position.z = -2.7;
-    this.bodySubGroup.add(frontFlares, rFlares);
+    const g = new THREE.Group();
+    if (this.spoilerType === 0) {
+      // Carbon GT Wing
+      const postL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.3), carbonMat);
+      postL.position.set(1.4, 1.15, -4.2);
+      const postR = postL.clone();
+      postR.position.x = -1.4;
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.08, 1.2), carbonMat);
+      blade.position.set(0, 1.45, -4.2);
+      g.add(postL, postR, blade);
+    } else if (this.spoilerType === 1) {
+      // Ducktail Lip
+      const lip = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.25, 0.6), carbonMat);
+      lip.position.set(0, 0.98, -4.6);
+      lip.rotation.x = -0.35;
+      g.add(lip);
+    } else {
+      // Aerofoil
+      const foil = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.15, 0.8), carbonMat);
+      foil.position.set(0, 1.25, -4.3);
+      g.add(foil);
+    }
 
-    const intercooler = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.35, 0.2), this.chromeMat);
-    intercooler.position.set(0, 0.38, 4.95);
-    this.bodySubGroup.add(intercooler);
-
-    const wing = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.1, 1.3), this.carbonMat);
-    wing.position.set(0, 1.82, -4.5);
-    const stand1 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.0), this.chromeMat);
-    stand1.position.set(1.6, 1.32, -4.5);
-    const stand2 = stand1.clone();
-    stand2.position.x = -1.6;
-    this.bodySubGroup.add(wing, stand1, stand2);
-
-    const tipGeom = new THREE.CylinderGeometry(0.24, 0.24, 0.7, 12);
-    tipGeom.rotateX(Math.PI / 2);
-    const tip1 = new THREE.Mesh(tipGeom, this.titaniumTipMat);
-    tip1.position.set(0.9, 0.42, -4.9);
-    const tip2 = tip1.clone();
-    tip2.position.x = -0.9;
-    this.bodySubGroup.add(tip1, tip2);
-    this.exhaustTips.push(new THREE.Vector3(0.9, 0.42, -4.9), new THREE.Vector3(-0.9, 0.42, -4.9));
-
-    const hLight1 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.25, 0.15), this.headlightMat);
-    hLight1.position.set(1.75, 0.74, 4.85);
-    const hLight2 = hLight1.clone();
-    hLight2.position.x = -1.75;
-
-    const tLight = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.18, 0.1), this.taillightMat);
-    tLight.position.set(0, 0.74, -4.85);
-    this.bodySubGroup.add(hLight1, hLight2, tLight);
-  }
-
-  _buildHyperionX() {
-    const bodyShape = new THREE.Shape();
-    bodyShape.moveTo(-2.2, -4.8);
-    bodyShape.lineTo(2.2, -4.8);
-    bodyShape.lineTo(2.35, 2.0);
-    bodyShape.lineTo(1.5, 4.8);
-    bodyShape.lineTo(-1.5, 4.8);
-    bodyShape.lineTo(-2.35, 2.0);
-    bodyShape.closePath();
-
-    const extrudeSettings = { depth: 0.7, bevelEnabled: true, bevelSize: 0.14, bevelThickness: 0.14 };
-    const bodyGeom = new THREE.ExtrudeGeometry(bodyShape, extrudeSettings);
-    bodyGeom.rotateX(-Math.PI / 2);
-    const body = new THREE.Mesh(bodyGeom, this.bodyMat);
-    body.position.y = 0.28;
-    body.castShadow = true;
-    this.bodySubGroup.add(body);
-
-    const canopyGeom = new THREE.SphereGeometry(1.6, 16, 12);
-    canopyGeom.scale(1.0, 0.55, 2.4);
-    const canopy = new THREE.Mesh(canopyGeom, this.glassMat);
-    canopy.position.set(0, 0.94, -0.4);
-    this.bodySubGroup.add(canopy);
-
-    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.85, 2.5), this.carbonMat);
-    fin.position.set(0, 1.26, -3.2);
-    this.bodySubGroup.add(fin);
-
-    const exhaustGeom = new THREE.CylinderGeometry(0.38, 0.44, 0.9, 14);
-    exhaustGeom.rotateX(Math.PI / 2);
-    const ex1 = new THREE.Mesh(exhaustGeom, this.titaniumTipMat);
-    ex1.position.set(0.9, 0.54, -4.85);
-    const ex2 = ex1.clone();
-    ex2.position.x = -0.9;
-    this.bodySubGroup.add(ex1, ex2);
-
-    const hStrip = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.15, 0.1), this.headlightMat);
-    hStrip.position.set(0, 0.74, 4.85);
-    const tStrip = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.15, 0.1), this.taillightMat);
-    tStrip.position.set(0, 0.74, -4.85);
-    this.bodySubGroup.add(hStrip, tStrip);
-
-    this.exhaustTips.push(new THREE.Vector3(0.9, 0.54, -5.1), new THREE.Vector3(-0.9, 0.54, -5.1));
-  }
-
-  _buildInterior() {
-    const seatGeom = new THREE.BoxGeometry(0.9, 1.1, 0.9);
-    const seatMat = new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.9 });
-    const seat1 = new THREE.Mesh(seatGeom, seatMat);
-    seat1.position.set(0.75, 1.02, -0.5);
-    const seat2 = seat1.clone();
-    seat2.position.x = -0.75;
-
-    const cageGeom = new THREE.CylinderGeometry(0.05, 0.05, 2.2);
-    const cageMat = new THREE.MeshStandardMaterial({ color: 0x00f0ff, metalness: 0.9 });
-    const cage1 = new THREE.Mesh(cageGeom, cageMat);
-    cage1.position.set(1.3, 1.18, -1.2);
-    cage1.rotation.z = 0.35;
-    const cage2 = cage1.clone();
-    cage2.position.x = -1.3;
-    cage2.rotation.z = -0.35;
-
-    const steerWheel = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.04, 8, 16), this.carbonMat);
-    steerWheel.position.set(0.75, 1.22, 0.4);
-    steerWheel.rotation.x = -0.4;
-
-    this.bodySubGroup.add(seat1, seat2, cage1, cage2, steerWheel);
+    this.spoilerMesh = g;
+    this.mesh.add(g);
   }
 
   _buildWheels() {
-    const wheelRadius = 0.55;
-    const wheelWidth = 0.45;
+    const tireMat = new THREE.MeshStandardMaterial({ color: 0x18191c, roughness: 0.85 });
+    const rimMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.95, roughness: 0.15 });
 
-    const tireGeom = new THREE.CylinderGeometry(wheelRadius, wheelRadius, wheelWidth, 18);
-    tireGeom.rotateZ(Math.PI / 2);
-
-    const rimGeom = new THREE.CylinderGeometry(wheelRadius * 0.74, wheelRadius * 0.74, wheelWidth + 0.02, 14);
+    const wheelGeom = new THREE.CylinderGeometry(0.52, 0.52, 0.45, 18);
+    wheelGeom.rotateZ(Math.PI / 2);
+    const rimGeom = new THREE.CylinderGeometry(0.38, 0.38, 0.47, 14);
     rimGeom.rotateZ(Math.PI / 2);
 
-    const discGeom = new THREE.CylinderGeometry(0.38, 0.38, 0.08, 16);
-    discGeom.rotateZ(Math.PI / 2);
-    const caliperGeom = new THREE.BoxGeometry(0.12, 0.22, 0.28);
-
-    const makeWheel = (isLeft) => {
+    const makeWheel = (x, z) => {
       const g = new THREE.Group();
-      const tire = new THREE.Mesh(tireGeom, this.tireMat);
-      const rim = new THREE.Mesh(rimGeom, this.rimMat);
-      const disc = new THREE.Mesh(discGeom, this.discMat);
-      const caliper = new THREE.Mesh(caliperGeom, this.caliperMat);
-      caliper.position.set(isLeft ? 0.08 : -0.08, 0.18, 0);
-
-      tire.castShadow = true;
-      g.add(tire, rim, disc, caliper);
+      const tire = new THREE.Mesh(wheelGeom, tireMat);
+      const rim = new THREE.Mesh(rimGeom, rimMat);
+      g.add(tire, rim);
+      g.position.set(x, 0.52, z);
+      g.castShadow = true;
+      this.mesh.add(g);
       return g;
     };
 
-    this.wheelFL = makeWheel(true);
-    this.wheelFR = makeWheel(false);
-    this.wheelRL = makeWheel(true);
-    this.wheelRR = makeWheel(false);
-
-    const trackWidth = this.carType === 1 ? 2.4 : 2.15;
-    const wheelBase = 2.85;
-
-    this.frontLeftWheelGroup.position.set(trackWidth, 0.55, wheelBase);
-    this.frontRightWheelGroup.position.set(-trackWidth, 0.55, wheelBase);
-    this.rearLeftWheelGroup.position.set(trackWidth, 0.55, -wheelBase);
-    this.rearRightWheelGroup.position.set(-trackWidth, 0.55, -wheelBase);
-
-    this.frontLeftWheelGroup.add(this.wheelFL);
-    this.frontRightWheelGroup.add(this.wheelFR);
-    this.rearLeftWheelGroup.add(this.wheelRL);
-    this.rearRightWheelGroup.add(this.wheelRR);
-
-    this.mesh.add(
-      this.frontLeftWheelGroup,
-      this.frontRightWheelGroup,
-      this.rearLeftWheelGroup,
-      this.rearRightWheelGroup
-    );
+    this.wFL = makeWheel(1.95, 2.7);
+    this.wFR = makeWheel(-1.95, 2.7);
+    this.wRL = makeWheel(1.95, -2.7);
+    this.wRR = makeWheel(-1.95, -2.7);
+    this.wheels = [this.wFL, this.wFR, this.wRL, this.wRR];
   }
 
-  createCarLights() {
-    this.underglowLight = new THREE.PointLight(this.underglowColor, 4.2, 16);
-    this.underglowLight.position.set(0, 0.35, 0);
-    this.mesh.add(this.underglowLight);
-
-    const planeGeom = new THREE.PlaneGeometry(5.4, 10.2);
-    planeGeom.rotateX(-Math.PI / 2);
-    this.underglowMat = new THREE.MeshBasicMaterial({
-      color: this.underglowColor,
+  initParticleSystems() {
+    // 1. Tire Smoke
+    const smokeCount = 120;
+    const smokeGeom = new THREE.BufferGeometry();
+    const sPos = new Float32Array(smokeCount * 3);
+    smokeGeom.setAttribute("position", new THREE.BufferAttribute(sPos, 3));
+    const smokeMat = new THREE.PointsMaterial({
+      color: 0xd1d5db,
+      size: 1.8,
       transparent: true,
-      opacity: 0.88,
-      side: THREE.DoubleSide,
+      opacity: 0.45,
       depthWrite: false,
     });
-    this.underglowMesh = new THREE.Mesh(planeGeom, this.underglowMat);
-    this.underglowMesh.position.y = 0.22;
-    this.mesh.add(this.underglowMesh);
+    this.smokePoints = new THREE.Points(smokeGeom, smokeMat);
+    this.scene.add(this.smokePoints);
+    this.smokePool = [];
+    for (let i = 0; i < smokeCount; i++) {
+      this.smokePool.push({ pos: new THREE.Vector3(0, -999, 0), life: 0, vel: new THREE.Vector3() });
+    }
 
-    this.headlightLeft = new THREE.SpotLight(0xffffff, 5.0, 75, Math.PI / 5, 0.35);
-    this.headlightLeft.position.set(1.5, 0.74, 4.5);
-    this.headlightLeft.target.position.set(1.5, 0.12, 35);
-
-    this.headlightRight = new THREE.SpotLight(0xffffff, 5.0, 75, Math.PI / 5, 0.35);
-    this.headlightRight.position.set(-1.5, 0.74, 4.5);
-    this.headlightRight.target.position.set(-1.5, 0.12, 35);
-
-    this.mesh.add(this.headlightLeft, this.headlightLeft.target, this.headlightRight, this.headlightRight.target);
-
-    this.tailPointLight = new THREE.PointLight(0xff0022, 2.5, 10);
-    this.tailPointLight.position.set(0, 0.74, -4.8);
-    this.mesh.add(this.tailPointLight);
-  }
-
-  createExhaustFlames() {
-    const flameGeom = new THREE.ConeGeometry(0.3, 1.8, 12);
-    flameGeom.rotateX(-Math.PI / 2);
-    const flameMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.9 });
-
-    this.exhaustTips.forEach((pos) => {
-      const flame = new THREE.Mesh(flameGeom, flameMat.clone());
-      flame.position.copy(pos).add(new THREE.Vector3(0, 0, -0.9));
-      flame.visible = false;
-      this.bodySubGroup.add(flame);
-      this.flameCones.push(flame);
+    // 2. Collision Sparks
+    const sparkCount = 80;
+    const sparkGeom = new THREE.BufferGeometry();
+    const spPos = new Float32Array(sparkCount * 3);
+    sparkGeom.setAttribute("position", new THREE.BufferAttribute(spPos, 3));
+    const sparkMat = new THREE.PointsMaterial({
+      color: 0xffaa00,
+      size: 0.8,
+      transparent: true,
+      opacity: 0.9,
+      depthWrite: false,
     });
-  }
-
-  createSmokeParticles() {
-    const pGeom = new THREE.SphereGeometry(0.4, 6, 6);
-    const pMat = new THREE.MeshBasicMaterial({ color: 0xe2e8f0, transparent: true, opacity: 0.6 });
-
-    for (let i = 0; i < 80; i++) {
-      const mesh = new THREE.Mesh(pGeom, pMat.clone());
-      mesh.visible = false;
-      this.scene.add(mesh);
-      this.smokeParticles.push({
-        mesh,
-        life: 0,
-        maxLife: 0.65,
-        velocity: new THREE.Vector3(),
-      });
+    this.sparkPoints = new THREE.Points(sparkGeom, sparkMat);
+    this.scene.add(this.sparkPoints);
+    this.sparkPool = [];
+    for (let i = 0; i < sparkCount; i++) {
+      this.sparkPool.push({ pos: new THREE.Vector3(0, -999, 0), life: 0, vel: new THREE.Vector3() });
     }
   }
 
-  createSparkParticles() {
-    const sGeom = new THREE.BoxGeometry(0.15, 0.15, 0.4);
-    const sMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
-
-    for (let i = 0; i < 40; i++) {
-      const mesh = new THREE.Mesh(sGeom, sMat.clone());
-      mesh.visible = false;
-      this.scene.add(mesh);
-      this.sparkParticles.push({
-        mesh,
-        life: 0,
-        maxLife: 0.3,
-        velocity: new THREE.Vector3(),
-      });
-    }
+  initSkidmarks() {
+    this.skidmarks = [];
   }
 
-  createSkidmarks() {
-    const skidGeom = new THREE.PlaneGeometry(0.45, 1.8);
-    skidGeom.rotateX(-Math.PI / 2);
-    const skidMat = new THREE.MeshBasicMaterial({ color: 0x111317, transparent: true, opacity: 0.45, depthWrite: false });
-
-    for (let i = 0; i < 60; i++) {
-      const mesh = new THREE.Mesh(skidGeom, skidMat.clone());
-      mesh.visible = false;
-      mesh.position.y = 0.13;
-      this.scene.add(mesh);
-      this.skidmarks.push({ mesh, life: 0, maxLife: 8.0 });
-    }
-  }
-
-  emitSkidmark(isLeft) {
-    const s = this.skidmarks.find((m) => !m.mesh.visible);
-    if (!s) return;
-
-    const trackWidth = this.carType === 1 ? 2.4 : 2.15;
-    const offset = new THREE.Vector3(isLeft ? trackWidth : -trackWidth, 0, -2.85);
-    offset.applyQuaternion(this.mesh.quaternion);
-
-    s.mesh.position.copy(this.mesh.position).add(offset);
-    s.mesh.position.y = 0.13;
-    s.mesh.rotation.y = this.heading;
-    s.life = 0;
-    s.mesh.material.opacity = 0.45;
-    s.mesh.visible = true;
-  }
-
-  emitSparks(pos) {
-    for (let i = 0; i < 8; i++) {
-      const sObj = this.sparkParticles.find((p) => !p.mesh.visible);
-      if (!sObj) break;
-
-      sObj.mesh.position.copy(pos);
-      sObj.velocity.set(
-        (Math.random() - 0.5) * 14,
-        2.0 + Math.random() * 8,
-        (Math.random() - 0.5) * 14
-      );
-      sObj.life = 0;
-      sObj.mesh.visible = true;
-    }
-  }
-
-  emitTireSmoke(isLeft) {
-    const pObj = this.smokeParticles.find((p) => !p.mesh.visible);
-    if (!pObj) return;
-
-    const trackWidth = this.carType === 1 ? 2.4 : 2.15;
-    const offset = new THREE.Vector3(isLeft ? trackWidth : -trackWidth, 0.25, -2.85);
-    offset.applyQuaternion(this.mesh.quaternion);
-    pObj.mesh.position.copy(this.mesh.position).add(offset);
-
-    pObj.velocity.set(
-      (Math.random() - 0.5) * 4,
-      1.6 + Math.random() * 2.2,
-      (Math.random() - 0.5) * 4
-    );
-
-    pObj.life = 0;
-    pObj.maxLife = 0.55 + Math.random() * 0.3;
-    pObj.mesh.scale.setScalar(1.0 + Math.random() * 0.8);
-    pObj.mesh.visible = true;
+  setCarType(typeIndex) {
+    this.carTypeIndex = typeIndex;
+    this.initCarModel();
   }
 
   setBodyColor(hex) {
-    this.bodyColor = hex;
-    if (this.bodyMat) {
-      this.bodyMat.color.setHex(hex);
-      this.bodyMat.emissive.setHex(hex);
-      this.bodyMat.emissiveIntensity = 0.22;
+    this.bodyColorHex = hex;
+    this.initCarModel();
+  }
+
+  setSpoilerType(type) {
+    this.spoilerType = type;
+    this.initCarModel();
+  }
+
+  setFinishType(finish) {
+    this.finishType = finish;
+    this.initCarModel();
+  }
+
+  emitSparks(pos) {
+    for (let i = 0; i < 20; i++) {
+      const p = this.sparkPool.find((s) => s.life <= 0);
+      if (!p) break;
+      p.pos.copy(pos);
+      p.vel.set((Math.random() - 0.5) * 16, Math.random() * 12 + 2, (Math.random() - 0.5) * 16);
+      p.life = 0.45;
     }
   }
 
-  setUnderglowColor(hex) {
-    this.underglowColor = hex;
-    if (this.underglowMat) this.underglowMat.color.setHex(hex);
-    if (this.underglowLight) this.underglowLight.color.setHex(hex);
-  }
-
-  setCarType(typeIdx) {
-    this.carType = typeIdx;
-    this.buildCarModel();
-    this.createExhaustFlames();
-  }
-
-  // =========================================================================
-  // 🏎️ SPACE = DRIFT, SHIFT = NITRO BOOST, PURE GRIP TURNS
-  // =========================================================================
   updatePhysics(delta, trackManager) {
-    // 1. NITRO BOOST (SHIFT)
-    const isNitro = this.nitroActive && this.nitroFuel > 0;
-    const topSpd = isNitro ? this.nitroMaxSpeed : this.maxSpeed;
-    const accel = isNitro ? this.nitroAccelRate : this.accelRate;
+    // 1. Acceleration & Top Speed
+    const maxForwardSpeed = this.nitroActive && this.nitroFuel > 0 ? 360 : 255;
+    const maxReverseSpeed = -75;
+    const accelRate = (this.nitroActive && this.nitroFuel > 0 ? 190 : 110) * delta;
+    const brakeRate = 220 * delta;
+    const coastDrag = 38 * delta;
 
-    if (isNitro) {
-      this.nitroFuel = Math.max(0, this.nitroFuel - delta * 25);
-      this.flameCones.forEach((f) => (f.visible = true));
-    } else {
-      this.flameCones.forEach((f) => (f.visible = false));
+    if (this.nitroActive && this.nitroFuel > 0) {
+      this.nitroFuel = Math.max(0, this.nitroFuel - delta * 24);
     }
 
-    // 2. Acceleration & Braking
     if (this.throttleInput > 0) {
-      if (this.speed < topSpd) {
-        this.speed = Math.min(topSpd, this.speed + accel * this.throttleInput * delta);
-      }
+      this.speed = Math.min(maxForwardSpeed, this.speed + accelRate);
     } else if (this.throttleInput < 0) {
-      if (this.speed > 5) {
-        this.speed = Math.max(0, this.speed - this.brakeRate * delta);
-        if (this.speed > 40 && Math.random() < 0.3) {
-          this.emitSkidmark(true);
-          this.emitSkidmark(false);
-        }
-      } else {
-        this.speed = Math.max(this.maxReverseSpeed, this.speed - this.accelRate * 0.7 * delta);
-      }
+      if (this.speed > 5) this.speed = Math.max(0, this.speed - brakeRate);
+      else this.speed = Math.max(maxReverseSpeed, this.speed - accelRate * 0.75);
     } else {
-      if (this.speed > 0) this.speed = Math.max(0, this.speed - this.coastDecelRate * delta);
-      if (this.speed < 0) this.speed = Math.min(0, this.speed + this.coastDecelRate * delta);
+      if (this.speed > 0) this.speed = Math.max(0, this.speed - coastDrag);
+      else if (this.speed < 0) this.speed = Math.min(0, this.speed + coastDrag);
     }
 
-    // 3. Smooth Steering
-    this.steerAngle = THREE.MathUtils.lerp(this.steerAngle, this.steerInput * 0.45, delta * 8);
-    this.frontLeftWheelGroup.rotation.y = this.steerAngle;
-    this.frontRightWheelGroup.rotation.y = this.steerAngle;
+    // 2. Cornering & Space Drift
+    const speedRatio = Math.min(1.0, Math.abs(this.speed) / 100);
+    const baseTurnSpeed = 1.35;
+    const driftTurnMultiplier = 1.95;
 
-    const absSpeed = Math.abs(this.speed);
-
-    // 4. DRIFT ONLY ON SPACE
-    if (this.driftActive && absSpeed > 30 && Math.abs(this.steerInput) > 0.1) {
+    let effectiveTurnSpeed = baseTurnSpeed;
+    if (this.driftActive && Math.abs(this.speed) > 40) {
       this.isDrifting = true;
-      const targetDrift = this.steerInput * 0.42;
-      this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, targetDrift, delta * 6);
+      effectiveTurnSpeed *= driftTurnMultiplier;
       this.driftMultiplier = Math.min(8.0, this.driftMultiplier + delta * 0.9);
-      const pts = absSpeed * Math.abs(this.driftAngle) * this.driftMultiplier * delta * 18;
-      this.currentDriftScore += pts;
-      this.nitroFuel = Math.min(100, this.nitroFuel + delta * 15);
-
-      if (Math.random() < 0.9) this.emitTireSmoke(true);
-      if (Math.random() < 0.9) this.emitTireSmoke(false);
-      if (Math.random() < 0.4) {
-        this.emitSkidmark(true);
-        this.emitSkidmark(false);
-      }
+      this.currentDriftScore += Math.abs(this.speed) * delta * 18 * this.driftMultiplier;
     } else {
-      this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, 0, delta * 10);
-      if (Math.abs(this.driftAngle) < 0.04) {
-        if (this.isDrifting && this.currentDriftScore > 50) {
-          this.totalScore += Math.round(this.currentDriftScore);
-          cyberAudio.playScoreChime();
-          this.currentDriftScore = 0;
-          this.driftMultiplier = 1.0;
-        }
-        this.isDrifting = false;
+      this.isDrifting = false;
+      if (this.currentDriftScore > 0) {
+        this.totalScore += Math.round(this.currentDriftScore);
+        cyberAudio.playScoreChime();
+        this.currentDriftScore = 0;
+        this.driftMultiplier = 1.0;
       }
     }
 
-    // 5. Smooth Heading Progression
-    const speedRatio = Math.min(1.0, (absSpeed + 15) / 80);
-    const turnFactor = this.isDrifting ? 1.35 : 1.0;
-    const effectiveTurn = this.steerInput * this.baseTurnSpeed * speedRatio * turnFactor;
+    if (this.steerInput !== 0) {
+      this.angularVelocity = -this.steerInput * effectiveTurnSpeed * speedRatio;
+    } else {
+      this.angularVelocity *= Math.pow(0.01, delta);
+    }
 
-    this.heading += effectiveTurn * delta * Math.sign(this.speed || 1);
-    this.mesh.rotation.y = this.heading + this.driftAngle;
+    this.heading += this.angularVelocity * delta;
 
-    // 6. Road Movement
+    // 3. Movement & Airborne Jumping Gravity
     const speedMs = (this.speed * 1000) / 3600;
-    const forwardX = Math.sin(this.heading);
-    const forwardZ = Math.cos(this.heading);
+    this.position.x += Math.sin(this.heading) * speedMs * delta;
+    this.position.z += Math.cos(this.heading) * speedMs * delta;
 
-    this.position.x += forwardX * speedMs * delta;
-    this.position.z += forwardZ * speedMs * delta;
-    this.position.y = 0.12;
+    if (this.verticalVelocity !== 0 || this.position.y > 0.12) {
+      this.position.y += this.verticalVelocity * delta;
+      this.verticalVelocity -= 28.0 * delta; // Gravity
+      if (this.position.y <= 0.12) {
+        this.position.y = 0.12;
+        this.verticalVelocity = 0;
+      }
+    }
+
     this.mesh.position.copy(this.position);
+    this.mesh.rotation.y = this.heading;
 
-    // 7. Suspension Leans
-    const targetRoll = THREE.MathUtils.clamp(-this.steerInput * (absSpeed / 200) * 0.06, -0.08, 0.08);
-    this.bodyRoll = THREE.MathUtils.lerp(this.bodyRoll, targetRoll, delta * 8);
+    // Steering wheel animation
+    if (this.wFL && this.wFR) {
+      const steerAngle = -this.steerInput * 0.45;
+      this.wFL.rotation.y = steerAngle;
+      this.wFR.rotation.y = steerAngle;
+    }
+    for (const w of this.wheels) {
+      w.children[0].rotation.x += speedMs * delta * 4;
+    }
 
-    const targetPitch = this.throttleInput > 0 ? -0.025 : (this.throttleInput < 0 ? 0.035 : 0);
-    this.bodyPitch = THREE.MathUtils.lerp(this.bodyPitch, targetPitch, delta * 8);
-
-    this.bodySubGroup.rotation.z = this.bodyRoll;
-    this.bodySubGroup.rotation.x = this.bodyPitch;
-
-    // 8. Rotate Wheels
-    const wheelRot = (speedMs * delta * 4) / 0.55;
-    this.wheelFL.rotation.x += wheelRot;
-    this.wheelFR.rotation.x += wheelRot;
-    this.wheelRL.rotation.x += wheelRot;
-    this.wheelRR.rotation.x += wheelRot;
-
+    // 4. City Collisions
     if (trackManager) {
       trackManager.handleCarTrackCollision(this);
     }
 
-    // Audio Engine
-    this.rpm = 800 + (absSpeed % 55) * 140 + (this.throttleInput > 0 ? 1400 : 0);
-    const rpmRatio = Math.min(1.0, (this.rpm - 800) / 7500);
-    cyberAudio.update(rpmRatio, absSpeed, Math.abs(this.driftAngle), isNitro, false, false);
+    // 5. Audio Engine
+    const rpmRatio = Math.min(1.0, (Math.abs(this.speed) % 65) / 65 + (this.throttleInput > 0 ? 0.3 : 0));
+    cyberAudio.update(
+      rpmRatio,
+      Math.abs(this.speed),
+      this.isDrifting ? 0.8 : 0.0,
+      this.nitroActive && this.nitroFuel > 0,
+      trackManager ? trackManager.isPoliceNearby : false,
+      false
+    );
 
-    // Particles & Decals
-    for (const p of this.smokeParticles) {
-      if (!p.mesh.visible) continue;
-      p.life += delta;
-      if (p.life >= p.maxLife) {
-        p.mesh.visible = false;
+    this._updateParticles(delta);
+  }
+
+  _updateParticles(delta) {
+    const sPos = this.smokePoints.geometry.attributes.position;
+    for (let i = 0; i < this.smokePool.length; i++) {
+      const p = this.smokePool[i];
+      if (p.life > 0) {
+        p.pos.addScaledVector(p.vel, delta);
+        p.life -= delta;
+        sPos.setXYZ(i, p.pos.x, p.pos.y, p.pos.z);
       } else {
-        p.mesh.position.addScaledVector(p.velocity, delta);
-        p.mesh.scale.multiplyScalar(1.04);
-        p.mesh.material.opacity = (1 - p.life / p.maxLife) * 0.6;
+        sPos.setXYZ(i, 0, -999, 0);
       }
     }
+    sPos.needsUpdate = true;
 
-    for (const s of this.sparkParticles) {
-      if (!s.mesh.visible) continue;
-      s.life += delta;
-      if (s.life >= s.maxLife) {
-        s.mesh.visible = false;
+    const spPos = this.sparkPoints.geometry.attributes.position;
+    for (let i = 0; i < this.sparkPool.length; i++) {
+      const p = this.sparkPool[i];
+      if (p.life > 0) {
+        p.pos.addScaledVector(p.vel, delta);
+        p.vel.y -= delta * 24;
+        p.life -= delta;
+        spPos.setXYZ(i, p.pos.x, p.pos.y, p.pos.z);
       } else {
-        s.mesh.position.addScaledVector(s.velocity, delta);
-        s.velocity.y -= delta * 30;
+        spPos.setXYZ(i, 0, -999, 0);
       }
     }
-
-    for (const skid of this.skidmarks) {
-      if (!skid.mesh.visible) continue;
-      skid.life += delta;
-      if (skid.life >= skid.maxLife) {
-        skid.mesh.visible = false;
-      } else {
-        skid.mesh.material.opacity = (1 - skid.life / skid.maxLife) * 0.45;
-      }
-    }
+    spPos.needsUpdate = true;
   }
 
   reset() {
     this.position.set(0, 0.12, 0);
-    this.mesh.position.copy(this.position);
-    this.heading = 0;
     this.speed = 0;
-    this.steerAngle = 0;
-    this.driftAngle = 0;
-    this.bodyRoll = 0;
-    this.bodyPitch = 0;
-    this.isDrifting = false;
-    this.currentDriftScore = 0;
-    this.driftMultiplier = 1.0;
+    this.heading = 0;
+    this.angularVelocity = 0;
+    this.verticalVelocity = 0;
     this.nitroFuel = 100;
+    this.currentDriftScore = 0;
+    this.mesh.position.copy(this.position);
+    this.mesh.rotation.set(0, 0, 0);
   }
 }

@@ -1,13 +1,15 @@
-// audio.js - Cyber Drift 3D Sound Engine with Synthwave Music Radio & Speed Camera Sounds
-
+// audio.js - Realistic Sound Engine: Multi-Station Radio, Bullet Time Filter, Rain & Engine Acoustics
 class CyberAudioEngine {
   constructor() {
     this.ctx = null;
     this.isInitialized = false;
     this.isMuted = false;
     this.isRadioPlaying = true;
+    this.radioStation = 0; // 0: Night Drive, 1: High-Octane, 2: Deep Groove
 
     this.masterGain = null;
+    this.bulletTimeFilter = null;
+
     this.engineGain = null;
     this.engineOsc1 = null;
     this.engineOsc2 = null;
@@ -27,7 +29,7 @@ class CyberAudioEngine {
     this.heliGain = null;
     this.heliOsc = null;
 
-    // Synthwave Radio
+    this.rainGain = null;
     this.radioGain = null;
     this.radioStep = 0;
     this.radioInterval = null;
@@ -41,7 +43,14 @@ class CyberAudioEngine {
 
       this.masterGain = this.ctx.createGain();
       this.masterGain.gain.setValueAtTime(0.85, this.ctx.currentTime);
-      this.masterGain.connect(this.ctx.destination);
+
+      // Bullet-Time Master Low-Pass Filter
+      this.bulletTimeFilter = this.ctx.createBiquadFilter();
+      this.bulletTimeFilter.type = "lowpass";
+      this.bulletTimeFilter.frequency.setValueAtTime(20000, this.ctx.currentTime);
+
+      this.masterGain.connect(this.bulletTimeFilter);
+      this.bulletTimeFilter.connect(this.ctx.destination);
 
       this.radioGain = this.ctx.createGain();
       this.radioGain.gain.setValueAtTime(0.35, this.ctx.currentTime);
@@ -53,7 +62,8 @@ class CyberAudioEngine {
       this._setupNitroSound();
       this._setupPoliceSiren();
       this._setupHelicopterSound();
-      this._startSynthwaveRadio();
+      this._setupRainSound();
+      this._startRadioSequencer();
 
       this.isInitialized = true;
     } catch (e) {
@@ -205,84 +215,137 @@ class CyberAudioEngine {
     this.heliOsc.start();
   }
 
-  // 📻 Synthwave Radio Beat Generator (Kick, Snare, Hihat, Synth Bass)
-  _startSynthwaveRadio() {
-    const bassNotes = [110, 110, 130.81, 110, 98, 98, 110, 123.47]; // A2, C3, G2, B2
-    const stepDuration = 0.13; // ~115 BPM 16th notes
+  _setupRainSound() {
+    this.rainGain = this.ctx.createGain();
+    this.rainGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
 
-    const playDrum = () => {
+    const noiseBuffer = this._createNoiseBuffer();
+    const rainNoise = this.ctx.createBufferSource();
+    rainNoise.buffer = noiseBuffer;
+    rainNoise.loop = true;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(800, this.ctx.currentTime);
+
+    rainNoise.connect(filter);
+    filter.connect(this.rainGain);
+    this.rainGain.connect(this.masterGain);
+
+    rainNoise.start();
+  }
+
+  setRainActive(isRaining) {
+    if (!this.rainGain || !this.ctx) return;
+    this.rainGain.gain.setTargetAtTime(isRaining ? 0.35 : 0.0, this.ctx.currentTime, 0.5);
+  }
+
+  setBulletTime(isActive) {
+    if (!this.bulletTimeFilter || !this.ctx) return;
+    this.bulletTimeFilter.frequency.setTargetAtTime(isActive ? 550 : 20000, this.ctx.currentTime, 0.08);
+  }
+
+  // 📻 3 Multi-Station Realistic In-Car Audio Sequencer
+  _startRadioSequencer() {
+    const playStep = () => {
       if (!this.isRadioPlaying || this.isMuted || !this.ctx) return;
       const t = this.ctx.currentTime;
       const step = this.radioStep % 16;
       this.radioStep++;
 
-      // 1. Kick on 0, 4, 8, 12
-      if (step % 4 === 0) {
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.frequency.setValueAtTime(140, t);
-        osc.frequency.exponentialRampToValueAtTime(32, t + 0.1);
-        gain.gain.setValueAtTime(0.4, t);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-        osc.connect(gain);
-        gain.connect(this.radioGain);
-        osc.start(t);
-        osc.stop(t + 0.13);
+      if (this.radioStation === 0) {
+        // Station 1: Night Drive (Retro 115 BPM)
+        const notes = [110, 110, 130.81, 110, 98, 98, 110, 123.47];
+        if (step % 4 === 0) this._playKick(t, 140, 32);
+        if (step === 4 || step === 12) this._playSnare(t, 1200);
+        if (step % 2 === 0) this._playHiHat(t);
+        this._playBass(t, notes[Math.floor(step / 2) % notes.length]);
+      } else if (this.radioStation === 1) {
+        // Station 2: High-Octane (Fast Drive 130 BPM)
+        const notes = [73.42, 73.42, 82.41, 73.42, 98.0, 87.31, 73.42, 110.0];
+        if (step % 2 === 0) this._playKick(t, 160, 28);
+        if (step === 4 || step === 12) this._playSnare(t, 1600);
+        this._playHiHat(t);
+        this._playBass(t, notes[Math.floor(step / 2) % notes.length], "sawtooth");
+      } else {
+        // Station 3: Deep Highway Groove (122 BPM)
+        const notes = [65.41, 65.41, 65.41, 77.78, 65.41, 65.41, 87.31, 65.41];
+        if (step % 4 === 0) this._playKick(t, 120, 35);
+        if (step === 4 || step === 12) this._playSnare(t, 900);
+        if (step % 2 === 0) this._playHiHat(t);
+        this._playBass(t, notes[Math.floor(step / 2) % notes.length], "triangle");
       }
-
-      // 2. Snare on 4, 12
-      if (step === 4 || step === 12) {
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = this._createNoiseBuffer();
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = "bandpass";
-        filter.frequency.setValueAtTime(1200, t);
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(0.25, t);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-        noise.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.radioGain);
-        noise.start(t);
-        noise.stop(t + 0.16);
-      }
-
-      // 3. Hi-Hat on every 2nd step
-      if (step % 2 === 0) {
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = this._createNoiseBuffer();
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = "highpass";
-        filter.frequency.setValueAtTime(7000, t);
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(0.08, t);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
-        noise.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.radioGain);
-        noise.start(t);
-        noise.stop(t + 0.06);
-      }
-
-      // 4. Synth Bassline
-      const note = bassNotes[Math.floor(step / 2) % bassNotes.length];
-      const bassOsc = this.ctx.createOscillator();
-      const bassFilter = this.ctx.createBiquadFilter();
-      const bassGain = this.ctx.createGain();
-      bassOsc.type = "sawtooth";
-      bassOsc.frequency.setValueAtTime(note, t);
-      bassFilter.type = "lowpass";
-      bassFilter.frequency.setValueAtTime(450, t);
-      bassGain.gain.setValueAtTime(0.18, t);
-      bassGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-      bassOsc.connect(bassFilter);
-      bassFilter.connect(bassGain);
-      bassGain.connect(this.radioGain);
-      bassOsc.start(t);
-      bassOsc.stop(t + 0.13);
     };
 
-    this.radioInterval = setInterval(playDrum, 130);
+    this.radioInterval = setInterval(playStep, 125);
+  }
+
+  _playKick(t, startFreq, endFreq) {
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.frequency.setValueAtTime(startFreq, t);
+    osc.frequency.exponentialRampToValueAtTime(endFreq, t + 0.09);
+    gain.gain.setValueAtTime(0.4, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
+    osc.connect(gain);
+    gain.connect(this.radioGain);
+    osc.start(t);
+    osc.stop(t + 0.12);
+  }
+
+  _playSnare(t, freq) {
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = this._createNoiseBuffer();
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(freq, t);
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.24, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.radioGain);
+    noise.start(t);
+    noise.stop(t + 0.15);
+  }
+
+  _playHiHat(t) {
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = this._createNoiseBuffer();
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "highpass";
+    filter.frequency.setValueAtTime(7000, t);
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.07, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.radioGain);
+    noise.start(t);
+    noise.stop(t + 0.06);
+  }
+
+  _playBass(t, note, type = "sawtooth") {
+    const bassOsc = this.ctx.createOscillator();
+    const bassFilter = this.ctx.createBiquadFilter();
+    const bassGain = this.ctx.createGain();
+    bassOsc.type = type;
+    bassOsc.frequency.setValueAtTime(note, t);
+    bassFilter.type = "lowpass";
+    bassFilter.frequency.setValueAtTime(450, t);
+    bassGain.gain.setValueAtTime(0.18, t);
+    bassGain.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
+    bassOsc.connect(bassFilter);
+    bassFilter.connect(bassGain);
+    bassGain.connect(this.radioGain);
+    bassOsc.start(t);
+    bassOsc.stop(t + 0.12);
+  }
+
+  nextRadioStation() {
+    this.radioStation = (this.radioStation + 1) % 3;
+    const names = ["📻 NIGHT DRIVE", "📻 HIGH-OCTANE", "📻 DEEP GROOVE"];
+    return names[this.radioStation];
   }
 
   toggleRadio() {
@@ -317,7 +380,6 @@ class CyberAudioEngine {
     const targetNitro = isNitro ? 0.55 : 0.0;
     this.nitroGain.gain.setTargetAtTime(targetNitro, t, 0.05);
 
-    // 🚨 LOUD POLICE SIREN WHEN NEARBY
     if (isPoliceNearby) {
       const sirenFreq = 650 + Math.sin(t * 5.2) * 380;
       this.sirenOsc.frequency.setValueAtTime(sirenFreq, t);
@@ -333,7 +395,6 @@ class CyberAudioEngine {
     }
   }
 
-  // 📸 Speed Camera Shutter Flash Sound
   playCameraFlash() {
     if (!this.isInitialized || this.isMuted) return;
     const t = this.ctx.currentTime;
@@ -371,7 +432,6 @@ class CyberAudioEngine {
   playTakedownCrunch() {
     if (!this.isInitialized || this.isMuted) return;
     const t = this.ctx.currentTime;
-
     const boomOsc = this.ctx.createOscillator();
     const boomGain = this.ctx.createGain();
     boomOsc.type = "sine";

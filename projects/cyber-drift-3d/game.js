@@ -1,4 +1,4 @@
-// game.js - Cyber Drift 3D Main Director, Diverse Skyscrapers, Clean Screen & Synthwave Radio
+// game.js - Cyber Drift 3D Main Director, AI Rivals Race, Bullet Time Focus, Weather & Radio
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { CyberCar } from "./car.js";
 import { CityTrackManager } from "./city.js";
@@ -27,6 +27,7 @@ export class CyberDriftGame {
       right: false,
       drift: false,
       nitro: false,
+      focus: false,
     };
 
     this.initThree();
@@ -41,7 +42,7 @@ export class CyberDriftGame {
 
   initThree() {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x141f33);
+    this.scene.background = new THREE.Color(0x111827);
 
     this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.2, 5000);
     this.camera.position.set(0, 4, 12);
@@ -50,7 +51,7 @@ export class CyberDriftGame {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.45;
+    this.renderer.toneMappingExposure = 1.35;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -74,7 +75,6 @@ export class CyberDriftGame {
       this.showBanner(bannerText, 2200);
     };
 
-    // Clean Speed Trap Notification (No White Flash)
     this.trackManager.onSpeedTrapCallback = (speedKmH, pts) => {
       this.showBanner(`📸 РАДАР СКОРОСТИ: ${speedKmH} КМ/Ч! +${pts} PTS`, 2800);
     };
@@ -91,9 +91,12 @@ export class CyberDriftGame {
       if (e.code === "KeyD" || e.code === "ArrowRight") this.keys.right = true;
       if (e.code === "Space") this.keys.drift = true;
       if (e.code === "ShiftLeft" || e.code === "ShiftRight") this.keys.nitro = true;
+      if (e.code === "KeyF") this.keys.focus = true;
 
       if (e.code === "KeyC") this.toggleCamera();
       if (e.code === "KeyR") this.resetCar();
+      if (e.code === "KeyV") this.toggleWeather();
+      if (e.code === "KeyM") this.nextRadioStation();
 
       if (this.gameState === "GARAGE" && (e.code === "Enter" || e.code === "Space")) {
         this.startRace();
@@ -107,19 +110,17 @@ export class CyberDriftGame {
       if (e.code === "KeyD" || e.code === "ArrowRight") this.keys.right = false;
       if (e.code === "Space") this.keys.drift = false;
       if (e.code === "ShiftLeft" || e.code === "ShiftRight") this.keys.nitro = false;
+      if (e.code === "KeyF") this.keys.focus = false;
     });
 
     const camBtn = document.getElementById("btn-cam-switch");
     if (camBtn) camBtn.addEventListener("click", () => this.toggleCamera());
 
+    const weatherBtn = document.getElementById("btn-weather-toggle");
+    if (weatherBtn) weatherBtn.addEventListener("click", () => this.toggleWeather());
+
     const radioBtn = document.getElementById("btn-radio-toggle");
-    if (radioBtn) {
-      radioBtn.addEventListener("click", () => {
-        cyberAudio.init();
-        const isRadioOn = cyberAudio.toggleRadio();
-        radioBtn.textContent = isRadioOn ? "📻 РАДИО: ON" : "📻 РАДИО: OFF";
-      });
-    }
+    if (radioBtn) radioBtn.addEventListener("click", () => this.nextRadioStation());
 
     const soundBtn = document.getElementById("btn-sound-toggle");
     if (soundBtn) {
@@ -134,22 +135,15 @@ export class CyberDriftGame {
     this.speedEl = document.getElementById("hud-speed");
     this.gearEl = document.getElementById("hud-gear");
     this.scoreEl = document.getElementById("hud-score");
+    this.positionEl = document.getElementById("hud-position");
     this.driftBoxEl = document.getElementById("hud-drift-box");
     this.driftPtsEl = document.getElementById("hud-drift-pts");
     this.driftMultEl = document.getElementById("hud-drift-mult");
     this.nitroBarEl = document.getElementById("hud-nitro-bar");
+    this.focusBarEl = document.getElementById("hud-focus-bar");
     this.wantedEl = document.getElementById("hud-wanted");
     this.camModeEl = document.getElementById("hud-cam-mode");
     this.bannerEl = document.getElementById("hud-banner");
-
-    document.querySelectorAll(".car-select-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".car-select-btn").forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        const type = parseInt(btn.dataset.car);
-        this.car.setCarType(type);
-      });
-    });
 
     document.querySelectorAll(".color-swatch").forEach((swatch) => {
       swatch.addEventListener("click", () => {
@@ -160,12 +154,19 @@ export class CyberDriftGame {
       });
     });
 
-    document.querySelectorAll(".neon-swatch").forEach((swatch) => {
-      swatch.addEventListener("click", () => {
-        document.querySelectorAll(".neon-swatch").forEach((s) => s.classList.remove("active"));
-        swatch.classList.add("active");
-        const hex = parseInt(swatch.dataset.neon, 16);
-        this.car.setUnderglowColor(hex);
+    document.querySelectorAll("[data-spoiler]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("[data-spoiler]").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        this.car.setSpoilerType(parseInt(btn.dataset.spoiler));
+      });
+    });
+
+    document.querySelectorAll("[data-finish]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("[data-finish]").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        this.car.setFinishType(btn.dataset.finish);
       });
     });
 
@@ -188,12 +189,27 @@ export class CyberDriftGame {
     }
   }
 
+  toggleWeather() {
+    const label = this.trackManager.toggleWeather();
+    const weatherBtn = document.getElementById("btn-weather-toggle");
+    if (weatherBtn) weatherBtn.textContent = label + " (V)";
+    this.showBanner(`ПОГОДА: ${label}`, 2000);
+  }
+
+  nextRadioStation() {
+    cyberAudio.init();
+    const stationName = cyberAudio.nextRadioStation();
+    const radioBtn = document.getElementById("btn-radio-toggle");
+    if (radioBtn) radioBtn.textContent = stationName + " (M)";
+    this.showBanner(`РАДИО: ${stationName}`, 2000);
+  }
+
   startRace() {
     this.gameState = "RACING";
     document.getElementById("garage-screen").style.display = "none";
     document.getElementById("busted-screen").style.display = "none";
     document.getElementById("hud").style.display = "flex";
-    this.showBanner("🔥 СТАРТ! ДРИФТ = ПРОБЕЛ, НИТРО = SHIFT");
+    this.showBanner("🔥 СТАРТ ГОНКИ! ПОБЕДИ 3 СОПЕРНИКОВ");
   }
 
   triggerBusted() {
@@ -331,6 +347,19 @@ export class CyberDriftGame {
     if (this.gearEl) this.gearEl.textContent = gear;
     if (this.scoreEl) this.scoreEl.textContent = this.car.totalScore;
     if (this.nitroBarEl) this.nitroBarEl.style.width = `${Math.round(this.car.nitroFuel)}%`;
+    if (this.focusBarEl) this.focusBarEl.style.width = `${Math.round(this.car.focusEnergy)}%`;
+
+    // Dynamic Race Position Tracking
+    if (this.positionEl && this.trackManager) {
+      let position = 1;
+      const playerPos = this.car.position;
+      for (const rival of this.trackManager.aiRivals) {
+        if (rival.mesh.position.z > playerPos.z) {
+          position++;
+        }
+      }
+      this.positionEl.textContent = `${position} / 4`;
+    }
 
     if (this.driftBoxEl && this.driftPtsEl && this.driftMultEl) {
       if (this.car.isDrifting && this.car.currentDriftScore > 50) {
@@ -355,7 +384,19 @@ export class CyberDriftGame {
 
   animate() {
     requestAnimationFrame(this.animate);
-    const delta = Math.min(this.clock.getDelta(), 0.05);
+    let rawDelta = Math.min(this.clock.getDelta(), 0.05);
+
+    // Bullet-Time Slow-Mo (0.35x speed on F)
+    const isFocus = this.keys.focus && this.car.focusEnergy > 0;
+    if (isFocus) {
+      this.car.focusEnergy = Math.max(0, this.car.focusEnergy - rawDelta * 30);
+      cyberAudio.setBulletTime(true);
+    } else {
+      this.car.focusEnergy = Math.min(100, this.car.focusEnergy + rawDelta * 12);
+      cyberAudio.setBulletTime(false);
+    }
+
+    const delta = isFocus ? rawDelta * 0.35 : rawDelta;
 
     if (this.gameState === "RACING") {
       this.car.throttleInput = (this.keys.forward ? 1 : 0) - (this.keys.backward ? 1 : 0);

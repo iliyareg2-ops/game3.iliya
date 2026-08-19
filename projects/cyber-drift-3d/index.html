@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cyber Drift 3D: Ночной Киберпанк Дрифт & Police Takedowns</title>
+  <title>Cyber Drift 3D: Realistic Street Racing & Highway Pursuits</title>
   <style>
     * {
       box-sizing: border-box;
@@ -17,7 +17,7 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #101a2e;
+      background: #0f172a;
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       color: #fff;
     }
@@ -28,18 +28,7 @@
       z-index: 1;
     }
 
-    /* Speed Trap Camera Flash */
-    #camera-flash {
-      position: fixed;
-      inset: 0;
-      z-index: 45;
-      background: #ffffff;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.05s ease-out;
-    }
-
-    /* HUD Overlay */
+    /* Clean HUD Overlay */
     #hud {
       position: absolute;
       inset: 0;
@@ -59,58 +48,35 @@
     }
 
     .hud-pill {
-      background: rgba(14, 22, 38, 0.88);
-      border: 1px solid rgba(0, 240, 255, 0.55);
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 12px;
       padding: 8px 16px;
       backdrop-filter: blur(12px);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(0, 240, 255, 0.15);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
       display: flex;
       flex-direction: column;
     }
 
     .hud-label {
       font-size: 9px;
-      font-weight: 900;
-      color: #9cb3cc;
-      letter-spacing: 0.14em;
+      font-weight: 800;
+      color: #94a3b8;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
     }
 
     .hud-val {
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 900;
-      color: #00f0ff;
+      color: #f8fafc;
       letter-spacing: 0.04em;
-      text-shadow: 0 0 12px rgba(0, 240, 255, 0.7);
     }
 
     .wanted-stars {
-      color: #ff3b30;
+      color: #ef4444;
       font-size: 18px;
-      text-shadow: 0 0 10px #ff3b30;
       letter-spacing: 2px;
-    }
-
-    /* Pursuit Warning Radar */
-    #hud-pursuit-alert {
-      display: none;
-      background: rgba(255, 0, 51, 0.92);
-      border: 2px solid #ffffff;
-      border-radius: 12px;
-      padding: 8px 18px;
-      font-size: 13px;
-      font-weight: 900;
-      letter-spacing: 0.08em;
-      color: #fff;
-      text-shadow: 0 0 10px #000;
-      box-shadow: 0 0 25px rgba(255, 0, 51, 0.8);
-      animation: pulseAlert 0.4s infinite alternate;
-    }
-
-    @keyframes pulseAlert {
-      0% { transform: scale(1.0); box-shadow: 0 0 15px rgba(255, 0, 51, 0.5); }
-      100% { transform: scale(1.06); box-shadow: 0 0 35px rgba(0, 240, 255, 0.9); }
     }
 
     /* Drift Box */
@@ -122,26 +88,25 @@
       display: none;
       flex-direction: column;
       align-items: center;
-      background: rgba(12, 18, 32, 0.94);
-      border: 2px solid #ff007f;
+      background: rgba(15, 23, 42, 0.92);
+      border: 2px solid #38bdf8;
       border-radius: 16px;
       padding: 10px 24px;
-      box-shadow: 0 0 25px rgba(255, 0, 127, 0.5);
+      box-shadow: 0 4px 25px rgba(0, 0, 0, 0.6);
     }
 
     #hud-drift-pts {
       font-size: 32px;
       font-weight: 900;
-      color: #ff007f;
-      text-shadow: 0 0 15px #ff007f;
+      color: #38bdf8;
     }
 
     #hud-drift-mult {
       font-size: 14px;
-      font-weight: 900;
-      color: #00f0ff;
-      background: rgba(0, 240, 255, 0.15);
-      border: 1px solid #00f0ff;
+      font-weight: 800;
+      color: #f8fafc;
+      background: rgba(56, 189, 248, 0.2);
+      border: 1px solid #38bdf8;
       border-radius: 8px;
       padding: 2px 10px;
       margin-top: 4px;
@@ -152,15 +117,14 @@
       top: 10%;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(14, 24, 40, 0.95);
-      border: 1px solid #00f0ff;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.25);
       border-radius: 12px;
       padding: 12px 24px;
       font-size: 15px;
-      font-weight: 900;
+      font-weight: 800;
       letter-spacing: 0.06em;
       color: #fff;
-      text-shadow: 0 0 12px #00f0ff;
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
       opacity: 0;
       transition: opacity 0.3s ease;
@@ -182,12 +146,11 @@
     }
 
     .speedo-box {
-      background: rgba(14, 22, 38, 0.88);
-      border: 2px solid rgba(0, 240, 255, 0.55);
+      background: rgba(15, 23, 42, 0.9);
+      border: 2px solid rgba(255, 255, 255, 0.2);
       border-radius: 16px;
       padding: 10px 18px;
       backdrop-filter: blur(12px);
-      box-shadow: 0 0 25px rgba(0, 240, 255, 0.25);
       display: flex;
       align-items: baseline;
       gap: 8px;
@@ -196,26 +159,24 @@
     .speedo-val {
       font-size: 44px;
       font-weight: 900;
-      color: #00f0ff;
+      color: #f8fafc;
       line-height: 1;
-      text-shadow: 0 0 15px #00f0ff;
     }
 
     .speedo-unit {
       font-size: 13px;
-      font-weight: 900;
-      color: #9cb3cc;
+      font-weight: 800;
+      color: #94a3b8;
     }
 
     .gear-box {
-      background: rgba(14, 22, 38, 0.88);
-      border: 2px solid #ff7700;
+      background: rgba(15, 23, 42, 0.9);
+      border: 2px solid #f59e0b;
       border-radius: 14px;
       padding: 10px 16px;
       font-size: 28px;
       font-weight: 900;
-      color: #ffaa00;
-      text-shadow: 0 0 12px #ff7700;
+      color: #f59e0b;
       line-height: 1;
     }
 
@@ -227,8 +188,8 @@
     }
 
     .bar-pill {
-      background: rgba(14, 22, 38, 0.88);
-      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 8px;
       padding: 5px 10px;
     }
@@ -245,8 +206,14 @@
     #hud-nitro-bar {
       width: 100%;
       height: 100%;
-      background: linear-gradient(90deg, #0088ff, #00f0ff);
-      box-shadow: 0 0 10px #00f0ff;
+      background: linear-gradient(90deg, #0284c7, #38bdf8);
+      transition: width 0.1s linear;
+    }
+
+    #hud-focus-bar {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, #d97706, #fbbf24);
       transition: width 0.1s linear;
     }
 
@@ -257,12 +224,12 @@
     }
 
     .hud-btn {
-      background: rgba(16, 26, 44, 0.88);
-      border: 1px solid rgba(0, 240, 255, 0.55);
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 8px;
       padding: 8px 12px;
-      color: #00f0ff;
-      font-weight: 900;
+      color: #cbd5e1;
+      font-weight: 800;
       font-size: 11px;
       cursor: pointer;
       backdrop-filter: blur(8px);
@@ -270,12 +237,11 @@
     }
 
     .hud-btn:hover {
-      background: rgba(0, 240, 255, 0.25);
+      background: rgba(255, 255, 255, 0.15);
       color: #fff;
-      box-shadow: 0 0 12px #00f0ff;
     }
 
-    /* Garage Customization HUD Card */
+    /* Real Garage Showroom HUD */
     #garage-screen {
       position: fixed;
       inset: 0;
@@ -289,21 +255,21 @@
 
     .garage-card {
       pointer-events: auto;
-      width: min(390px, 94vw);
-      background: rgba(14, 22, 38, 0.9);
-      border: 2px solid rgba(0, 240, 255, 0.6);
+      width: min(400px, 94vw);
+      background: rgba(15, 23, 42, 0.94);
+      border: 2px solid rgba(255, 255, 255, 0.2);
       border-radius: 20px;
       padding: 22px 20px;
-      backdrop-filter: blur(14px);
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 240, 255, 0.3);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
       text-align: left;
     }
 
     .modal-tag {
-      color: #00f0ff;
+      color: #38bdf8;
       font-size: 11px;
-      font-weight: 900;
-      letter-spacing: 0.18em;
+      font-weight: 800;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
       margin-bottom: 4px;
     }
@@ -313,35 +279,7 @@
       font-weight: 900;
       line-height: 1.1;
       margin-bottom: 12px;
-      background: linear-gradient(90deg, #ffffff 0%, #00f0ff 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .car-selector {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
-      margin-bottom: 14px;
-    }
-
-    .car-select-btn {
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 10px;
-      padding: 10px 4px;
-      color: #fff;
-      cursor: pointer;
-      font-weight: 800;
-      font-size: 11px;
-      text-align: center;
-      transition: all 0.15s ease;
-    }
-
-    .car-select-btn.active {
-      border-color: #00f0ff;
-      background: rgba(0, 240, 255, 0.25);
-      box-shadow: 0 0 14px rgba(0, 240, 255, 0.4);
+      color: #f8fafc;
     }
 
     .custom-row {
@@ -350,8 +288,8 @@
 
     .custom-row-title {
       font-size: 10px;
-      font-weight: 900;
-      color: #9cb3cc;
+      font-weight: 800;
+      color: #94a3b8;
       margin-bottom: 6px;
       text-transform: uppercase;
       letter-spacing: 0.08em;
@@ -363,35 +301,59 @@
       flex-wrap: wrap;
     }
 
-    .color-swatch, .neon-swatch {
-      width: 30px;
-      height: 30px;
+    .color-swatch {
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
       cursor: pointer;
-      border: 2px solid rgba(255, 255, 255, 0.5);
+      border: 2px solid rgba(255, 255, 255, 0.4);
       transition: transform 0.15s ease, border-color 0.15s ease;
     }
 
-    .color-swatch:hover, .neon-swatch:hover,
-    .color-swatch.active, .neon-swatch.active {
+    .color-swatch:hover, .color-swatch.active {
       transform: scale(1.2);
       border-color: #fff;
-      box-shadow: 0 0 12px #fff;
+    }
+
+    .tuning-options {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .tune-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 6px 4px;
+      color: #cbd5e1;
+      cursor: pointer;
+      font-weight: 800;
+      font-size: 10px;
+      text-align: center;
+      transition: all 0.15s ease;
+    }
+
+    .tune-btn.active {
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.2);
+      color: #fff;
     }
 
     .btn-main {
       width: 100%;
-      background: linear-gradient(135deg, #00f0ff 0%, #0077cc 100%);
+      background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
       border: none;
       border-radius: 12px;
       padding: 14px 18px;
-      color: #031020;
-      font-size: 16px;
+      color: #fff;
+      font-size: 15px;
       font-weight: 900;
       letter-spacing: 0.06em;
       cursor: pointer;
-      box-shadow: 0 8px 25px rgba(0, 240, 255, 0.4);
-      margin-top: 8px;
+      box-shadow: 0 8px 25px rgba(2, 132, 199, 0.4);
+      margin-top: 10px;
     }
 
     .btn-main:hover {
@@ -405,25 +367,24 @@
       z-index: 60;
       display: none;
       place-items: center;
-      background: radial-gradient(circle at center, rgba(30, 10, 14, 0.95) 0%, rgba(10, 3, 5, 0.98) 100%);
+      background: rgba(15, 23, 42, 0.95);
       backdrop-filter: blur(14px);
       padding: 16px;
     }
 
     .busted-card {
-      width: min(520px, 92vw);
-      background: linear-gradient(145deg, #1f1014 0%, #2e141a 100%);
-      border: 2px solid #ff0033;
+      width: min(500px, 92vw);
+      background: #1e293b;
+      border: 2px solid #ef4444;
       border-radius: 20px;
       padding: 28px 24px;
-      box-shadow: 0 0 45px rgba(255, 0, 51, 0.4);
+      box-shadow: 0 0 45px rgba(239, 68, 68, 0.3);
       text-align: center;
     }
   </style>
 </head>
 <body>
   <div id="canvas-container"></div>
-  <div id="camera-flash"></div>
 
   <!-- Drift Floating Score -->
   <div id="hud-drift-box">
@@ -431,30 +392,34 @@
     <span id="hud-drift-mult">x1.0</span>
   </div>
 
-  <!-- HUD Overlay -->
+  <!-- Real HUD Overlay -->
   <div id="hud">
     <div class="hud-top">
       <div style="display: flex; gap: 10px; align-items: center;">
         <div class="hud-pill">
-          <span class="hud-label">ОЧКИ ДРИФТА (SPACE)</span>
+          <span class="hud-label">ПОЗИЦИЯ В ГОНКЕ</span>
+          <span class="hud-val" id="hud-position" style="color: #38bdf8;">1 / 4</span>
+        </div>
+        <div class="hud-pill">
+          <span class="hud-label">ОЧКИ (SPACE = ДРИФТ)</span>
           <span class="hud-val" id="hud-score">0</span>
         </div>
         <div class="hud-pill">
           <span class="hud-label">РОЗЫСК ПОЛИЦИИ</span>
           <span class="wanted-stars" id="hud-wanted">☆☆☆☆☆</span>
         </div>
-        <div id="hud-pursuit-alert">🚨 ПОЛИЦЕЙСКАЯ ПОГОНЯ!</div>
       </div>
 
       <div class="quick-actions">
         <button class="hud-btn" id="btn-cam-switch"><span id="hud-cam-mode">ОБЗОР (3P)</span></button>
-        <button class="hud-btn" id="btn-radio-toggle">📻 РАДИО: ON</button>
+        <button class="hud-btn" id="btn-weather-toggle">☀️ ПОГОДА (V)</button>
+        <button class="hud-btn" id="btn-radio-toggle">📻 РАДИО (M)</button>
         <button class="hud-btn" id="btn-reset-car">🔄 РЕСТАРТ (R)</button>
         <button class="hud-btn" id="btn-sound-toggle">🔊</button>
       </div>
     </div>
 
-    <div id="hud-banner">ДРИФТ = ПРОБЕЛ, НИТРО = SHIFT</div>
+    <div id="hud-banner">ДРИФТ = ПРОБЕЛ, НИТРО = SHIFT, ФОКУС = F</div>
 
     <div class="hud-bottom">
       <div class="speedo-cluster">
@@ -465,9 +430,15 @@
         </div>
         <div class="bars-col">
           <div class="bar-pill">
-            <span class="hud-label" style="color: #00f0ff;">⚡ N2O НИТРО (SHIFT)</span>
+            <span class="hud-label" style="color: #38bdf8;">⚡ N2O НИТРО (SHIFT)</span>
             <div class="bar-track">
               <div id="hud-nitro-bar"></div>
+            </div>
+          </div>
+          <div class="bar-pill">
+            <span class="hud-label" style="color: #f59e0b;">🎯 FOCUS SLOW-MO (F)</span>
+            <div class="bar-track">
+              <div id="hud-focus-bar"></div>
             </div>
           </div>
         </div>
@@ -475,43 +446,39 @@
     </div>
   </div>
 
-  <!-- Garage Showroom Screen -->
+  <!-- Garage Tuning Screen -->
   <div id="garage-screen">
     <div class="garage-card">
-      <div class="modal-tag">3D ГАРАЖ ТЮНИНГА &bull; КИБЕРПАНК</div>
+      <div class="modal-tag">3D ГАРАЖ ТЮНИНГА &bull; РЕАЛИЗМ</div>
       <h1>Cyber Drift 3D</h1>
-
-      <div class="car-selector">
-        <button class="car-select-btn active" data-car="0">
-          🏎️ Apex GT<br><small style="color:#00f0ff;">Спорт</small>
-        </button>
-        <button class="car-select-btn" data-car="1">
-          👾 Phantom<br><small style="color:#ff007f;">Дрифт</small>
-        </button>
-        <button class="car-select-btn" data-car="2">
-          🚀 Hyperion<br><small style="color:#ffaa00;">Гиперкар</small>
-        </button>
-      </div>
 
       <div class="custom-row">
         <div class="custom-row-title">Цвет кузова (лак / металлик):</div>
         <div class="swatches">
-          <div class="color-swatch active" style="background:#e11d48;" data-color="e11d48"></div>
-          <div class="color-swatch" style="background:#7c3aed;" data-color="7c3aed"></div>
-          <div class="color-swatch" style="background:#0ea5e9;" data-color="0ea5e9"></div>
-          <div class="color-swatch" style="background:#10b981;" data-color="10b981"></div>
-          <div class="color-swatch" style="background:#f59e0b;" data-color="f59e0b"></div>
+          <div class="color-swatch active" style="background:#dc2626;" data-color="dc2626"></div>
+          <div class="color-swatch" style="background:#0284c7;" data-color="0284c7"></div>
+          <div class="color-swatch" style="background:#16a34a;" data-color="16a34a"></div>
+          <div class="color-swatch" style="background:#d97706;" data-color="d97706"></div>
+          <div class="color-swatch" style="background:#475569;" data-color="475569"></div>
           <div class="color-swatch" style="background:#18181b;" data-color="18181b"></div>
         </div>
       </div>
 
       <div class="custom-row">
-        <div class="custom-row-title">Неон днища (Underglow):</div>
-        <div class="swatches">
-          <div class="neon-swatch active" style="background:#00f0ff; box-shadow:0 0 10px #00f0ff;" data-neon="00f0ff"></div>
-          <div class="neon-swatch" style="background:#ff007f; box-shadow:0 0 10px #ff007f;" data-neon="ff007f"></div>
-          <div class="neon-swatch" style="background:#39ff14; box-shadow:0 0 10px #39ff14;" data-neon="39ff14"></div>
-          <div class="neon-swatch" style="background:#ffaa00; box-shadow:0 0 10px #ffaa00;" data-neon="ffaa00"></div>
+        <div class="custom-row-title">Антикрыло / Спойлер:</div>
+        <div class="tuning-options">
+          <button class="tune-btn active" data-spoiler="0">GT Carbon Wing</button>
+          <button class="tune-btn" data-spoiler="1">Ducktail Lip</button>
+          <button class="tune-btn" data-spoiler="2">Aerofoil</button>
+        </div>
+      </div>
+
+      <div class="custom-row">
+        <div class="custom-row-title">Отделка краски:</div>
+        <div class="tuning-options">
+          <button class="tune-btn active" data-finish="metallic">Глянец Металлик</button>
+          <button class="tune-btn" data-finish="matte">Сатин Мат</button>
+          <button class="tune-btn" data-finish="pearlescent">Перламутр</button>
         </div>
       </div>
 
@@ -522,12 +489,12 @@
   <!-- Busted Screen -->
   <div class="screen-overlay" id="busted-screen">
     <div class="busted-card">
-      <h1 style="font-size: 42px; color: #ff0033; text-shadow: 0 0 20px #ff0033; margin-bottom: 12px;">ПОЙМАН! (BUSTED)</h1>
+      <h1 style="font-size: 40px; color: #ef4444; margin-bottom: 12px;">ПОЙМАН! (BUSTED)</h1>
       <p style="color: #cbd5e1; font-size: 16px; margin-bottom: 20px;">
-        Полицейские перехватчики заблокировали ваш суперкар.<br>
-        Итоговый счет: <b id="busted-score" style="color: #00f0ff; font-size: 24px;">0</b> PTS
+        Полицейские экипажи заблокировали ваш суперкар.<br>
+        Итоговый счет: <b id="busted-score" style="color: #38bdf8; font-size: 24px;">0</b> PTS
       </p>
-      <button class="btn-main" id="btn-restart-busted" style="background: linear-gradient(135deg, #ff0033, #990011); color: #fff;">ПОВТОРИТЬ ЗАЕЗД (R)</button>
+      <button class="btn-main" id="btn-restart-busted" style="background: #dc2626;">ПОВТОРИТЬ ЗАЕЗД (R)</button>
     </div>
   </div>
 
