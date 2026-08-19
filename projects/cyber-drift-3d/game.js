@@ -466,7 +466,7 @@ export class CyberDriftGame {
     if (this.studioSpotL) this.studioSpotL.intensity = 0;
     if (this.studioSpotR) this.studioSpotR.intensity = 0;
 
-    this.car.position.set(5.5, 0.12, 8);
+    this.car.position.set(5.5, 0.15, 8);
     this.car.speed = 0;
     this.car.heading = 0;
     this.car.mesh.position.copy(this.car.position);
@@ -480,8 +480,8 @@ export class CyberDriftGame {
         r.lapsCompleted = 0;
         r.currentSpeedU = 0.0;
         const pt = this.trackManager.trackCurve.getPointAt(r.u);
-        r.mesh.position.set(pt.x + r.laneOffset, 0.12, pt.z);
-        r.mesh.lookAt(pt.x + r.laneOffset, 0.12, pt.z + 10);
+        r.mesh.position.set(pt.x + r.laneOffset, 0.15, pt.z);
+        r.mesh.lookAt(pt.x + r.laneOffset, 0.15, pt.z + 10);
       });
     }
 

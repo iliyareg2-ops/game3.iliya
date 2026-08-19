@@ -1,4 +1,4 @@
-// car.js - Realistic Motorsport Supercars: GT-R R34, 911 GT3 RS, Venom F5 (Suspension Pitch/Roll, Brembo Calipers, Exhaust Flames, Tire Thermals, Forza Rewind)
+// car.js - Realistic Motorsport Supercars: GT-R R34, 911 GT3 RS, Venom F5 (Zero-Clipping Physics, Brembo Brakes, Underbody Contact Shadow, Tire Thermals & Rewind)
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -7,7 +7,7 @@ export class CyberCar {
     this.scene = scene;
     this.carTypeIndex = carTypeIndex; // 0: GT-R R34 Spec, 1: 911 GT3 RS, 2: Venom F5 Hypercar
 
-    this.position = new THREE.Vector3(0, 0.12, 0);
+    this.position = new THREE.Vector3(0, 0.15, 0);
     this.heading = 0;
     this.speed = 0;
     this.angularVelocity = 0;
@@ -32,12 +32,12 @@ export class CyberCar {
     this.prevThrottle = 0;
     this.boostCharge = 0.0;
 
-    // Forza Rewind History Buffer (240 frames ~ 4 seconds)
+    // Rewind History Buffer (240 frames ~ 4 seconds)
     this.historyBuffer = [];
     this.maxHistoryFrames = 240;
 
-    // Customization Settings (Pure Automotive Realism)
-    this.bodyColorHex = 0xdc2626; // Rosso Corsa
+    // Customization Settings
+    this.bodyColorHex = 0xdc2626;
     this.spoilerType = 0;
     this.finishType = "metallic";
     this.windowTint = "limo";
@@ -48,7 +48,7 @@ export class CyberCar {
     this.driftActive = false;
 
     this.mesh = new THREE.Group();
-    this.bodyGroup = new THREE.Group(); // Inner group for suspension pitch & roll
+    this.bodyGroup = new THREE.Group();
     this.mesh.add(this.bodyGroup);
     this.scene.add(this.mesh);
 
@@ -58,7 +58,39 @@ export class CyberCar {
     this.spoilerMesh = null;
 
     this.initCarModel();
+    this.initUnderbodyShadow();
     this.initParticleSystems();
+  }
+
+  // 🌑 SOFT AMBIENT OCCLUSION GROUND CONTACT SHADOW
+  initUnderbodyShadow() {
+    const c = document.createElement("canvas");
+    c.width = 256;
+    c.height = 256;
+    const ctx = c.getContext("2d");
+
+    const grad = ctx.createRadialGradient(128, 128, 20, 128, 128, 124);
+    grad.addColorStop(0, "rgba(0, 0, 0, 0.85)");
+    grad.addColorStop(0.5, "rgba(0, 0, 0, 0.45)");
+    grad.addColorStop(0.85, "rgba(0, 0, 0, 0.15)");
+    grad.addColorStop(1, "rgba(0, 0, 0, 0.0)");
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 256, 256);
+
+    const shadowTex = new THREE.CanvasTexture(c);
+    const shadowMat = new THREE.MeshBasicMaterial({
+      map: shadowTex,
+      transparent: true,
+      opacity: 0.8,
+      depthWrite: false,
+    });
+
+    const shadowGeom = new THREE.PlaneGeometry(5.2, 10.4);
+    shadowGeom.rotateX(-Math.PI / 2);
+    this.shadowMesh = new THREE.Mesh(shadowGeom, shadowMat);
+    this.shadowMesh.position.set(0, 0.04, 0);
+    this.mesh.add(this.shadowMesh);
   }
 
   initCarModel() {
@@ -73,37 +105,36 @@ export class CyberCar {
     const carbonMat = new THREE.MeshStandardMaterial({ color: 0x181a20, roughness: 0.35, metalness: 0.6 });
     const plasticMat = new THREE.MeshStandardMaterial({ color: 0x1e2229, roughness: 0.75 });
     const glassMat = this._getGlassMaterial();
-    const chromeMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.95, roughness: 0.1 });
 
     if (this.carTypeIndex === 0) {
       // 🚗 1. NISSAN SKYLINE GT-R R34 V-SPEC II
       const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.76, 9.2), bodyMat);
-      chassis.position.y = 0.58;
+      chassis.position.y = 0.68;
       chassis.castShadow = true;
 
       const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.7, 4.8), glassMat);
-      cabin.position.set(0, 1.25, -0.2);
+      cabin.position.set(0, 1.35, -0.2);
 
       const roof = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.06, 3.8), carbonMat);
-      roof.position.set(0, 1.6, -0.2);
+      roof.position.set(0, 1.7, -0.2);
 
       const hoodVents = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.08, 1.8), carbonMat);
-      hoodVents.position.set(0, 0.98, 2.5);
+      hoodVents.position.set(0, 1.08, 2.5);
 
       const splitter = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.12, 1.2), carbonMat);
-      splitter.position.set(0, 0.22, 4.6);
+      splitter.position.set(0, 0.32, 4.6);
 
       const grill = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.3, 0.2), plasticMat);
-      grill.position.set(0, 0.45, 4.62);
+      grill.position.set(0, 0.55, 4.62);
 
       // Authentic GT-R Twin Round Taillights
       const tlMatOuter = new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.2, metalness: 0.1 });
       const tlL1 = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.1, 16), tlMatOuter);
       tlL1.rotateX(Math.PI / 2);
-      tlL1.position.set(1.4, 0.65, -4.61);
+      tlL1.position.set(1.4, 0.75, -4.61);
       const tlL2 = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.1, 16), tlMatOuter);
       tlL2.rotateX(Math.PI / 2);
-      tlL2.position.set(0.8, 0.65, -4.61);
+      tlL2.position.set(0.8, 0.75, -4.61);
 
       const tlR1 = tlL1.clone();
       tlR1.position.x = -1.4;
@@ -114,57 +145,55 @@ export class CyberCar {
     } else if (this.carTypeIndex === 1) {
       // 🏎️ 2. PORSCHE 911 GT3 RS
       const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.72, 9.0), bodyMat);
-      chassis.position.y = 0.55;
+      chassis.position.y = 0.65;
       chassis.castShadow = true;
 
       const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.68, 4.6), glassMat);
-      cabin.position.set(0, 1.2, -0.4);
+      cabin.position.set(0, 1.3, -0.4);
       cabin.rotation.x = 0.06;
 
       const roof = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.06, 3.4), carbonMat);
-      roof.position.set(0, 1.54, -0.4);
+      roof.position.set(0, 1.64, -0.4);
 
-      // Widebody rear fenders
       const flareL = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.55, 3.4), bodyMat);
-      flareL.position.set(2.25, 0.6, -2.2);
+      flareL.position.set(2.25, 0.7, -2.2);
       const flareR = flareL.clone();
       flareR.position.x = -2.25;
 
       const frontAirDam = new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.35, 0.8), carbonMat);
-      frontAirDam.position.set(0, 0.3, 4.4);
+      frontAirDam.position.set(0, 0.38, 4.4);
 
-      // Modern Slim LED Lightbar
       const tl = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.1, 0.1), new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.2 }));
-      tl.position.set(0, 0.65, -4.51);
+      tl.position.set(0, 0.75, -4.51);
 
       this.bodyGroup.add(chassis, cabin, roof, flareL, flareR, frontAirDam, tl);
     } else {
       // 🚀 3. HENNESSEY VENOM F5 HYPERCAR
       const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.62, 9.6), bodyMat);
-      chassis.position.y = 0.5;
+      chassis.position.y = 0.6;
       chassis.castShadow = true;
 
       const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.1, 0.6, 4.0), glassMat);
-      cabin.position.set(0, 1.08, -0.2);
+      cabin.position.set(0, 1.18, -0.2);
 
       const roof = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.06, 3.2), carbonMat);
-      roof.position.set(0, 1.38, -0.2);
+      roof.position.set(0, 1.48, -0.2);
 
       const diffuser = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.35, 1.6), carbonMat);
-      diffuser.position.set(0, 0.28, -4.8);
+      diffuser.position.set(0, 0.36, -4.8);
       diffuser.rotation.x = -0.15;
 
       const tl = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.12, 0.1), new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.2 }));
-      tl.position.set(0, 0.58, -4.81);
+      tl.position.set(0, 0.68, -4.81);
 
       this.bodyGroup.add(chassis, cabin, roof, diffuser, tl);
     }
 
-    // Realistic Titanium Exhaust Tips
+    // Titanium Exhaust Tips
     const exhaustMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.95, roughness: 0.2 });
     const pipeL = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.6, 16), exhaustMat);
     pipeL.rotateX(Math.PI / 2);
-    pipeL.position.set(0.95, 0.35, -4.8);
+    pipeL.position.set(0.95, 0.45, -4.8);
     const pipeR = pipeL.clone();
     pipeR.position.x = -0.95;
     this.bodyGroup.add(pipeL, pipeR);
@@ -183,13 +212,12 @@ export class CyberCar {
       bulb.position.z = 0.05;
 
       g.add(housing, lens, bulb);
-      g.position.set(x, 0.65, 4.6);
+      g.position.set(x, 0.75, 4.6);
       return g;
     };
 
     this.bodyGroup.add(makeHeadlight(1.45), makeHeadlight(-1.45));
 
-    // Realistic Wing
     this._buildSpoiler(carbonMat);
     this._buildWheelsWithBremboBrakes();
 
@@ -250,28 +278,25 @@ export class CyberCar {
 
     const g = new THREE.Group();
     if (this.spoilerType === 0) {
-      // GT Wing
       const postL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.3), carbonMat);
-      postL.position.set(1.4, 1.15, -4.2);
+      postL.position.set(1.4, 1.25, -4.2);
       const postR = postL.clone();
       postR.position.x = -1.4;
       const blade = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.08, 1.2), carbonMat);
-      blade.position.set(0, 1.45, -4.2);
+      blade.position.set(0, 1.55, -4.2);
       g.add(postL, postR, blade);
     } else if (this.spoilerType === 1) {
-      // Ducktail
       const lip = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.25, 0.6), carbonMat);
-      lip.position.set(0, 0.98, -4.6);
+      lip.position.set(0, 1.08, -4.6);
       lip.rotation.x = -0.35;
       g.add(lip);
     } else {
-      // Time Attack Swan Neck
       const post1 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.9, 8), carbonMat);
-      post1.position.set(1.1, 1.2, -4.3);
+      post1.position.set(1.1, 1.3, -4.3);
       const post2 = post1.clone();
       post2.position.x = -1.1;
       const foil = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.1, 1.4), carbonMat);
-      foil.position.set(0, 1.65, -4.3);
+      foil.position.set(0, 1.75, -4.3);
       foil.rotation.x = 0.1;
       g.add(post1, post2, foil);
     }
@@ -288,7 +313,7 @@ export class CyberCar {
       roughness: 0.18,
     });
     const caliperMat = new THREE.MeshStandardMaterial({
-      color: 0xdc2626, // Brembo Red
+      color: 0xdc2626,
       metalness: 0.6,
       roughness: 0.3,
     });
@@ -298,11 +323,9 @@ export class CyberCar {
     const rimGeom = new THREE.CylinderGeometry(0.38, 0.38, 0.47, 16);
     rimGeom.rotateZ(Math.PI / 2);
 
-    // Drilled Disc Rotor
     const brakeGeom = new THREE.CylinderGeometry(0.34, 0.34, 0.42, 16);
     brakeGeom.rotateZ(Math.PI / 2);
 
-    // Brembo Caliper Geometry
     const caliperGeom = new THREE.BoxGeometry(0.18, 0.28, 0.32);
 
     const makeWheel = (x, z) => {
@@ -429,7 +452,6 @@ export class CyberCar {
       });
     }
 
-    // Water Spray Particle System
     const sprayCount = 180;
     const sprayGeom = new THREE.BufferGeometry();
     const spPos = new Float32Array(sprayCount * 3);
@@ -595,8 +617,8 @@ export class CyberCar {
   }
 
   emitBackfirePop() {
-    const pipeLPos = new THREE.Vector3(0.95, 0.35, -4.9).applyMatrix4(this.mesh.matrixWorld);
-    const pipeRPos = new THREE.Vector3(-0.95, 0.35, -4.9).applyMatrix4(this.mesh.matrixWorld);
+    const pipeLPos = new THREE.Vector3(0.95, 0.45, -4.9).applyMatrix4(this.mesh.matrixWorld);
+    const pipeRPos = new THREE.Vector3(-0.95, 0.45, -4.9).applyMatrix4(this.mesh.matrixWorld);
     const forwardX = Math.sin(this.heading);
     const forwardZ = Math.cos(this.heading);
 
@@ -730,7 +752,6 @@ export class CyberCar {
       }
     }
 
-    // Water spray in rain
     if (trackManager && trackManager.isRaining && this.speed > 75) {
       this.emitWaterSpray();
     }
@@ -743,14 +764,14 @@ export class CyberCar {
 
     this.heading += this.angularVelocity * delta;
 
-    // REALISTIC SUSPENSION BODY ROLL & PITCH PHYSICS
-    const targetRoll = -this.steerInput * Math.min(0.12, (Math.abs(this.speed) / 250) * 0.12);
-    this.bodyRoll = THREE.MathUtils.lerp(this.bodyRoll, targetRoll, delta * 8.0);
+    // ⚖️ STRICT SUSPENSION BUMP STOPS (Zero asphalt clipping)
+    const targetRoll = -this.steerInput * Math.min(0.035, (Math.abs(this.speed) / 250) * 0.035);
+    this.bodyRoll = THREE.MathUtils.lerp(this.bodyRoll, targetRoll, delta * 9.0);
 
     let targetPitch = 0.0;
-    if (this.throttleInput > 0) targetPitch = -0.04 * (isNitroFiring ? 1.8 : 1.0);
-    else if (this.throttleInput < 0 && this.speed > 20) targetPitch = 0.07;
-    this.bodyPitch = THREE.MathUtils.lerp(this.bodyPitch, targetPitch, delta * 7.0);
+    if (this.throttleInput > 0) targetPitch = -0.015 * (isNitroFiring ? 1.4 : 1.0);
+    else if (this.throttleInput < 0 && this.speed > 20) targetPitch = 0.020;
+    this.bodyPitch = THREE.MathUtils.lerp(this.bodyPitch, targetPitch, delta * 8.0);
 
     this.bodyGroup.rotation.z = this.bodyRoll;
     this.bodyGroup.rotation.x = this.bodyPitch;
@@ -758,6 +779,7 @@ export class CyberCar {
     const speedMs = (this.speed * 1000) / 3600;
     this.position.x += Math.sin(this.heading) * speedMs * delta;
     this.position.z += Math.cos(this.heading) * speedMs * delta;
+    this.position.y = 0.15; // Solid floor contact
 
     this.mesh.position.copy(this.position);
     this.mesh.rotation.y = this.heading;
@@ -865,7 +887,7 @@ export class CyberCar {
   }
 
   reset() {
-    this.position.set(0, 0.12, 0);
+    this.position.set(0, 0.15, 0);
     this.speed = 0;
     this.heading = 0;
     this.angularVelocity = 0;

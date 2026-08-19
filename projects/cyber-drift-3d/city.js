@@ -1,4 +1,4 @@
-// city.js - Pure Motorsport Realism: Real Asphalt, Rubber Skidmarks, Sponsor Hoardings (Pirelli, Brembo, Motul), Tire Barriers & Natural Lighting
+// city.js - Pure Motorsport Realism: Ultra-HD 2048x2048 Asphalt, Rubber Skidmarks, Sponsor Hoardings, Tire Barriers & Natural Lighting
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -54,47 +54,72 @@ export class CityTrackManager {
     this.buildRainSystem();
   }
 
+  // 🎨 ULTRA-HD 2048x2048 PBR TEXTURE GENERATOR
   initTextures() {
-    // 🛣️ Realistic Motorsport Asphalt with Rubbered-in Line & Grain
     const roadCanvas = document.createElement("canvas");
-    roadCanvas.width = 1024;
-    roadCanvas.height = 1024;
+    roadCanvas.width = 2048;
+    roadCanvas.height = 2048;
     const rCtx = roadCanvas.getContext("2d");
 
-    // Base dark weathered asphalt
-    rCtx.fillStyle = "#272a30";
-    rCtx.fillRect(0, 0, 1024, 1024);
+    // Base deep dark asphalt
+    rCtx.fillStyle = "#22252c";
+    rCtx.fillRect(0, 0, 2048, 2048);
 
-    // Realistic asphalt aggregate speckling
-    for (let i = 0; i < 50000; i++) {
-      const x = Math.random() * 1024;
-      const y = Math.random() * 1024;
+    // Micro-aggregate stone particles (Basalt & Granite mineral flecks)
+    for (let i = 0; i < 180000; i++) {
+      const x = Math.random() * 2048;
+      const y = Math.random() * 2048;
       const shade = Math.random();
-      if (shade > 0.65) rCtx.fillStyle = "#3a3e47";
-      else if (shade > 0.3) rCtx.fillStyle = "#1e2025";
-      else rCtx.fillStyle = "#4a4f5a";
+      if (shade > 0.7) rCtx.fillStyle = "#3b3f49";
+      else if (shade > 0.35) rCtx.fillStyle = "#181a1f";
+      else if (shade > 0.15) rCtx.fillStyle = "#4a4f5b";
+      else rCtx.fillStyle = "#5c6270";
       rCtx.fillRect(x, y, 1 + Math.random() * 2, 1 + Math.random() * 2);
     }
 
-    // Heavy Rubber Laydown Groove (Racing Line)
-    rCtx.fillStyle = "rgba(10, 11, 14, 0.65)";
-    rCtx.fillRect(160, 0, 180, 1024);
-    rCtx.fillRect(684, 0, 180, 1024);
+    // Heavy Rubbered-in Line (Racing groove on tire trajectory)
+    const rubberGradL = rCtx.createLinearGradient(280, 0, 720, 0);
+    rubberGradL.addColorStop(0, "rgba(10, 11, 14, 0.0)");
+    rubberGradL.addColorStop(0.3, "rgba(10, 11, 14, 0.75)");
+    rubberGradL.addColorStop(0.7, "rgba(12, 13, 16, 0.85)");
+    rubberGradL.addColorStop(1, "rgba(10, 11, 14, 0.0)");
+    rCtx.fillStyle = rubberGradL;
+    rCtx.fillRect(280, 0, 440, 2048);
 
-    // Solid Edge White Lines
-    rCtx.fillStyle = "rgba(235, 238, 242, 0.9)";
-    rCtx.fillRect(40, 0, 14, 1024);
-    rCtx.fillRect(970, 0, 14, 1024);
+    const rubberGradR = rCtx.createLinearGradient(1328, 0, 1768, 0);
+    rubberGradR.addColorStop(0, "rgba(10, 11, 14, 0.0)");
+    rubberGradR.addColorStop(0.3, "rgba(10, 11, 14, 0.75)");
+    rubberGradR.addColorStop(0.7, "rgba(12, 13, 16, 0.85)");
+    rubberGradR.addColorStop(1, "rgba(10, 11, 14, 0.0)");
+    rCtx.fillStyle = rubberGradR;
+    rCtx.fillRect(1328, 0, 440, 2048);
 
-    // Subtle Broken Center Line
-    rCtx.fillStyle = "rgba(220, 225, 230, 0.75)";
-    for (let y = 30; y < 1024; y += 160) {
-      rCtx.fillRect(507, y, 10, 95);
+    // Longitudinal Tire Scuffs & Brake Grooves
+    rCtx.strokeStyle = "rgba(5, 6, 8, 0.6)";
+    rCtx.lineWidth = 4;
+    for (let k = 0; k < 60; k++) {
+      const sx = (k % 2 === 0 ? 380 + Math.random() * 240 : 1420 + Math.random() * 240);
+      rCtx.beginPath();
+      rCtx.moveTo(sx, Math.random() * 2048);
+      rCtx.lineTo(sx + (Math.random() - 0.5) * 12, Math.random() * 2048);
+      rCtx.stroke();
+    }
+
+    // High-Resolution Solid FIA Edge Lines
+    rCtx.fillStyle = "rgba(245, 248, 252, 0.95)";
+    rCtx.fillRect(75, 0, 26, 2048);
+    rCtx.fillRect(1947, 0, 26, 2048);
+
+    // Broken Center Dividing Line
+    rCtx.fillStyle = "rgba(235, 240, 248, 0.85)";
+    for (let y = 40; y < 2048; y += 260) {
+      rCtx.fillRect(1014, y, 20, 160);
     }
 
     this.asphaltTex = new THREE.CanvasTexture(roadCanvas);
     this.asphaltTex.wrapS = THREE.RepeatWrapping;
     this.asphaltTex.wrapT = THREE.RepeatWrapping;
+    this.asphaltTex.anisotropy = 8;
 
     this.roadMat = new THREE.MeshStandardMaterial({
       map: this.asphaltTex,
@@ -102,14 +127,52 @@ export class CityTrackManager {
       metalness: this.isRaining ? 0.6 : 0.1,
     });
 
-    // Realistic Architecture Materials
+    // 🏢 High-Definition Modern Architectural Facade Textures
     this.facadeMats = [
-      new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6, metalness: 0.2 }),
-      new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.7, metalness: 0.1 }),
-      new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4, metalness: 0.5 }),
-      new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.8, metalness: 0.1 }),
-      new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3, metalness: 0.7 }),
+      this._createArchitecturalMat("#1e293b", "#38bdf8", "#0f172a", 0.35),
+      this._createArchitecturalMat("#334155", "#e2e8f0", "#1e222b", 0.45),
+      this._createArchitecturalMat("#1e2229", "#94a3b8", "#111317", 0.55),
+      this._createArchitecturalMat("#475569", "#bae6fd", "#1e293b", 0.3),
+      this._createArchitecturalMat("#0f172a", "#cbd5e1", "#090d16", 0.6),
     ];
+  }
+
+  _createArchitecturalMat(panelColor, windowColor, frameColor, roughnessVal) {
+    const c = document.createElement("canvas");
+    c.width = 512;
+    c.height = 1024;
+    const ctx = c.getContext("2d");
+
+    ctx.fillStyle = panelColor;
+    ctx.fillRect(0, 0, 512, 1024);
+
+    // Vertical structural mullions
+    for (let x = 0; x < 512; x += 64) {
+      ctx.fillStyle = frameColor;
+      ctx.fillRect(x, 0, 6, 1024);
+    }
+
+    // Floor dividers & reflective glass windows
+    for (let y = 16; y < 1024; y += 36) {
+      ctx.fillStyle = frameColor;
+      ctx.fillRect(0, y, 512, 6);
+
+      for (let x = 8; x < 512; x += 64) {
+        ctx.fillStyle = (Math.random() > 0.3 ? windowColor : "rgba(10, 15, 25, 0.85)");
+        ctx.fillRect(x, y + 6, 50, 24);
+      }
+    }
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.anisotropy = 4;
+
+    return new THREE.MeshStandardMaterial({
+      map: tex,
+      metalness: 0.8,
+      roughness: roughnessVal,
+    });
   }
 
   initLighting() {
@@ -139,7 +202,6 @@ export class CityTrackManager {
     this.applyAtmosphere(this.timeOfDay);
   }
 
-  // ☀️ NATURAL DAYLIGHT / SUNSET / RAIN PRESETS
   applyAtmosphere(timeOfDay) {
     this.timeOfDay = timeOfDay;
     this.isRaining = timeOfDay === "RAINSTORM";
@@ -148,7 +210,6 @@ export class CityTrackManager {
     cyberAudio.setRainActive(this.isRaining);
 
     if (timeOfDay === "SUNSET") {
-      // Golden Hour Sunset
       this.scene.fog.color.setHex(0x52363e);
       this.scene.background.setHex(0x3d212b);
       this.ambLight.color.setHex(0xfb923c);
@@ -159,7 +220,6 @@ export class CityTrackManager {
       this.mainSunLight.position.set(700, 220, 350);
       this.mainSunLight.intensity = 3.8;
     } else if (timeOfDay === "RAINSTORM") {
-      // Overcast Rain
       this.scene.fog.color.setHex(0x334155);
       this.scene.background.setHex(0x1e293b);
       this.ambLight.color.setHex(0x94a3b8);
@@ -170,7 +230,6 @@ export class CityTrackManager {
       this.mainSunLight.position.set(300, 600, 300);
       this.mainSunLight.intensity = 2.0;
     } else {
-      // Clear Daylight (DAY)
       this.scene.fog.color.setHex(0x94a3b8);
       this.scene.background.setHex(0x60a5fa);
       this.ambLight.color.setHex(0xffffff);
@@ -210,58 +269,58 @@ export class CityTrackManager {
     if (this.trackIndex === 1) {
       // 🏔️ 2. TOUGE MOUNTAIN PASS
       trackPoints = [
-        new THREE.Vector3(0, 0.12, 0),
-        new THREE.Vector3(0, 0.12, 280),
-        new THREE.Vector3(140, 0.12, 450),
-        new THREE.Vector3(320, 0.12, 420),
-        new THREE.Vector3(380, 0.12, 220),
-        new THREE.Vector3(260, 0.12, 60),
-        new THREE.Vector3(440, 0.12, -140),
-        new THREE.Vector3(350, 0.12, -380),
-        new THREE.Vector3(120, 0.12, -480),
-        new THREE.Vector3(-140, 0.12, -440),
-        new THREE.Vector3(-360, 0.12, -320),
-        new THREE.Vector3(-450, 0.12, -100),
-        new THREE.Vector3(-320, 0.12, 140),
-        new THREE.Vector3(-420, 0.12, 340),
-        new THREE.Vector3(-220, 0.12, 420),
-        new THREE.Vector3(-70, 0.12, -180),
+        new THREE.Vector3(0, 0.10, 0),
+        new THREE.Vector3(0, 0.10, 280),
+        new THREE.Vector3(140, 0.10, 450),
+        new THREE.Vector3(320, 0.10, 420),
+        new THREE.Vector3(380, 0.10, 220),
+        new THREE.Vector3(260, 0.10, 60),
+        new THREE.Vector3(440, 0.10, -140),
+        new THREE.Vector3(350, 0.10, -380),
+        new THREE.Vector3(120, 0.10, -480),
+        new THREE.Vector3(-140, 0.10, -440),
+        new THREE.Vector3(-360, 0.10, -320),
+        new THREE.Vector3(-450, 0.10, -100),
+        new THREE.Vector3(-320, 0.10, 140),
+        new THREE.Vector3(-420, 0.10, 340),
+        new THREE.Vector3(-220, 0.10, 420),
+        new THREE.Vector3(-70, 0.10, -180),
       ];
     } else if (this.trackIndex === 2) {
       // 🌴 3. MIAMI VICE COASTLINE
       trackPoints = [
-        new THREE.Vector3(0, 0.12, 0),
-        new THREE.Vector3(0, 0.12, 450),
-        new THREE.Vector3(180, 0.12, 620),
-        new THREE.Vector3(480, 0.12, 540),
-        new THREE.Vector3(560, 0.12, 220),
-        new THREE.Vector3(460, 0.12, -120),
-        new THREE.Vector3(300, 0.12, -450),
-        new THREE.Vector3(-50, 0.12, -580),
-        new THREE.Vector3(-380, 0.12, -440),
-        new THREE.Vector3(-540, 0.12, -150),
-        new THREE.Vector3(-480, 0.12, 220),
-        new THREE.Vector3(-280, 0.12, 420),
-        new THREE.Vector3(-60, 0.12, -160),
+        new THREE.Vector3(0, 0.10, 0),
+        new THREE.Vector3(0, 0.10, 450),
+        new THREE.Vector3(180, 0.10, 620),
+        new THREE.Vector3(480, 0.10, 540),
+        new THREE.Vector3(560, 0.10, 220),
+        new THREE.Vector3(460, 0.10, -120),
+        new THREE.Vector3(300, 0.10, -450),
+        new THREE.Vector3(-50, 0.10, -580),
+        new THREE.Vector3(-380, 0.10, -440),
+        new THREE.Vector3(-540, 0.10, -150),
+        new THREE.Vector3(-480, 0.10, 220),
+        new THREE.Vector3(-280, 0.10, 420),
+        new THREE.Vector3(-60, 0.10, -160),
       ];
     } else {
       // 🏎️ 1. F1 AUTODROME
       trackPoints = [
-        new THREE.Vector3(0, 0.12, 0),
-        new THREE.Vector3(0, 0.12, 380),
-        new THREE.Vector3(90, 0.12, 560),
-        new THREE.Vector3(260, 0.12, 540),
-        new THREE.Vector3(460, 0.12, 340),
-        new THREE.Vector3(520, 0.12, 60),
-        new THREE.Vector3(420, 0.12, -220),
-        new THREE.Vector3(220, 0.12, -440),
-        new THREE.Vector3(-40, 0.12, -540),
-        new THREE.Vector3(-320, 0.12, -460),
-        new THREE.Vector3(-480, 0.12, -220),
-        new THREE.Vector3(-520, 0.12, 40),
-        new THREE.Vector3(-420, 0.12, 280),
-        new THREE.Vector3(-220, 0.12, 340),
-        new THREE.Vector3(-70, 0.12, -180),
+        new THREE.Vector3(0, 0.10, 0),
+        new THREE.Vector3(0, 0.10, 380),
+        new THREE.Vector3(90, 0.10, 560),
+        new THREE.Vector3(260, 0.10, 540),
+        new THREE.Vector3(460, 0.10, 340),
+        new THREE.Vector3(520, 0.10, 60),
+        new THREE.Vector3(420, 0.10, -220),
+        new THREE.Vector3(220, 0.10, -440),
+        new THREE.Vector3(-40, 0.10, -540),
+        new THREE.Vector3(-320, 0.10, -460),
+        new THREE.Vector3(-480, 0.10, -220),
+        new THREE.Vector3(-520, 0.10, 40),
+        new THREE.Vector3(-420, 0.10, 280),
+        new THREE.Vector3(-220, 0.10, 340),
+        new THREE.Vector3(-70, 0.10, -180),
       ];
     }
 
@@ -285,6 +344,7 @@ export class CityTrackManager {
       metalness: 0.05,
     });
     const ground = new THREE.Mesh(groundGeom, groundMat);
+    ground.position.y = 0.0;
     ground.receiveShadow = true;
     this.trackWorldGroup.add(ground);
 
@@ -304,10 +364,10 @@ export class CityTrackManager {
       const rightX = p.x + normal.x * halfWidth;
       const rightZ = p.z + normal.z * halfWidth;
 
-      vertices.push(leftX, 0.12, leftZ);
-      vertices.push(rightX, 0.12, rightZ);
+      vertices.push(leftX, 0.10, leftZ);
+      vertices.push(rightX, 0.10, rightZ);
 
-      const v = (i / divisions) * 70;
+      const v = (i / divisions) * 50;
       uvs.push(0, v);
       uvs.push(1, v);
 
@@ -343,12 +403,12 @@ export class CityTrackManager {
       const curbMat = (i / 2) % 2 === 0 ? curbRedMat : curbWhiteMat;
 
       const curb1 = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.12, dist), curbMat);
-      curb1.position.set(mid.x + normal.x * (halfWidth + 1.0), 0.16, mid.z + normal.z * (halfWidth + 1.0));
-      curb1.lookAt(mid.x + normal.x * (halfWidth + 1.0) + tangent.x, 0.16, mid.z + normal.z * (halfWidth + 1.0) + tangent.z);
+      curb1.position.set(mid.x + normal.x * (halfWidth + 1.0), 0.14, mid.z + normal.z * (halfWidth + 1.0));
+      curb1.lookAt(mid.x + normal.x * (halfWidth + 1.0) + tangent.x, 0.14, mid.z + normal.z * (halfWidth + 1.0) + tangent.z);
 
       const curb2 = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.12, dist), curbMat);
-      curb2.position.set(mid.x - normal.x * (halfWidth + 1.0), 0.16, mid.z - normal.z * (halfWidth + 1.0));
-      curb2.lookAt(mid.x - normal.x * (halfWidth + 1.0) + tangent.x, 0.16, mid.z - normal.z * (halfWidth + 1.0) + tangent.z);
+      curb2.position.set(mid.x - normal.x * (halfWidth + 1.0), 0.14, mid.z - normal.z * (halfWidth + 1.0));
+      curb2.lookAt(mid.x - normal.x * (halfWidth + 1.0) + tangent.x, 0.14, mid.z - normal.z * (halfWidth + 1.0) + tangent.z);
 
       this.trackWorldGroup.add(curb1, curb2);
     }
@@ -367,7 +427,6 @@ export class CityTrackManager {
     this.buildDetailedTraffic();
   }
 
-  // 🏛️ MINIMALIST ARCHITECTURAL AUTO STUDIO SHOWROOM (NO NEON)
   buildMinimalistStudioGarage() {
     this.garageGroup = new THREE.Group();
 
@@ -401,7 +460,6 @@ export class CityTrackManager {
 
     this.garageGroup.add(backWall, glassWallL, glassWallR);
 
-    // Studio Overhead Softbox Lights
     const softboxMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const softbox1 = new THREE.Mesh(new THREE.BoxGeometry(18, 0.2, 10), softboxMat);
     softbox1.position.set(0, 15, 0);
@@ -420,7 +478,6 @@ export class CityTrackManager {
     this.scene.add(this.garageGroup);
   }
 
-  // 🏁 AUTHENTIC MOTORSPORT SPONSORS (PIRELLI, BREMBO, MOTUL, MICHELIN)
   buildMotorsportSponsorHoardings() {
     const hoardGroup = new THREE.Group();
 
@@ -460,7 +517,6 @@ export class CityTrackManager {
     this.trackWorldGroup.add(hoardGroup);
   }
 
-  // 🛞 REALISTIC TIRE BARRIERS (TIED RACING TIRES)
   buildTireBarriers() {
     const tireGroup = new THREE.Group();
     const tireRubberMat = new THREE.MeshStandardMaterial({ color: 0x18191c, roughness: 0.9 });
@@ -473,7 +529,7 @@ export class CityTrackManager {
         tire.position.y = 0.2 + y * 0.38;
         g.add(tire);
       }
-      g.position.set(x, 0.12, z);
+      g.position.set(x, 0.10, z);
       return g;
     };
 
@@ -589,7 +645,7 @@ export class CityTrackManager {
     const checkLineGeom = new THREE.PlaneGeometry(this.trackWidth, 4);
     checkLineGeom.rotateX(-Math.PI / 2);
     const checkLine = new THREE.Mesh(checkLineGeom, bannerMat);
-    checkLine.position.set(0, 0.13, 0);
+    checkLine.position.set(0, 0.11, 0);
     g.add(checkLine);
 
     const gridBoxMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 });
@@ -602,7 +658,7 @@ export class CityTrackManager {
 
     gridPositions.forEach((pos) => {
       const box = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.02, 9.8), gridBoxMat);
-      box.position.set(pos.x, 0.13, pos.z);
+      box.position.set(pos.x, 0.11, pos.z);
       g.add(box);
     });
 
@@ -727,7 +783,7 @@ export class CityTrackManager {
 
       const offset = (i % 4 === 0 ? halfWidth - 2.5 : -(halfWidth - 2.5));
       const pos = pt.clone().addScaledVector(normal, offset);
-      g.position.set(pos.x, 0.12, pos.z);
+      g.position.set(pos.x, 0.10, pos.z);
       this.trackWorldGroup.add(g);
 
       this.destructibleProps.push({
@@ -761,18 +817,18 @@ export class CityTrackManager {
       });
 
       const body = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.72, 9.2), paintMat);
-      body.position.y = 0.55;
+      body.position.y = 0.65;
       const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.65, 4.4), glassMat);
-      cabin.position.set(0, 1.15, -0.3);
+      cabin.position.set(0, 1.25, -0.3);
       const wing = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.08, 1.0), carbonMat);
-      wing.position.set(0, 1.45, -4.2);
+      wing.position.set(0, 1.55, -4.2);
 
       const hlL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.25, 0.1), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 }));
-      hlL.position.set(1.4, 0.6, 4.61);
+      hlL.position.set(1.4, 0.7, 4.61);
       const hlR = hlL.clone();
       hlR.position.x = -1.4;
       const tl = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.18, 0.1), new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.2 }));
-      tl.position.set(0, 0.6, -4.61);
+      tl.position.set(0, 0.7, -4.61);
 
       g.add(body, cabin, wing, hlL, hlR, tl);
 
@@ -793,11 +849,11 @@ export class CityTrackManager {
 
       const nameTex = new THREE.CanvasTexture(nameCanvas);
       const namePlate = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshBasicMaterial({ map: nameTex, transparent: true, side: THREE.DoubleSide }));
-      namePlate.position.set(0, 3.2, 0);
+      namePlate.position.set(0, 3.4, 0);
       g.add(namePlate);
 
       const pt = this.trackCurve.getPointAt(r.u);
-      g.position.set(pt.x, 0.12, pt.z);
+      g.position.set(pt.x, 0.15, pt.z);
       this.trackWorldGroup.add(g);
 
       this.aiRivals.push({
@@ -822,19 +878,19 @@ export class CityTrackManager {
       const g = new THREE.Group();
 
       const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.8, 9.4), bodyMat);
-      chassis.position.y = 0.55;
+      chassis.position.y = 0.65;
       const doors = new THREE.Mesh(new THREE.BoxGeometry(4.45, 0.6, 3.6), whiteDoorMat);
-      doors.position.set(0, 0.55, 0);
+      doors.position.set(0, 0.65, 0);
 
       const blueLight = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.3, 0.6), new THREE.MeshStandardMaterial({ color: 0x1d4ed8 }));
-      blueLight.position.set(0.7, 1.55, -0.4);
+      blueLight.position.set(0.7, 1.65, -0.4);
       const redLight = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.3, 0.6), new THREE.MeshStandardMaterial({ color: 0xdc2626 }));
-      redLight.position.set(-0.7, 1.55, -0.4);
+      redLight.position.set(-0.7, 1.65, -0.4);
       g.add(chassis, doors, blueLight, redLight);
 
       const u = (i * 0.22 + 0.08) % 1.0;
       const pt = this.trackCurve.getPointAt(u);
-      g.position.set(pt.x, 0.12, pt.z);
+      g.position.set(pt.x, 0.15, pt.z);
       this.trackWorldGroup.add(g);
 
       this.policeUnits.push({
@@ -902,11 +958,11 @@ export class CityTrackManager {
       });
 
       const body = new THREE.Mesh(new THREE.BoxGeometry(3.9, 0.7, 8.4), paintMat);
-      body.position.y = 0.55;
+      body.position.y = 0.65;
       const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.65, 4.4), glassMat);
-      cabin.position.set(0, 1.15, -0.3);
+      cabin.position.set(0, 1.25, -0.3);
       const roof = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.06, 3.5), paintMat);
-      roof.position.set(0, 1.48, -0.3);
+      roof.position.set(0, 1.58, -0.3);
 
       const makeWheel = (x, z) => {
         const wg = new THREE.Group();
@@ -923,18 +979,18 @@ export class CityTrackManager {
       const wRR = makeWheel(-1.85, -2.6);
 
       const hlL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.25, 0.1), hlMat);
-      hlL.position.set(1.4, 0.6, 4.21);
+      hlL.position.set(1.4, 0.7, 4.21);
       const hlR = hlL.clone();
       hlR.position.x = -1.4;
 
       const tl = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.2, 0.1), tlMat);
-      tl.position.set(0, 0.6, -4.21);
+      tl.position.set(0, 0.7, -4.21);
 
       g.add(body, cabin, roof, wFL, wFR, wRL, wRR, hlL, hlR, tl);
 
       const u = (i / 8);
       const pt = this.trackCurve.getPointAt(u);
-      g.position.set(pt.x + (i % 2 === 0 ? 6 : -6), 0.12, pt.z);
+      g.position.set(pt.x + (i % 2 === 0 ? 6 : -6), 0.15, pt.z);
       this.trackWorldGroup.add(g);
 
       this.trafficCars.push({
@@ -1017,10 +1073,10 @@ export class CityTrackManager {
         const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
 
         r.mesh.position.copy(pt).addScaledVector(normal, r.laneOffset);
-        r.mesh.position.y = 0.12;
+        r.mesh.position.y = 0.15;
 
         const lookPt = pt.clone().addScaledVector(tangent, 6).addScaledVector(normal, r.laneOffset);
-        r.mesh.lookAt(lookPt.x, 0.12, lookPt.z);
+        r.mesh.lookAt(lookPt.x, 0.15, lookPt.z);
       }
     }
     return true;
@@ -1176,13 +1232,13 @@ export class CityTrackManager {
       const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
 
       rival.mesh.position.copy(pt).addScaledVector(normal, rival.laneOffset);
-      rival.mesh.position.y = 0.12;
+      rival.mesh.position.y = 0.15;
 
       const lookPt = pt.clone().addScaledVector(tangent, 6).addScaledVector(normal, rival.laneOffset);
-      rival.mesh.lookAt(lookPt.x, 0.12, lookPt.z);
+      rival.mesh.lookAt(lookPt.x, 0.15, lookPt.z);
 
       if (rival.namePlate) {
-        rival.namePlate.lookAt(playerPos.x, 3.2, playerPos.z);
+        rival.namePlate.lookAt(playerPos.x, 3.4, playerPos.z);
       }
     }
 
@@ -1212,8 +1268,8 @@ export class CityTrackManager {
         prop.group.rotation.y += prop.rotVelocity.y * delta;
         prop.group.rotation.z += prop.rotVelocity.z * delta;
 
-        if (prop.group.position.y < 0.12) {
-          prop.group.position.y = 0.12;
+        if (prop.group.position.y < 0.10) {
+          prop.group.position.y = 0.10;
           prop.velocity.multiplyScalar(0.4);
           prop.rotVelocity.multiplyScalar(0.4);
         }
@@ -1255,10 +1311,10 @@ export class CityTrackManager {
       const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
 
       police.group.position.copy(pt).addScaledVector(normal, police.laneOffset);
-      police.group.position.y = 0.12;
+      police.group.position.y = 0.15;
 
       const lookPt = pt.clone().addScaledVector(tangent, 6).addScaledVector(normal, police.laneOffset);
-      police.group.lookAt(lookPt.x, 0.12, lookPt.z);
+      police.group.lookAt(lookPt.x, 0.15, lookPt.z);
 
       const dist = police.group.position.distanceTo(playerPos);
       if (dist < nearestPoliceDist) nearestPoliceDist = dist;
@@ -1330,10 +1386,10 @@ export class CityTrackManager {
       const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
 
       car.mesh.position.copy(pt).addScaledVector(normal, car.laneOffset);
-      car.mesh.position.y = 0.12;
+      car.mesh.position.y = 0.15;
 
       const lookPt = pt.clone().addScaledVector(tangent, 5).addScaledVector(normal, car.laneOffset);
-      car.mesh.lookAt(lookPt.x, 0.12, lookPt.z);
+      car.mesh.lookAt(lookPt.x, 0.15, lookPt.z);
 
       for (const w of car.wheels) {
         w.children[0].rotation.x += delta * 12;
