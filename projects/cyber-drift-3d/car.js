@@ -821,8 +821,7 @@ export class CyberCar {
       }
     }
 
-    const isNearOceanWater = trackManager && trackManager.trackIndex === 2 && this.position.x > 140;
-    if (trackManager && (trackManager.isRaining || isNearOceanWater) && Math.abs(this.speed) > 40) {
+    if (trackManager && trackManager.isRaining && this.speed > 75) {
       this.emitWaterSpray();
     }
 
