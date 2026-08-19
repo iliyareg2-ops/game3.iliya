@@ -1,4 +1,4 @@
-// game.js - Cyber Drift 3D Main Director, Space=Drift, Shift=Nitro, Nitro Pickup Banners
+// game.js - Cyber Drift 3D Main Director, Clean Keyboard Controls & Immersive HUD
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { CyberCar } from "./car.js";
 import { CityTrackManager } from "./city.js";
@@ -103,38 +103,6 @@ export class CyberDriftGame {
       if (e.code === "Space") this.keys.drift = false;
       if (e.code === "ShiftLeft" || e.code === "ShiftRight") this.keys.nitro = false;
     });
-
-    const bindBtn = (id, keyName) => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.addEventListener("touchstart", (e) => {
-        e.preventDefault();
-        cyberAudio.init();
-        if (this.gameState === "GARAGE") this.startRace();
-        this.keys[keyName] = true;
-      });
-      el.addEventListener("touchend", (e) => {
-        e.preventDefault();
-        this.keys[keyName] = false;
-      });
-      el.addEventListener("mousedown", (e) => {
-        e.preventDefault();
-        cyberAudio.init();
-        if (this.gameState === "GARAGE") this.startRace();
-        this.keys[keyName] = true;
-      });
-      el.addEventListener("mouseup", (e) => {
-        e.preventDefault();
-        this.keys[keyName] = false;
-      });
-    };
-
-    bindBtn("btn-gas", "forward");
-    bindBtn("btn-brake", "backward");
-    bindBtn("btn-steer-left", "left");
-    bindBtn("btn-steer-right", "right");
-    bindBtn("btn-handbrake", "drift");
-    bindBtn("btn-nitro", "nitro");
 
     const camBtn = document.getElementById("btn-cam-switch");
     if (camBtn) camBtn.addEventListener("click", () => this.toggleCamera());

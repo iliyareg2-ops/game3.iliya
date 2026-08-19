@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cyber Drift 3D: Ночной Киберпанк Дрифт & Police Takedowns</title>
   <style>
     * {
@@ -218,13 +218,6 @@
       transition: width 0.1s linear;
     }
 
-    #hud-rpm-bar {
-      width: 20%;
-      height: 100%;
-      background: linear-gradient(90deg, #38b000, #ffaa00, #ff0044);
-      transition: width 0.05s linear;
-    }
-
     .quick-actions {
       display: flex;
       gap: 6px;
@@ -248,57 +241,6 @@
       background: rgba(0, 240, 255, 0.25);
       color: #fff;
       box-shadow: 0 0 12px #00f0ff;
-    }
-
-    /* Touch Controls */
-    #touch-controls {
-      display: none;
-      position: absolute;
-      inset: 0;
-      z-index: 15;
-      pointer-events: none;
-    }
-
-    .touch-left {
-      position: absolute;
-      bottom: 20px;
-      left: 16px;
-      display: flex;
-      gap: 8px;
-      pointer-events: auto;
-    }
-
-    .touch-right {
-      position: absolute;
-      bottom: 20px;
-      right: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      pointer-events: auto;
-    }
-
-    .touch-btn {
-      background: rgba(14, 24, 40, 0.8);
-      border: 2px solid rgba(0, 240, 255, 0.65);
-      border-radius: 12px;
-      color: #00f0ff;
-      font-size: 18px;
-      font-weight: 900;
-      width: 60px;
-      height: 60px;
-      display: grid;
-      place-items: center;
-      backdrop-filter: blur(8px);
-    }
-
-    .touch-btn:active {
-      background: rgba(0, 240, 255, 0.45);
-      color: #fff;
-    }
-
-    @media (max-width: 860px) {
-      #touch-controls { display: block; }
     }
 
     /* Garage Customization HUD Card */
@@ -493,28 +435,8 @@
               <div id="hud-nitro-bar"></div>
             </div>
           </div>
-          <div class="bar-pill">
-            <span class="hud-label" style="color: #ffaa00;">RPM ТАХОМЕТР</span>
-            <div class="bar-track">
-              <div id="hud-rpm-bar"></div>
-            </div>
-          </div>
         </div>
       </div>
-    </div>
-  </div>
-
-  <!-- Touch Controls -->
-  <div id="touch-controls">
-    <div class="touch-left">
-      <button class="touch-btn" id="btn-steer-left">◀</button>
-      <button class="touch-btn" id="btn-steer-right">▶</button>
-    </div>
-    <div class="touch-right">
-      <button class="touch-btn" id="btn-nitro" style="border-color:#00f0ff; color:#00f0ff; height: 48px; font-size:12px;">⚡ НИТРО</button>
-      <button class="touch-btn" id="btn-gas" style="border-color:#38b000; color:#38b000;">▲ ГАЗ</button>
-      <button class="touch-btn" id="btn-handbrake" style="border-color:#ff007f; color:#ff007f; height: 46px; font-size:12px;">💨 ДРИФТ</button>
-      <button class="touch-btn" id="btn-brake" style="border-color:#ff3344; color:#ff3344; height: 48px;">▼ ТОРМОЗ</button>
     </div>
   </div>
 
