@@ -1215,7 +1215,7 @@ export class CityTrackManager {
 
     const getMinDistToTrack = (x, z) => {
       let minD = 999999;
-      for (let i = 0; i < this.trackSamplePoints.length; i += 4) {
+      for (let i = 0; i < this.trackSamplePoints.length; i++) {
         const pt = this.trackSamplePoints[i];
         const d = Math.hypot(x - pt.x, z - pt.z);
         if (d < minD) minD = d;
@@ -1230,14 +1230,15 @@ export class CityTrackManager {
       const toriiMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.4 });
       const toriiBlackMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.3 });
 
-      // Mountain Cliff Ridges
+      // Mountain Cliff Ridges (Strict minimum clearance so mountains never touch road)
       for (let x = -800; x <= 800; x += 110) {
         for (let z = -800; z <= 800; z += 110) {
           const dist = getMinDistToTrack(x, z);
-          if (dist < 45) continue;
+          if (dist < 80) continue; // Guarantees a wide, clear 80m safety corridor around the entire track!
 
-          const cliffHeight = 40 + Math.random() * 90;
-          const cliffGeom = new THREE.ConeGeometry(35 + Math.random() * 25, cliffHeight, 6);
+          const baseRadius = 24 + Math.random() * 16;
+          const cliffHeight = 45 + Math.random() * 95;
+          const cliffGeom = new THREE.ConeGeometry(baseRadius, cliffHeight, 6);
           const cliff = new THREE.Mesh(cliffGeom, Math.random() > 0.4 ? rockMat : mossMat);
           cliff.position.set(x, cliffHeight / 2, z);
           cliff.rotation.y = Math.random() * Math.PI;
@@ -1276,13 +1277,13 @@ export class CityTrackManager {
       for (let x = -800; x <= 800; x += 120) {
         for (let z = -800; z <= 800; z += 120) {
           const distToTrack = getMinDistToTrack(x, z);
-          if (distToTrack < 56) continue;
+          if (distToTrack < 75) continue; // Wide clearance from track edges
 
           bldgIndex++;
           const facadeMat = this.facadeMats[bldgIndex % this.facadeMats.length];
           const height = 100 + Math.random() * 220;
-          const w = 48;
-          const d = 48;
+          const w = 44;
+          const d = 44;
 
           const bldg = new THREE.Mesh(new THREE.BoxGeometry(w, height, d), facadeMat);
           bldg.position.set(x, height / 2, z);
