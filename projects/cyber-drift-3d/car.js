@@ -1,4 +1,4 @@
-// car.js - Realistic Supercar Physics with Subtle, Soft & Balanced Tire Drift Smoke & Exhaust
+// car.js - Grand Prix Supercar Physics: Glowing Carbon-Ceramic Brakes, Exhaust Backfires, Tire Heat & Slipstream
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -23,6 +23,12 @@ export class CyberCar {
     this.nitroActive = false;
     this.focusEnergy = 100;
 
+    // Motorsport Realism Telemetry
+    this.tireTemps = { fl: 82, fr: 82, rl: 85, rr: 85 };
+    this.isDrafting = false;
+    this.brakeHeat = 0.0;
+    this.prevThrottle = 0;
+
     this.spoilerType = 0;
     this.finishType = "metallic";
 
@@ -34,6 +40,7 @@ export class CyberCar {
     this.scene.add(this.mesh);
 
     this.wheels = [];
+    this.brakeDiscs = [];
     this.spoilerMesh = null;
     this.initCarModel();
     this.initParticleSystems();
@@ -44,6 +51,7 @@ export class CyberCar {
       this.mesh.remove(this.mesh.children[0]);
     }
     this.wheels = [];
+    this.brakeDiscs = [];
 
     const bodyMat = this._getPaintMaterial();
     const carbonMat = new THREE.MeshStandardMaterial({ color: 0x181a20, roughness: 0.45, metalness: 0.3 });
@@ -163,6 +171,7 @@ export class CyberCar {
     this.mesh.add(g);
   }
 
+  // 🛞 WHEELS WITH GLOWING CARBON-CERAMIC BRAKE DISCS
   _buildWheels() {
     const tireMat = new THREE.MeshStandardMaterial({ color: 0x18191c, roughness: 0.85 });
     const rimMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.95, roughness: 0.15 });
@@ -172,14 +181,26 @@ export class CyberCar {
     const rimGeom = new THREE.CylinderGeometry(0.38, 0.38, 0.47, 14);
     rimGeom.rotateZ(Math.PI / 2);
 
+    const brakeGeom = new THREE.CylinderGeometry(0.34, 0.34, 0.42, 14);
+    brakeGeom.rotateZ(Math.PI / 2);
+
     const makeWheel = (x, z) => {
       const g = new THREE.Group();
       const tire = new THREE.Mesh(wheelGeom, tireMat);
       const rim = new THREE.Mesh(rimGeom, rimMat);
-      g.add(tire, rim);
+
+      const brakeMat = new THREE.MeshStandardMaterial({
+        color: 0x222222,
+        emissive: 0x000000,
+        emissiveIntensity: 0.0,
+      });
+      const brakeDisc = new THREE.Mesh(brakeGeom, brakeMat);
+
+      g.add(tire, rim, brakeDisc);
       g.position.set(x, 0.52, z);
       g.castShadow = true;
       this.mesh.add(g);
+      this.brakeDiscs.push(brakeDisc);
       return g;
     };
 
@@ -224,11 +245,30 @@ export class CyberCar {
     return new THREE.CanvasTexture(c);
   }
 
+  _createBackfireTexture() {
+    const c = document.createElement("canvas");
+    c.width = 64;
+    c.height = 64;
+    const ctx = c.getContext("2d");
+
+    const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, "rgba(255, 255, 255, 1.0)");
+    grad.addColorStop(0.3, "rgba(249, 115, 22, 0.9)");
+    grad.addColorStop(0.7, "rgba(239, 68, 68, 0.5)");
+    grad.addColorStop(1, "rgba(220, 38, 38, 0.0)");
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 64, 64);
+
+    return new THREE.CanvasTexture(c);
+  }
+
   initParticleSystems() {
     const smokeTex = this._createSmokeTexture();
     const nitroTex = this._createNitroFlameTexture();
+    const backfireTex = this._createBackfireTexture();
 
-    // 1. Drift Smoke System (Subtle, realistic size & opacity)
+    // 1. Drift Smoke System
     const smokeCount = 180;
     const smokeGeom = new THREE.BufferGeometry();
     const sPos = new Float32Array(smokeCount * 3);
@@ -263,7 +303,7 @@ export class CyberCar {
       });
     }
 
-    // 2. Nitro Jet Flames (Subtle realistic blue gas trail)
+    // 2. Nitro Jet Flames
     const nitroCount = 100;
     const nitroGeom = new THREE.BufferGeometry();
     const nPos = new Float32Array(nitroCount * 3);
@@ -298,7 +338,34 @@ export class CyberCar {
       });
     }
 
-    // 3. Collision Sparks
+    // 3. Exhaust Backfire Flame Pops
+    const backfireCount = 40;
+    const bfGeom = new THREE.BufferGeometry();
+    const bfPos = new Float32Array(backfireCount * 3);
+    for (let i = 0; i < backfireCount; i++) {
+      bfPos[i * 3] = 0;
+      bfPos[i * 3 + 1] = -9999;
+      bfPos[i * 3 + 2] = 0;
+    }
+    bfGeom.setAttribute("position", new THREE.BufferAttribute(bfPos, 3));
+    const bfMat = new THREE.PointsMaterial({
+      map: backfireTex,
+      size: 2.2,
+      sizeAttenuation: true,
+      transparent: true,
+      opacity: 0.95,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    this.backfirePoints = new THREE.Points(bfGeom, bfMat);
+    this.backfirePoints.frustumCulled = false;
+    this.scene.add(this.backfirePoints);
+    this.backfirePool = [];
+    for (let i = 0; i < backfireCount; i++) {
+      this.backfirePool.push({ pos: new THREE.Vector3(0, -9999, 0), life: 0, vel: new THREE.Vector3() });
+    }
+
+    // 4. Collision Sparks
     const sparkCount = 60;
     const sparkGeom = new THREE.BufferGeometry();
     const spPos = new Float32Array(sparkCount * 3);
@@ -355,7 +422,6 @@ export class CyberCar {
     }
   }
 
-  // 💨 GENTLE REALISTIC TIRE DRIFT SMOKE
   emitDriftSmoke() {
     const rearLeftPos = new THREE.Vector3(1.95, 0.25, -2.7).applyMatrix4(this.mesh.matrixWorld);
     const rearRightPos = new THREE.Vector3(-1.95, 0.25, -2.7).applyMatrix4(this.mesh.matrixWorld);
@@ -375,7 +441,6 @@ export class CyberCar {
     });
   }
 
-  // ⚡ SUBTLE NITRO EXHAUST JET
   emitNitroExhaust() {
     const pipeLPos = new THREE.Vector3(0.9, 0.35, -4.9).applyMatrix4(this.mesh.matrixWorld);
     const pipeRPos = new THREE.Vector3(-0.9, 0.35, -4.9).applyMatrix4(this.mesh.matrixWorld);
@@ -397,12 +462,38 @@ export class CyberCar {
     });
   }
 
+  // 🔥 EMIT EXHAUST BACKFIRE FLAME POP
+  emitBackfirePop() {
+    const pipeLPos = new THREE.Vector3(0.9, 0.35, -4.9).applyMatrix4(this.mesh.matrixWorld);
+    const pipeRPos = new THREE.Vector3(-0.9, 0.35, -4.9).applyMatrix4(this.mesh.matrixWorld);
+    const forwardX = Math.sin(this.heading);
+    const forwardZ = Math.cos(this.heading);
+
+    [pipeLPos, pipeRPos].forEach((pipePos) => {
+      for (let k = 0; k < 2; k++) {
+        const p = this.backfirePool.find((s) => s.life <= 0);
+        if (p) {
+          p.pos.copy(pipePos);
+          p.vel.set(
+            -forwardX * 12 + (Math.random() - 0.5) * 3,
+            (Math.random() - 0.5) * 1.5,
+            -forwardZ * 12 + (Math.random() - 0.5) * 3
+          );
+          p.life = 0.12;
+        }
+      }
+    });
+    cyberAudio.playExhaustBackfire();
+  }
+
   updatePhysics(delta, trackManager) {
     const isNitroFiring = this.nitroActive && this.nitroFuel > 0;
-    const maxForwardSpeed = isNitroFiring ? 360 : 255;
+    let maxForwardSpeed = isNitroFiring ? 360 : 255;
+    if (this.isDrafting) maxForwardSpeed += 25; // Slipstream top speed boost!
+
     const maxReverseSpeed = -75;
-    const accelRate = (isNitroFiring ? 190 : 110) * delta;
-    const brakeRate = 220 * delta;
+    const accelRate = (isNitroFiring ? 190 : (this.isDrafting ? 140 : 110)) * delta;
+    const brakeRate = 230 * delta;
     const coastDrag = 38 * delta;
 
     if (isNitroFiring) {
@@ -410,17 +501,42 @@ export class CyberCar {
       this.emitNitroExhaust();
     }
 
+    // Check Throttle Lift-Off Backfire
+    if (this.prevThrottle > 0.8 && this.throttleInput === 0 && this.speed > 130) {
+      this.emitBackfirePop();
+    }
+    this.prevThrottle = this.throttleInput;
+
     if (this.throttleInput > 0) {
       this.speed = Math.min(maxForwardSpeed, this.speed + accelRate);
+      this.brakeHeat = Math.max(0, this.brakeHeat - delta * 0.8);
     } else if (this.throttleInput < 0) {
-      if (this.speed > 5) this.speed = Math.max(0, this.speed - brakeRate);
-      else this.speed = Math.max(maxReverseSpeed, this.speed - accelRate * 0.75);
+      if (this.speed > 5) {
+        this.speed = Math.max(0, this.speed - brakeRate);
+        if (this.speed > 110) {
+          this.brakeHeat = Math.min(1.0, this.brakeHeat + delta * 2.2);
+        }
+      } else {
+        this.speed = Math.max(maxReverseSpeed, this.speed - accelRate * 0.75);
+      }
     } else {
+      this.brakeHeat = Math.max(0, this.brakeHeat - delta * 0.6);
       if (this.speed > 0) this.speed = Math.max(0, this.speed - coastDrag);
       else if (this.speed < 0) this.speed = Math.min(0, this.speed + coastDrag);
     }
 
-    // 2. Cornering & Space Drift
+    // 2. Glowing Carbon-Ceramic Brakes Visual
+    for (const disc of this.brakeDiscs) {
+      if (this.brakeHeat > 0.15) {
+        disc.material.emissive.setHex(0xff3300);
+        disc.material.emissiveIntensity = this.brakeHeat * 4.0;
+      } else {
+        disc.material.emissive.setHex(0x000000);
+        disc.material.emissiveIntensity = 0.0;
+      }
+    }
+
+    // 3. Cornering & Space Drift
     const speedRatio = Math.min(1.0, Math.abs(this.speed) / 100);
     const baseTurnSpeed = 1.35;
     const driftTurnMultiplier = 1.95;
@@ -432,11 +548,21 @@ export class CyberCar {
       this.driftMultiplier = Math.min(8.0, this.driftMultiplier + delta * 0.9);
       this.currentDriftScore += Math.abs(this.speed) * delta * 18 * this.driftMultiplier;
 
+      // Tire Heat build-up during drift
+      this.tireTemps.rl = Math.min(125, this.tireTemps.rl + delta * 14);
+      this.tireTemps.rr = Math.min(125, this.tireTemps.rr + delta * 14);
+
       this.emitDriftSmoke();
     } else {
       this.isDrifting = false;
+      this.tireTemps.rl = Math.max(82, this.tireTemps.rl - delta * 4);
+      this.tireTemps.rr = Math.max(82, this.tireTemps.rr - delta * 4);
+      this.tireTemps.fl = Math.max(80, this.tireTemps.fl - delta * 2);
+      this.tireTemps.fr = Math.max(80, this.tireTemps.fr - delta * 2);
+
       if (this.currentDriftScore > 0) {
         this.totalScore += Math.round(this.currentDriftScore);
+        cyberAudio.playScoreChime();
         this.currentDriftScore = 0;
         this.driftMultiplier = 1.0;
       }
@@ -450,19 +576,10 @@ export class CyberCar {
 
     this.heading += this.angularVelocity * delta;
 
-    // 3. Movement & Gravity
+    // 4. Movement
     const speedMs = (this.speed * 1000) / 3600;
     this.position.x += Math.sin(this.heading) * speedMs * delta;
     this.position.z += Math.cos(this.heading) * speedMs * delta;
-
-    if (this.verticalVelocity !== 0 || this.position.y > 0.12) {
-      this.position.y += this.verticalVelocity * delta;
-      this.verticalVelocity -= 28.0 * delta;
-      if (this.position.y <= 0.12) {
-        this.position.y = 0.12;
-        this.verticalVelocity = 0;
-      }
-    }
 
     this.mesh.position.copy(this.position);
     this.mesh.rotation.y = this.heading;
@@ -478,6 +595,25 @@ export class CyberCar {
 
     if (trackManager) {
       trackManager.handleCarTrackCollision(this);
+
+      // Check Slipstream Drafting behind Rivals
+      let drafting = false;
+      const forwardX = Math.sin(this.heading);
+      const forwardZ = Math.cos(this.heading);
+
+      for (const rival of trackManager.aiRivals) {
+        const d = this.position.distanceTo(rival.mesh.position);
+        if (d < 18.0 && d > 4.0 && this.speed > 130) {
+          const toRival = new THREE.Vector3().subVectors(rival.mesh.position, this.position).normalize();
+          const dot = toRival.x * forwardX + toRival.z * forwardZ;
+          if (dot > 0.85) {
+            drafting = true;
+            break;
+          }
+        }
+      }
+      this.isDrafting = drafting;
+      cyberAudio.setSlipstreamActive(this.isDrafting);
     }
 
     const rpmRatio = Math.min(1.0, (Math.abs(this.speed) % 65) / 65 + (this.throttleInput > 0 ? 0.35 : 0));
@@ -507,7 +643,7 @@ export class CyberCar {
         p.life -= delta;
         sPos.setXYZ(i, p.pos.x, p.pos.y, p.pos.z);
       } else {
-        sPos.setXYZ(i, 0, -9999, 0); // Hide off-screen
+        sPos.setXYZ(i, 0, -9999, 0);
       }
     }
     sPos.needsUpdate = true;
@@ -521,12 +657,26 @@ export class CyberCar {
         p.life -= delta;
         nPos.setXYZ(i, p.pos.x, p.pos.y, p.pos.z);
       } else {
-        nPos.setXYZ(i, 0, -9999, 0); // Hide off-screen
+        nPos.setXYZ(i, 0, -9999, 0);
       }
     }
     nPos.needsUpdate = true;
 
-    // 3. Update Sparks
+    // 3. Update Backfire Flames
+    const bfPos = this.backfirePoints.geometry.attributes.position;
+    for (let i = 0; i < this.backfirePool.length; i++) {
+      const p = this.backfirePool[i];
+      if (p.life > 0) {
+        p.pos.addScaledVector(p.vel, delta);
+        p.life -= delta;
+        bfPos.setXYZ(i, p.pos.x, p.pos.y, p.pos.z);
+      } else {
+        bfPos.setXYZ(i, 0, -9999, 0);
+      }
+    }
+    bfPos.needsUpdate = true;
+
+    // 4. Update Sparks
     const spPos = this.sparkPoints.geometry.attributes.position;
     for (let i = 0; i < this.sparkPool.length; i++) {
       const p = this.sparkPool[i];
@@ -550,6 +700,8 @@ export class CyberCar {
     this.verticalVelocity = 0;
     this.nitroFuel = 100;
     this.currentDriftScore = 0;
+    this.brakeHeat = 0;
+    this.tireTemps = { fl: 82, fr: 82, rl: 85, rr: 85 };
     this.mesh.position.copy(this.position);
     this.mesh.rotation.set(0, 0, 0);
   }

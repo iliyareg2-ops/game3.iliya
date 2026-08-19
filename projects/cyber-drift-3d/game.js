@@ -1,4 +1,4 @@
-// game.js - Cyber Drift 3D: Formula 1 Autodrome with 100% Exact Math Position Tracking, Balanced Fair AI & GPS Radar
+// game.js - Cyber Drift 3D: Formula 1 Autodrome with Sector Timing (S1, S2, S3), Slipstream Drafting, Tire Telemetry & Exact Positions
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { CyberCar } from "./car.js";
 import { CityTrackManager } from "./city.js";
@@ -26,6 +26,13 @@ export class CyberDriftGame {
     this.currentLap = 1;
     this.maxLaps = 3;
     this.prevPlayerU = 0.002;
+
+    // F1 Sector Timing
+    this.lapStartTime = 0;
+    this.currentLapTime = 0;
+    this.bestLapTime = Infinity;
+    this.sectorTimes = [0, 0, 0];
+    this.currentSector = 1;
 
     this.keys = {
       forward: false,
@@ -200,6 +207,16 @@ export class CyberDriftGame {
     this.camModeEl = document.getElementById("hud-cam-mode");
     this.bannerEl = document.getElementById("hud-banner");
     this.countdownEl = document.getElementById("countdown-overlay");
+    this.slipstreamEl = document.getElementById("hud-slipstream-badge");
+
+    this.sec1El = document.getElementById("hud-sec-1");
+    this.sec2El = document.getElementById("hud-sec-2");
+    this.sec3El = document.getElementById("hud-sec-3");
+
+    this.tireFLEl = document.getElementById("hud-tire-fl");
+    this.tireFREl = document.getElementById("hud-tire-fr");
+    this.tireRLEl = document.getElementById("hud-tire-rl");
+    this.tireRREl = document.getElementById("hud-tire-rr");
 
     document.querySelectorAll(".color-swatch").forEach((swatch) => {
       swatch.addEventListener("click", () => {
@@ -252,7 +269,6 @@ export class CyberDriftGame {
     }
   }
 
-  // 🗺️ RENDER REAL-TIME GPS VECTOR MINIMAP RADAR
   renderMinimap() {
     if (!this.minimapCtx || !this.trackManager) return;
     const ctx = this.minimapCtx;
@@ -347,12 +363,17 @@ export class CyberDriftGame {
     this.showBanner(`РАДИО: ${stationName}`, 2000);
   }
 
-  // 🚦 START COUNTDOWN (3... 2... 1... GO!)
   startCountdown() {
     this.gameState = "COUNTDOWN";
     this.countdownTimer = 3.2;
     this.currentLap = 1;
     this.prevPlayerU = 0.002;
+    this.lapStartTime = Date.now();
+    this.currentSector = 1;
+
+    if (this.sec1El) this.sec1El.className = "sector-badge";
+    if (this.sec2El) this.sec2El.className = "sector-badge";
+    if (this.sec3El) this.sec3El.className = "sector-badge";
 
     document.getElementById("garage-screen").style.display = "none";
     document.getElementById("busted-screen").style.display = "none";
@@ -452,7 +473,7 @@ export class CyberDriftGame {
     }
 
     const isNitro = this.car.nitroActive && this.car.nitroFuel > 0;
-    const targetFov = isNitro ? 78 : 60;
+    const targetFov = isNitro ? 78 : (this.car.isDrafting ? 68 : 60);
     this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFov, delta * 4);
     this.camera.updateProjectionMatrix();
 
@@ -514,7 +535,7 @@ export class CyberDriftGame {
     }
   }
 
-  // 🧮 100% ACCURATE RACE POSITION & LAP PROGRESSION
+  // 🧮 EXACT RACE POSITION, F1 SECTOR TIMING & TELEMETRY
   updateHUD() {
     const spd = Math.round(Math.abs(this.car.speed));
     if (this.speedEl) this.speedEl.textContent = spd;
@@ -533,22 +554,59 @@ export class CyberDriftGame {
     if (this.nitroBarEl) this.nitroBarEl.style.width = `${Math.round(this.car.nitroFuel)}%`;
     if (this.focusBarEl) this.focusBarEl.style.width = `${Math.round(this.car.focusEnergy)}%`;
 
+    // Slipstream Badge
+    if (this.slipstreamEl) {
+      this.slipstreamEl.style.display = this.car.isDrafting ? "block" : "none";
+    }
+
+    // Tire Telemetry
+    if (this.tireFLEl) this.tireFLEl.textContent = `FL ${Math.round(this.car.tireTemps.fl)}°C`;
+    if (this.tireFREl) this.tireFREl.textContent = `FR ${Math.round(this.car.tireTemps.fr)}°C`;
+    if (this.tireRLEl) {
+      this.tireRLEl.textContent = `RL ${Math.round(this.car.tireTemps.rl)}°C`;
+      this.tireRLEl.style.background = this.car.tireTemps.rl > 105 ? "#ef4444" : "#22c55e";
+    }
+    if (this.tireRREl) {
+      this.tireRREl.textContent = `RR ${Math.round(this.car.tireTemps.rr)}°C`;
+      this.tireRREl.style.background = this.car.tireTemps.rr > 105 ? "#ef4444" : "#22c55e";
+    }
+
     if (this.trackManager) {
       let rawPlayerU = this.trackManager.getClosestU(this.car.position);
 
-      // Handle near-start zero clamp
       if (this.currentLap === 1 && rawPlayerU > 0.9 && this.car.position.z < 80) {
         rawPlayerU = 0.002;
       }
 
-      // Check Lap Line Crossing (u passes from ~0.90 -> 0.10)
+      // F1 Sector Transitions: S1 [0.0 -> 0.33], S2 [0.33 -> 0.66], S3 [0.66 -> 1.0]
+      if (rawPlayerU >= 0.33 && this.currentSector === 1) {
+        this.currentSector = 2;
+        if (this.sec1El) this.sec1El.className = "sector-badge purple";
+      } else if (rawPlayerU >= 0.66 && this.currentSector === 2) {
+        this.currentSector = 3;
+        if (this.sec2El) this.sec2El.className = "sector-badge purple";
+      }
+
+      // Check Lap Line Crossing
       if (this.prevPlayerU > 0.85 && rawPlayerU < 0.15) {
         this.currentLap++;
+        if (this.sec3El) this.sec3El.className = "sector-badge purple";
+
+        const lapDurationSec = (Date.now() - this.lapStartTime) / 1000;
+        this.lapStartTime = Date.now();
+        this.currentSector = 1;
+
+        setTimeout(() => {
+          if (this.sec1El) this.sec1El.className = "sector-badge";
+          if (this.sec2El) this.sec2El.className = "sector-badge";
+          if (this.sec3El) this.sec3El.className = "sector-badge";
+        }, 1200);
+
         if (this.currentLap > this.maxLaps) {
           this.showBanner("🏆 ПОБЕДА В ГОНКЕ! 1-Е МЕСТО! +5000 PTS", 5000);
           this.car.totalScore += 5000;
         } else {
-          this.showBanner(`🏁 КРУГ ${this.currentLap} / ${this.maxLaps}! ДАВИ НА ГАЗ`, 3000);
+          this.showBanner(`🏁 КРУГ ${this.currentLap} / ${this.maxLaps}! ВРЕМЯ: ${lapDurationSec.toFixed(2)}s`, 3200);
         }
       }
       this.prevPlayerU = rawPlayerU;
@@ -571,9 +629,9 @@ export class CyberDriftGame {
         else this.positionEl.style.color = "#ef4444";
       }
 
-      if (this.lapInfoEl) {
-        const lapPercent = Math.min(100, Math.max(0, Math.round(rawPlayerU * 100)));
-        this.lapInfoEl.textContent = `LAP ${Math.min(this.currentLap, this.maxLaps)}/${this.maxLaps} (${lapPercent}%)`;
+      if (this.lapInfoEl && this.gameState === "RACING") {
+        const elapsedSec = ((Date.now() - this.lapStartTime) / 1000).toFixed(1);
+        this.lapInfoEl.textContent = `LAP ${Math.min(this.currentLap, this.maxLaps)}/${this.maxLaps} (${elapsedSec}s)`;
       }
     }
 
@@ -625,6 +683,7 @@ export class CyberDriftGame {
             if (this.countdownEl) this.countdownEl.style.display = "none";
           }, 600);
           this.gameState = "RACING";
+          this.lapStartTime = Date.now();
           this.showBanner("🔥 СТАРТ! ОБГОНИ AKIRA, GHOST И VIPER");
         }
       }
