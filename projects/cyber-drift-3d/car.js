@@ -1,4 +1,4 @@
-// car.js - Hyper-Detailed Sculpted 3D Supercars with Inverted Steering Control Fix
+// car.js - Full-Physics Rigid Body Vehicle Dynamics (Bicycle Model, Pacejka Slip Angles, Weight Transfer & Natural Drift)
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -6,21 +6,17 @@ export class CyberCar {
   constructor(scene, carType = 0) {
     this.scene = scene;
     this.mesh = new THREE.Group();
+    this.bodySubGroup = new THREE.Group(); // Inner group for suspension roll & pitch
+    this.mesh.add(this.bodySubGroup);
+
     this.carType = carType; // 0: Apex GT, 1: Phantom Drift, 2: Hyperion X
 
-    // Customization state
-    this.bodyColor = 0xe11d48; // Candy Red
-    this.underglowColor = 0x00f0ff; // Neon Cyan
+    // Customization
+    this.bodyColor = 0xe11d48;
+    this.underglowColor = 0x00f0ff;
     this.carMaterials = [];
 
-    // Lights
-    this.underglowLight = null;
-    this.underglowMesh = null;
-    this.headlightLeft = null;
-    this.headlightRight = null;
-    this.tailPointLight = null;
-
-    // Wheels & Mechanicals
+    // Wheels & Parts
     this.wheels = [];
     this.frontLeftWheelGroup = new THREE.Group();
     this.frontRightWheelGroup = new THREE.Group();
@@ -29,33 +25,46 @@ export class CyberCar {
     this.exhaustTips = [];
     this.flameCones = [];
 
-    // Particle Systems
+    // Particles
     this.smokeParticles = [];
     this.sparkParticles = [];
 
-    // Physics Dynamics
-    this.position = new THREE.Vector3(0, 0.48, 0);
-    this.velocity = new THREE.Vector3();
-    this.heading = 0;
-    this.speed = 0;
-    this.maxSpeed = 290;
-    this.maxReverseSpeed = 65;
-    this.nitroMaxSpeed = 390;
-    this.acceleration = 135;
-    this.braking = 260;
-    this.turnSpeed = 2.6;
+    // ==========================================
+    // 📐 REAL-PHYSICS RIGID BODY CONSTANTS & STATE
+    // ==========================================
+    this.mass = 1350; // kg
+    this.inertiaZ = 2200; // kg * m^2 (Yaw moment of inertia)
+    this.wheelbaseA = 1.35; // meters from CG to front axle
+    this.wheelbaseB = 1.45; // meters from CG to rear axle
+    this.corneringStiffnessFront = 46000; // N/rad
+    this.corneringStiffnessRear = 52000; // N/rad
+    this.maxGripFront = 9200; // N
+    this.maxGripRear = 10400; // N
+    this.slideFriction = 0.55; // Kinetic friction coeff on drift
 
+    // 2D State in Local Coordinates
+    this.vx = 0; // Longitudinal velocity (m/s) forward
+    this.vy = 0; // Lateral velocity (m/s) sideways
+    this.yawRate = 0; // Angular yaw rate (rad/s)
+    this.yaw = 0; // World heading angle (radians)
+
+    this.position = new THREE.Vector3(0, 0.12, 0);
+    this.speed = 0; // km/h
+    this.steerAngle = 0;
     this.throttleInput = 0;
     this.steerInput = 0;
     this.handbrake = false;
     this.nitroActive = false;
     this.nitroFuel = 100;
 
-    this.steerAngle = 0;
+    // Suspension Pitch & Roll
+    this.bodyRoll = 0;
+    this.bodyPitch = 0;
+
     this.rpm = 1000;
     this.gear = 1;
 
-    // Drift Dynamics
+    // Drift Scoring
     this.driftAngle = 0;
     this.isDrifting = false;
     this.driftMultiplier = 1.0;
@@ -71,14 +80,15 @@ export class CyberCar {
   }
 
   buildCarModel() {
-    while (this.mesh.children.length > 0) {
-      this.mesh.remove(this.mesh.children[0]);
+    while (this.bodySubGroup.children.length > 0) {
+      this.bodySubGroup.remove(this.bodySubGroup.children[0]);
     }
     this.wheels = [];
     this.exhaustTips = [];
     this.flameCones = [];
     this.carMaterials = [];
 
+    // Clearcoat Physical Paint (Vibrant in any lighting)
     this.bodyMat = new THREE.MeshPhysicalMaterial({
       color: this.bodyColor,
       metalness: 0.35,
@@ -161,140 +171,130 @@ export class CyberCar {
   _buildApexGT() {
     const chassisGeom = new THREE.BoxGeometry(4.4, 0.7, 9.4);
     const chassis = new THREE.Mesh(chassisGeom, this.bodyMat);
-    chassis.position.y = 0.52;
+    chassis.position.y = 0.58;
     chassis.castShadow = true;
-    this.mesh.add(chassis);
+    this.bodySubGroup.add(chassis);
 
-    const bumperGeom = new THREE.BoxGeometry(4.35, 0.45, 1.2);
-    const bumper = new THREE.Mesh(bumperGeom, this.carbonMat);
-    bumper.position.set(0, 0.35, 4.4);
-    this.mesh.add(bumper);
+    // Front Bumper with Intercooler Grille
+    const bumper = new THREE.Mesh(new THREE.BoxGeometry(4.35, 0.45, 1.2), this.carbonMat);
+    bumper.position.set(0, 0.42, 4.4);
+    this.bodySubGroup.add(bumper);
 
-    const intercoolerGeom = new THREE.BoxGeometry(2.4, 0.3, 0.2);
-    const intercooler = new THREE.Mesh(intercoolerGeom, this.chromeMat);
-    intercooler.position.set(0, 0.32, 4.95);
-    this.mesh.add(intercooler);
+    const intercooler = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.3, 0.2), this.chromeMat);
+    intercooler.position.set(0, 0.38, 4.95);
+    this.bodySubGroup.add(intercooler);
 
-    const splitterGeom = new THREE.BoxGeometry(4.6, 0.08, 1.2);
-    const splitter = new THREE.Mesh(splitterGeom, this.carbonMat);
-    splitter.position.set(0, 0.18, 4.6);
-    this.mesh.add(splitter);
+    const splitter = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.08, 1.2), this.carbonMat);
+    splitter.position.set(0, 0.24, 4.6);
+    this.bodySubGroup.add(splitter);
 
-    const hoodGeom = new THREE.BoxGeometry(4.1, 0.32, 3.4);
-    const hood = new THREE.Mesh(hoodGeom, this.bodyMat);
-    hood.position.set(0, 0.72, 2.6);
-    this.mesh.add(hood);
+    const hood = new THREE.Mesh(new THREE.BoxGeometry(4.1, 0.32, 3.4), this.bodyMat);
+    hood.position.set(0, 0.78, 2.6);
+    this.bodySubGroup.add(hood);
 
-    const mirrorGeom = new THREE.BoxGeometry(0.5, 0.25, 0.35);
-    const leftMirror = new THREE.Mesh(mirrorGeom, this.carbonMat);
-    leftMirror.position.set(2.35, 1.05, 0.9);
+    const leftMirror = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.25, 0.35), this.carbonMat);
+    leftMirror.position.set(2.35, 1.12, 0.9);
     const rightMirror = leftMirror.clone();
     rightMirror.position.x = -2.35;
-    this.mesh.add(leftMirror, rightMirror);
+    this.bodySubGroup.add(leftMirror, rightMirror);
 
-    const cabinGeom = new THREE.BoxGeometry(3.6, 0.75, 4.6);
-    const cabin = new THREE.Mesh(cabinGeom, this.glassMat);
-    cabin.position.set(0, 1.15, -0.4);
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.75, 4.6), this.glassMat);
+    cabin.position.set(0, 1.22, -0.4);
     cabin.castShadow = true;
-    this.mesh.add(cabin);
+    this.bodySubGroup.add(cabin);
 
-    const roofGeom = new THREE.BoxGeometry(3.45, 0.08, 3.5);
-    const roof = new THREE.Mesh(roofGeom, this.carbonMat);
-    roof.position.set(0, 1.54, -0.4);
-    this.mesh.add(roof);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(3.45, 0.08, 3.5), this.carbonMat);
+    roof.position.set(0, 1.62, -0.4);
+    this.bodySubGroup.add(roof);
 
-    const diffuserGeom = new THREE.BoxGeometry(4.2, 0.35, 1.0);
-    const diffuser = new THREE.Mesh(diffuserGeom, this.carbonMat);
-    diffuser.position.set(0, 0.32, -4.5);
-    this.mesh.add(diffuser);
+    const diffuser = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.35, 1.0), this.carbonMat);
+    diffuser.position.set(0, 0.38, -4.5);
+    this.bodySubGroup.add(diffuser);
 
     const tipGeom = new THREE.CylinderGeometry(0.18, 0.18, 0.6, 12);
     tipGeom.rotateX(Math.PI / 2);
     const tipPositions = [
-      new THREE.Vector3(1.3, 0.32, -4.85),
-      new THREE.Vector3(0.9, 0.32, -4.85),
-      new THREE.Vector3(-0.9, 0.32, -4.85),
-      new THREE.Vector3(-1.3, 0.32, -4.85),
+      new THREE.Vector3(1.3, 0.38, -4.85),
+      new THREE.Vector3(0.9, 0.38, -4.85),
+      new THREE.Vector3(-0.9, 0.38, -4.85),
+      new THREE.Vector3(-1.3, 0.38, -4.85),
     ];
     tipPositions.forEach((pos) => {
       const tip = new THREE.Mesh(tipGeom, this.titaniumTipMat);
       tip.position.copy(pos);
-      this.mesh.add(tip);
+      this.bodySubGroup.add(tip);
       this.exhaustTips.push(pos);
     });
 
-    const wingGeom = new THREE.BoxGeometry(4.5, 0.08, 1.0);
-    const wing = new THREE.Mesh(wingGeom, this.carbonMat);
-    wing.position.set(0, 1.45, -4.3);
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.08, 1.0), this.carbonMat);
+    wing.position.set(0, 1.52, -4.3);
     const stand1 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.6, 0.2), this.carbonMat);
-    stand1.position.set(1.4, 1.15, -4.3);
+    stand1.position.set(1.4, 1.22, -4.3);
     const stand2 = stand1.clone();
     stand2.position.x = -1.4;
-    this.mesh.add(wing, stand1, stand2);
+    this.bodySubGroup.add(wing, stand1, stand2);
 
     const haloGeom = new THREE.TorusGeometry(0.24, 0.04, 8, 16);
     const leftHalo = new THREE.Mesh(haloGeom, this.haloRingMat);
-    leftHalo.position.set(1.6, 0.68, 4.75);
+    leftHalo.position.set(1.6, 0.74, 4.75);
     const rightHalo = leftHalo.clone();
     rightHalo.position.x = -1.6;
 
     const bulbGeom = new THREE.SphereGeometry(0.14, 8, 8);
     const leftBulb = new THREE.Mesh(bulbGeom, this.headlightMat);
-    leftBulb.position.set(1.6, 0.68, 4.72);
+    leftBulb.position.set(1.6, 0.74, 4.72);
     const rightBulb = leftBulb.clone();
     rightBulb.position.x = -1.6;
 
-    this.mesh.add(leftHalo, rightHalo, leftBulb, rightBulb);
+    this.bodySubGroup.add(leftHalo, rightHalo, leftBulb, rightBulb);
 
     const tLight = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.16, 0.1), this.taillightMat);
-    tLight.position.set(0, 0.68, -4.72);
-    this.mesh.add(tLight);
+    tLight.position.set(0, 0.74, -4.72);
+    this.bodySubGroup.add(tLight);
   }
 
   _buildPhantomDrifter() {
-    const chassisGeom = new THREE.BoxGeometry(4.8, 0.72, 9.6);
-    const chassis = new THREE.Mesh(chassisGeom, this.bodyMat);
-    chassis.position.y = 0.5;
+    const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.72, 9.6), this.bodyMat);
+    chassis.position.y = 0.56;
     chassis.castShadow = true;
-    this.mesh.add(chassis);
+    this.bodySubGroup.add(chassis);
 
-    const flareGeom = new THREE.BoxGeometry(5.35, 0.55, 2.4);
-    const frontFlares = new THREE.Mesh(flareGeom, this.carbonMat);
-    frontFlares.position.set(0, 0.58, 2.7);
-    const rearFlares = new THREE.Mesh(flareGeom, this.carbonMat);
-    rearFlares.position.set(0, 0.58, -2.7);
-    this.mesh.add(frontFlares, rearFlares);
+    const frontFlares = new THREE.Mesh(new THREE.BoxGeometry(5.35, 0.55, 2.4), this.carbonMat);
+    frontFlares.position.set(0, 0.64, 2.7);
+    const rearFlares = new THREE.Mesh(flareGeom => flareGeom, this.carbonMat);
+    const rFlares = frontFlares.clone();
+    rFlares.position.z = -2.7;
+    this.bodySubGroup.add(frontFlares, rFlares);
 
     const intercooler = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.35, 0.2), this.chromeMat);
-    intercooler.position.set(0, 0.32, 4.95);
-    this.mesh.add(intercooler);
+    intercooler.position.set(0, 0.38, 4.95);
+    this.bodySubGroup.add(intercooler);
 
-    const wingGeom = new THREE.BoxGeometry(5.4, 0.1, 1.3);
-    const wing = new THREE.Mesh(wingGeom, this.carbonMat);
-    wing.position.set(0, 1.75, -4.5);
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.1, 1.3), this.carbonMat);
+    wing.position.set(0, 1.82, -4.5);
     const stand1 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.0), this.chromeMat);
-    stand1.position.set(1.6, 1.25, -4.5);
+    stand1.position.set(1.6, 1.32, -4.5);
     const stand2 = stand1.clone();
     stand2.position.x = -1.6;
-    this.mesh.add(wing, stand1, stand2);
+    this.bodySubGroup.add(wing, stand1, stand2);
 
     const tipGeom = new THREE.CylinderGeometry(0.24, 0.24, 0.7, 12);
     tipGeom.rotateX(Math.PI / 2);
     const tip1 = new THREE.Mesh(tipGeom, this.titaniumTipMat);
-    tip1.position.set(0.9, 0.35, -4.9);
+    tip1.position.set(0.9, 0.42, -4.9);
     const tip2 = tip1.clone();
     tip2.position.x = -0.9;
-    this.mesh.add(tip1, tip2);
-    this.exhaustTips.push(new THREE.Vector3(0.9, 0.35, -4.9), new THREE.Vector3(-0.9, 0.35, -4.9));
+    this.bodySubGroup.add(tip1, tip2);
+    this.exhaustTips.push(new THREE.Vector3(0.9, 0.42, -4.9), new THREE.Vector3(-0.9, 0.42, -4.9));
 
     const hLight1 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.25, 0.15), this.headlightMat);
-    hLight1.position.set(1.75, 0.68, 4.85);
+    hLight1.position.set(1.75, 0.74, 4.85);
     const hLight2 = hLight1.clone();
     hLight2.position.x = -1.75;
 
     const tLight = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.18, 0.1), this.taillightMat);
-    tLight.position.set(0, 0.68, -4.85);
-    this.mesh.add(hLight1, hLight2, tLight);
+    tLight.position.set(0, 0.74, -4.85);
+    this.bodySubGroup.add(hLight1, hLight2, tLight);
   }
 
   _buildHyperionX() {
@@ -311,61 +311,59 @@ export class CyberCar {
     const bodyGeom = new THREE.ExtrudeGeometry(bodyShape, extrudeSettings);
     bodyGeom.rotateX(-Math.PI / 2);
     const body = new THREE.Mesh(bodyGeom, this.bodyMat);
-    body.position.y = 0.22;
+    body.position.y = 0.28;
     body.castShadow = true;
-    this.mesh.add(body);
+    this.bodySubGroup.add(body);
 
     const canopyGeom = new THREE.SphereGeometry(1.6, 16, 12);
     canopyGeom.scale(1.0, 0.55, 2.4);
     const canopy = new THREE.Mesh(canopyGeom, this.glassMat);
-    canopy.position.set(0, 0.88, -0.4);
-    this.mesh.add(canopy);
+    canopy.position.set(0, 0.94, -0.4);
+    this.bodySubGroup.add(canopy);
 
-    const finGeom = new THREE.BoxGeometry(0.1, 0.85, 2.5);
-    const fin = new THREE.Mesh(finGeom, this.carbonMat);
-    fin.position.set(0, 1.2, -3.2);
-    this.mesh.add(fin);
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.85, 2.5), this.carbonMat);
+    fin.position.set(0, 1.26, -3.2);
+    this.bodySubGroup.add(fin);
 
     const exhaustGeom = new THREE.CylinderGeometry(0.38, 0.44, 0.9, 14);
     exhaustGeom.rotateX(Math.PI / 2);
     const ex1 = new THREE.Mesh(exhaustGeom, this.titaniumTipMat);
-    ex1.position.set(0.9, 0.48, -4.85);
+    ex1.position.set(0.9, 0.54, -4.85);
     const ex2 = ex1.clone();
     ex2.position.x = -0.9;
-    this.mesh.add(ex1, ex2);
+    this.bodySubGroup.add(ex1, ex2);
 
     const hStrip = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.15, 0.1), this.headlightMat);
-    hStrip.position.set(0, 0.68, 4.85);
+    hStrip.position.set(0, 0.74, 4.85);
     const tStrip = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.15, 0.1), this.taillightMat);
-    tStrip.position.set(0, 0.68, -4.85);
-    this.mesh.add(hStrip, tStrip);
+    tStrip.position.set(0, 0.74, -4.85);
+    this.bodySubGroup.add(hStrip, tStrip);
 
-    this.exhaustTips.push(new THREE.Vector3(0.9, 0.48, -5.1), new THREE.Vector3(-0.9, 0.48, -5.1));
+    this.exhaustTips.push(new THREE.Vector3(0.9, 0.54, -5.1), new THREE.Vector3(-0.9, 0.54, -5.1));
   }
 
   _buildInterior() {
     const seatGeom = new THREE.BoxGeometry(0.9, 1.1, 0.9);
     const seatMat = new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.9 });
     const seat1 = new THREE.Mesh(seatGeom, seatMat);
-    seat1.position.set(0.75, 0.95, -0.5);
+    seat1.position.set(0.75, 1.02, -0.5);
     const seat2 = seat1.clone();
     seat2.position.x = -0.75;
 
     const cageGeom = new THREE.CylinderGeometry(0.05, 0.05, 2.2);
     const cageMat = new THREE.MeshStandardMaterial({ color: 0x00f0ff, metalness: 0.9 });
     const cage1 = new THREE.Mesh(cageGeom, cageMat);
-    cage1.position.set(1.3, 1.1, -1.2);
+    cage1.position.set(1.3, 1.18, -1.2);
     cage1.rotation.z = 0.35;
     const cage2 = cage1.clone();
     cage2.position.x = -1.3;
     cage2.rotation.z = -0.35;
 
-    const wheelGeom = new THREE.TorusGeometry(0.24, 0.04, 8, 16);
-    const steerWheel = new THREE.Mesh(wheelGeom, this.carbonMat);
-    steerWheel.position.set(0.75, 1.15, 0.4);
+    const steerWheel = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.04, 8, 16), this.carbonMat);
+    steerWheel.position.set(0.75, 1.22, 0.4);
     steerWheel.rotation.x = -0.4;
 
-    this.mesh.add(seat1, seat2, cage1, cage2, steerWheel);
+    this.bodySubGroup.add(seat1, seat2, cage1, cage2, steerWheel);
   }
 
   _buildWheels() {
@@ -403,6 +401,7 @@ export class CyberCar {
     const trackWidth = this.carType === 1 ? 2.4 : 2.15;
     const wheelBase = 2.85;
 
+    // Height of wheel center is exactly wheelRadius (0.55m) on top of road (y=0.12)
     this.frontLeftWheelGroup.position.set(trackWidth, 0.55, wheelBase);
     this.frontRightWheelGroup.position.set(-trackWidth, 0.55, wheelBase);
     this.rearLeftWheelGroup.position.set(trackWidth, 0.55, -wheelBase);
@@ -440,17 +439,17 @@ export class CyberCar {
     this.mesh.add(this.underglowMesh);
 
     this.headlightLeft = new THREE.SpotLight(0xffffff, 5.0, 75, Math.PI / 5, 0.35);
-    this.headlightLeft.position.set(1.5, 0.7, 4.5);
-    this.headlightLeft.target.position.set(1.5, 0.1, 35);
+    this.headlightLeft.position.set(1.5, 0.74, 4.5);
+    this.headlightLeft.target.position.set(1.5, 0.12, 35);
 
     this.headlightRight = new THREE.SpotLight(0xffffff, 5.0, 75, Math.PI / 5, 0.35);
-    this.headlightRight.position.set(-1.5, 0.7, 4.5);
-    this.headlightRight.target.position.set(-1.5, 0.1, 35);
+    this.headlightRight.position.set(-1.5, 0.74, 4.5);
+    this.headlightRight.target.position.set(-1.5, 0.12, 35);
 
     this.mesh.add(this.headlightLeft, this.headlightLeft.target, this.headlightRight, this.headlightRight.target);
 
     this.tailPointLight = new THREE.PointLight(0xff0022, 2.5, 10);
-    this.tailPointLight.position.set(0, 0.7, -4.8);
+    this.tailPointLight.position.set(0, 0.74, -4.8);
     this.mesh.add(this.tailPointLight);
   }
 
@@ -463,7 +462,7 @@ export class CyberCar {
       const flame = new THREE.Mesh(flameGeom, flameMat.clone());
       flame.position.copy(pos).add(new THREE.Vector3(0, 0, -0.9));
       flame.visible = false;
-      this.mesh.add(flame);
+      this.bodySubGroup.add(flame);
       this.flameCones.push(flame);
     });
   }
@@ -523,7 +522,7 @@ export class CyberCar {
     if (!pObj) return;
 
     const trackWidth = this.carType === 1 ? 2.4 : 2.15;
-    const offset = new THREE.Vector3(isLeft ? trackWidth : -trackWidth, 0.3, -2.85);
+    const offset = new THREE.Vector3(isLeft ? trackWidth : -trackWidth, 0.25, -2.85);
     offset.applyQuaternion(this.mesh.quaternion);
     pObj.mesh.position.copy(this.mesh.position).add(offset);
 
@@ -572,93 +571,162 @@ export class CyberCar {
     this.createExhaustFlames();
   }
 
+  // =========================================================================
+  // 📐 REAL-PHYSICS VEHICLE RIGID BODY SIMULATION (BICYCLE DYNAMICS ENGINE)
+  // =========================================================================
   updatePhysics(delta, trackManager) {
-    let topSpd = this.nitroActive && this.nitroFuel > 0 ? this.nitroMaxSpeed : this.maxSpeed;
-    let accel = this.acceleration;
+    // 1. Steering input (-1 = Left A/←, +1 = Right D/→)
+    const targetSteer = this.steerInput * 0.52;
+    this.steerAngle = THREE.MathUtils.lerp(this.steerAngle, targetSteer, delta * 9.0);
 
-    if (this.nitroActive && this.nitroFuel > 0) {
-      accel *= 2.3;
+    // Animate front wheels turning angle
+    this.frontLeftWheelGroup.rotation.y = -this.steerAngle;
+    this.frontRightWheelGroup.rotation.y = -this.steerAngle;
+
+    // 2. Engine Driving & Braking Forces
+    let engineForce = 0;
+    let brakeForce = 0;
+    const isNitro = this.nitroActive && this.nitroFuel > 0;
+
+    if (isNitro) {
       this.nitroFuel = Math.max(0, this.nitroFuel - delta * 25);
       this.flameCones.forEach((f) => (f.visible = true));
     } else {
-      if (!this.nitroActive) {
-        this.flameCones.forEach((f) => (f.visible = false));
-      }
+      this.flameCones.forEach((f) => (f.visible = false));
     }
+
+    const drivePower = isNitro ? 18000 : 9200;
 
     if (this.throttleInput > 0) {
-      this.speed = Math.min(topSpd, this.speed + accel * this.throttleInput * delta);
+      engineForce = this.throttleInput * drivePower;
     } else if (this.throttleInput < 0) {
-      if (this.speed > 5) {
-        this.speed = Math.max(0, this.speed - this.braking * delta);
+      if (this.vx > 2.0) {
+        brakeForce = 16000;
       } else {
-        this.speed = Math.max(-this.maxReverseSpeed, this.speed - this.acceleration * 0.6 * delta);
+        engineForce = this.throttleInput * 4500; // Reverse gear
       }
-    } else {
-      if (this.speed > 0) this.speed = Math.max(0, this.speed - delta * 35);
-      if (this.speed < 0) this.speed = Math.min(0, this.speed + delta * 35);
     }
 
-    // 🎮 PERFECT STEERING: steerInput = -1 (A / ←, Left), steerInput = +1 (D / →, Right)
-    this.steerAngle = THREE.MathUtils.lerp(this.steerAngle, this.steerInput * 0.55, delta * 8);
-    this.frontLeftWheelGroup.rotation.y = this.steerAngle;
-    this.frontRightWheelGroup.rotation.y = this.steerAngle;
+    // 3. Tire Slip Angles & Cornering Forces (Pacejka Formula)
+    const safeVx = Math.max(1.5, Math.abs(this.vx));
 
-    const wheelRot = (this.speed * delta * 4) / 0.55;
+    // Front tire slip angle: alpha_f = arctan((vy + a * yawRate) / vx) - delta
+    const slipAngleFront = Math.atan2(this.vy + this.wheelbaseA * this.yawRate, safeVx) - this.steerAngle * Math.sign(this.vx || 1);
+    // Rear tire slip angle: alpha_r = arctan((vy - b * yawRate) / vx)
+    const slipAngleRear = Math.atan2(this.vy - this.wheelbaseB * this.yawRate, safeVx);
+
+    // Front lateral force
+    let lateralForceFront = -this.corneringStiffnessFront * slipAngleFront;
+    lateralForceFront = Math.max(-this.maxGripFront, Math.min(this.maxGripFront, lateralForceFront));
+
+    // Rear lateral force (Drops into sliding friction on Handbrake or Oversteer)
+    let lateralForceRear = 0;
+    if (this.handbrake && Math.abs(this.vx) > 5) {
+      this.isDrifting = true;
+      // Kinetic sliding friction
+      const normalLoad = (this.mass * 9.81 * this.wheelbaseA) / (this.wheelbaseA + this.wheelbaseB);
+      lateralForceRear = -Math.sign(slipAngleRear || 1) * normalLoad * this.slideFriction;
+      brakeForce += 6000; // Handbrake drag
+    } else if (Math.abs(slipAngleRear) > 0.18 && Math.abs(this.vx) > 12) {
+      // Power oversteer slide
+      this.isDrifting = true;
+      const normalLoad = (this.mass * 9.81 * this.wheelbaseA) / (this.wheelbaseA + this.wheelbaseB);
+      lateralForceRear = -Math.sign(slipAngleRear) * normalLoad * this.slideFriction;
+    } else {
+      lateralForceRear = -this.corneringStiffnessRear * slipAngleRear;
+      lateralForceRear = Math.max(-this.maxGripRear, Math.min(this.maxGripRear, lateralForceRear));
+      this.isDrifting = false;
+    }
+
+    // 4. Aerodynamic Drag & Rolling Resistance
+    const aeroDrag = -0.5 * 0.35 * 2.2 * 1.225 * this.vx * Math.abs(this.vx);
+    const rollingResistance = -0.015 * this.mass * 9.81 * Math.sign(this.vx || 1);
+
+    // Total forces in car frame
+    const fx = engineForce - Math.sign(this.vx || 1) * brakeForce + aeroDrag + rollingResistance - lateralForceFront * Math.sin(this.steerAngle);
+    const fy = lateralForceRear + lateralForceFront * Math.cos(this.steerAngle);
+
+    // Torque around yaw Z axis
+    const torque = this.wheelbaseA * lateralForceFront * Math.cos(this.steerAngle) - this.wheelbaseB * lateralForceRear;
+
+    // 5. Numerical Integration (Euler / Rigid Body)
+    const ax = fx / this.mass + this.vy * this.yawRate;
+    const ay = fy / this.mass - this.vx * this.yawRate;
+    const angularAccel = torque / this.inertiaZ;
+
+    this.vx += ax * delta;
+    this.vy += ay * delta;
+    this.yawRate += angularAccel * delta;
+
+    // Natural damping at rest
+    if (Math.abs(this.vx) < 0.2 && Math.abs(this.throttleInput) === 0) {
+      this.vx = 0;
+      this.vy = 0;
+      this.yawRate = 0;
+    }
+
+    this.yaw -= this.yawRate * delta;
+    this.mesh.rotation.y = this.yaw;
+
+    // 6. World Movement
+    const speedMs = Math.hypot(this.vx, this.vy);
+    this.speed = this.vx * 3.6; // km/h
+
+    const worldVelX = this.vx * Math.sin(this.yaw) + this.vy * Math.cos(this.yaw);
+    const worldVelZ = this.vx * Math.cos(this.yaw) - this.vy * Math.sin(this.yaw);
+
+    this.position.x += worldVelX * delta;
+    this.position.z += worldVelZ * delta;
+    this.position.y = 0.12; // Strictly on top of road!
+    this.mesh.position.copy(this.position);
+
+    // 7. Suspension Pitch & Roll Dynamics
+    const latG = (this.vx * this.yawRate) / 9.81;
+    const targetRoll = THREE.MathUtils.clamp(-latG * 0.065, -0.15, 0.15);
+    this.bodyRoll = THREE.MathUtils.lerp(this.bodyRoll, targetRoll, delta * 8);
+
+    const longG = ax / 9.81;
+    const targetPitch = THREE.MathUtils.clamp(-longG * 0.035, -0.08, 0.08);
+    this.bodyPitch = THREE.MathUtils.lerp(this.bodyPitch, targetPitch, delta * 8);
+
+    this.bodySubGroup.rotation.z = this.bodyRoll;
+    this.bodySubGroup.rotation.x = this.bodyPitch;
+
+    // 8. Rotate Wheels
+    const wheelRot = (this.vx * delta) / 0.55;
     this.wheelFL.rotation.x += wheelRot;
     this.wheelFR.rotation.x += wheelRot;
     this.wheelRL.rotation.x += wheelRot;
     this.wheelRR.rotation.x += wheelRot;
 
-    // Drift physics
-    if (this.handbrake && Math.abs(this.speed) > 35) {
-      this.isDrifting = true;
-      this.speed = Math.max(0, this.speed - delta * 50);
-      this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, -this.steerInput * 0.75, delta * 6);
-    } else if (Math.abs(this.steerInput) > 0.4 && Math.abs(this.speed) > 95) {
-      this.isDrifting = true;
-      this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, -this.steerInput * 0.48, delta * 4);
-    } else {
-      this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, 0, delta * 5);
-      if (Math.abs(this.driftAngle) < 0.08) {
-        if (this.isDrifting && this.currentDriftScore > 0) {
-          this.totalScore += Math.round(this.currentDriftScore);
-          cyberAudio.playScoreChime();
-          this.currentDriftScore = 0;
-          this.driftMultiplier = 1.0;
-        }
-        this.isDrifting = false;
-      }
-    }
+    // 9. Drift Scoring & Smoke
+    this.driftAngle = Math.abs(Math.atan2(this.vy, Math.max(1.0, Math.abs(this.vx))));
 
-    if (this.isDrifting && Math.abs(this.speed) > 40) {
-      const angleWeight = Math.abs(this.driftAngle) * 2.2;
-      this.driftMultiplier = Math.min(8.0, this.driftMultiplier + delta * 0.8);
-      const pointsDelta = this.speed * angleWeight * this.driftMultiplier * delta * 14;
-      this.currentDriftScore += pointsDelta;
-      this.nitroFuel = Math.min(100, this.nitroFuel + delta * 8);
+    if (this.isDrifting && Math.abs(this.speed) > 35) {
+      this.driftMultiplier = Math.min(8.0, this.driftMultiplier + delta * 0.9);
+      const pts = Math.abs(this.speed) * this.driftAngle * this.driftMultiplier * delta * 15;
+      this.currentDriftScore += pts;
+      this.nitroFuel = Math.min(100, this.nitroFuel + delta * 10);
 
       if (Math.random() < 0.9) this.emitTireSmoke(true);
       if (Math.random() < 0.9) this.emitTireSmoke(false);
+    } else {
+      if (this.currentDriftScore > 50) {
+        this.totalScore += Math.round(this.currentDriftScore);
+        cyberAudio.playScoreChime();
+        this.currentDriftScore = 0;
+        this.driftMultiplier = 1.0;
+      }
     }
-
-    // Heading calculation: Left (steerInput = -1) decreases heading, Right (steerInput = +1) increases heading
-    const effectiveSteer = this.steerInput * (this.isDrifting ? 1.4 : 1.0);
-    this.heading += effectiveSteer * this.turnSpeed * (this.speed / this.maxSpeed) * delta;
-    this.mesh.rotation.y = this.heading + this.driftAngle;
-
-    const speedMs = (this.speed * 1000) / 3600;
-    const forward = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.heading);
-    this.mesh.position.addScaledVector(forward, speedMs * delta);
 
     if (trackManager) {
       trackManager.handleCarTrackCollision(this);
     }
 
+    // Sound
     this.rpm = 800 + (Math.abs(this.speed) % 55) * 140 + (this.throttleInput > 0 ? 1200 : 0);
     const rpmRatio = Math.min(1.0, (this.rpm - 800) / 7500);
-    const driftRatio = Math.abs(this.driftAngle);
-    cyberAudio.update(rpmRatio, this.speed, driftRatio, this.nitroActive, false, false);
+    cyberAudio.update(rpmRatio, this.speed, this.driftAngle, isNitro, false, false);
 
     // Particles
     for (const p of this.smokeParticles) {
@@ -686,11 +754,16 @@ export class CyberCar {
   }
 
   reset() {
-    this.position.set(0, 0.48, 0);
+    this.position.set(0, 0.12, 0);
     this.mesh.position.copy(this.position);
-    this.heading = 0;
+    this.vx = 0;
+    this.vy = 0;
+    this.yawRate = 0;
+    this.yaw = 0;
     this.speed = 0;
-    this.driftAngle = 0;
+    this.steerAngle = 0;
+    this.bodyRoll = 0;
+    this.bodyPitch = 0;
     this.isDrifting = false;
     this.currentDriftScore = 0;
     this.driftMultiplier = 1.0;
