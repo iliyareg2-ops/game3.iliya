@@ -1,4 +1,4 @@
-// city.js - Pure Formula 1 Grand Prix Circuit with Forza Horizon Festival 3D Studio Garage & Realistic City Details
+// city.js - Pure Formula 1 Grand Prix Circuit with Forza Horizon 5 3D Studio, GTA Wanted Stars, Evasion System & Rewind
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -15,6 +15,15 @@ export class CityTrackManager {
     this.aiRivals = [];
     this.helicopter = null;
 
+    // GTA Wanted System
+    this.wantedLevel = 0; // 0 to 3 stars
+    this.evasionTimer = 0; // counts down when police > 135m away
+    this.isEvasionFlashing = false;
+
+    // Rewind buffer for AI rivals & traffic
+    this.aiHistoryBuffer = [];
+    this.maxHistoryFrames = 240;
+
     this.isRaining = false;
     this.rainParticles = null;
     this.rainGeom = null;
@@ -23,6 +32,9 @@ export class CityTrackManager {
     this.onBustedCallback = null;
     this.onNitroPickupCallback = null;
     this.onSpeedTrapCallback = null;
+    this.onWantedLevelChange = null;
+    this.onEvasionSuccess = null;
+
     this.bustedTimer = 0;
     this.isPoliceNearby = false;
     this.nearestPoliceDist = 999999;
@@ -165,17 +177,15 @@ export class CityTrackManager {
     this.scene.add(this.moonLight);
   }
 
-  // 🏎️ FORZA HORIZON 5 / MOTORSPORT STYLE MODERN 3D STUDIO SHOWROOM
+  // 🏎️ FORZA HORIZON 5 / MOTORSPORT 3D STUDIO SHOWROOM
   buildForzaHorizonStudioGarage() {
     this.garageGroup = new THREE.Group();
 
-    // 1. Ultra-Glossy Mirror Epoxy Studio Floor with Concentric LED Halo Rings
     const floorCanvas = document.createElement("canvas");
     floorCanvas.width = 1024;
     floorCanvas.height = 1024;
     const fCtx = floorCanvas.getContext("2d");
 
-    // Deep high-contrast obsidian gradient
     const grad = fCtx.createRadialGradient(512, 512, 50, 512, 512, 500);
     grad.addColorStop(0, "#1e293b");
     grad.addColorStop(0.5, "#0f172a");
@@ -183,7 +193,6 @@ export class CityTrackManager {
     fCtx.fillStyle = grad;
     fCtx.fillRect(0, 0, 1024, 1024);
 
-    // Glowing Forza Hexagon Grid on floor
     fCtx.strokeStyle = "rgba(56, 189, 248, 0.45)";
     fCtx.lineWidth = 3;
     const drawHex = (x, y, r) => {
@@ -205,7 +214,6 @@ export class CityTrackManager {
       }
     }
 
-    // Outer Podium Glowing Ring
     fCtx.strokeStyle = "#38bdf8";
     fCtx.lineWidth = 10;
     fCtx.beginPath();
@@ -227,12 +235,10 @@ export class CityTrackManager {
     garageFloor.receiveShadow = true;
     this.garageGroup.add(garageFloor);
 
-    // 2. Modern Studio Back Wall with Forza Horizon Neon Sign & Glass Vista
     const backWallMat = new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.3, metalness: 0.8 });
     const backWall = new THREE.Mesh(new THREE.BoxGeometry(42, 18, 0.8), backWallMat);
     backWall.position.set(0, 9, -18);
 
-    // Glass Vista Panels
     const glassMat = new THREE.MeshPhysicalMaterial({
       color: 0x38bdf8,
       transparent: true,
@@ -247,7 +253,6 @@ export class CityTrackManager {
 
     this.garageGroup.add(backWall, glassWallL, glassWallR);
 
-    // 3. Huge Illuminated "FORZA HORIZON CUSTOMS" Sign
     const signCanvas = document.createElement("canvas");
     signCanvas.width = 1024;
     signCanvas.height = 256;
@@ -273,7 +278,6 @@ export class CityTrackManager {
     neonSign.position.set(0, 11.5, -17.4);
     this.garageGroup.add(neonSign);
 
-    // 4. Iconic Forza Hexagon Ceiling LED Canopy Array
     const hexGlowMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const ceilingGroup = new THREE.Group();
 
@@ -287,7 +291,6 @@ export class CityTrackManager {
     }
     this.garageGroup.add(ceilingGroup);
 
-    // 5. Studio Softbox Spotlights (Pure automotive studio lighting)
     const keySpot = new THREE.SpotLight(0xffffff, 5.5, 35, Math.PI / 3, 0.3);
     keySpot.position.set(0, 14, 0);
     this.garageGroup.add(keySpot);
@@ -298,7 +301,6 @@ export class CityTrackManager {
     rimSpotR.position.set(-12, 10, -12);
     this.garageGroup.add(rimSpotL, rimSpotR);
 
-    // 6. Glowing Floor Perimeter Accent Bars
     const barMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
     const barL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.15, 32), barMat);
     barL.position.set(-15, 0.08, 0);
@@ -311,7 +313,6 @@ export class CityTrackManager {
     this.scene.add(this.garageGroup);
   }
 
-  // 🌴 GTA PALM TREES ALONG STRAIGHTS & PITS
   buildGTAPalmTrees() {
     const palmGroup = new THREE.Group();
     const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.9 });
@@ -343,7 +344,6 @@ export class CityTrackManager {
     this.scene.add(palmGroup);
   }
 
-  // ✨ GTA NEON BILLBOARDS (Sprunk, Maze Bank, Los Santos)
   buildGTANeonBillboards() {
     const billGroup = new THREE.Group();
 
@@ -583,10 +583,10 @@ export class CityTrackManager {
 
     const gridBoxMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const gridPositions = [
-      { x: -5.5, z: 24 }, // Pos 1: Akira
-      { x: 5.5, z: 24 },  // Pos 2: Ghost
-      { x: -5.5, z: 8 },  // Pos 3: Razor
-      { x: 5.5, z: 8 },   // Pos 4: Player
+      { x: -5.5, z: 24 },
+      { x: 5.5, z: 24 },
+      { x: -5.5, z: 8 },
+      { x: 5.5, z: 8 },
     ];
 
     gridPositions.forEach((pos) => {
@@ -1160,6 +1160,55 @@ export class CityTrackManager {
     return closestU;
   }
 
+  // ⏪ RECORD HISTORY FOR FORZA REWIND
+  recordAIRivalsHistory() {
+    const frame = this.aiRivals.map((r) => ({
+      u: r.u,
+      lapsCompleted: r.lapsCompleted,
+      speedU: r.currentSpeedU,
+    }));
+    this.aiHistoryBuffer.push(frame);
+    if (this.aiHistoryBuffer.length > this.maxHistoryFrames) {
+      this.aiHistoryBuffer.shift();
+    }
+  }
+
+  stepRewindAIRivals() {
+    if (this.aiHistoryBuffer.length === 0) return false;
+    const frame = this.aiHistoryBuffer.pop();
+    for (let i = 0; i < this.aiRivals.length; i++) {
+      const r = this.aiRivals[i];
+      const saved = frame[i];
+      if (saved) {
+        r.u = saved.u;
+        r.lapsCompleted = saved.lapsCompleted;
+        r.currentSpeedU = saved.speedU;
+
+        const pt = this.trackCurve.getPointAt(r.u);
+        const tangent = this.trackCurve.getTangentAt(r.u).normalize();
+        const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+        r.mesh.position.copy(pt).addScaledVector(normal, r.laneOffset);
+        r.mesh.position.y = 0.12;
+
+        const lookPt = pt.clone().addScaledVector(tangent, 6).addScaledVector(normal, r.laneOffset);
+        r.mesh.lookAt(lookPt.x, 0.12, lookPt.z);
+      }
+    }
+    return true;
+  }
+
+  // ⭐ INCREASE WANTED LEVEL
+  addWantedStars(stars = 1) {
+    const prev = this.wantedLevel;
+    this.wantedLevel = Math.min(3, this.wantedLevel + stars);
+    this.evasionTimer = 8.0;
+    this.isEvasionFlashing = false;
+    if (this.onWantedLevelChange) {
+      this.onWantedLevelChange(this.wantedLevel, false);
+    }
+  }
+
   handleCarTrackCollision(car) {
     const px = car.position.x;
     const pz = car.position.z;
@@ -1213,6 +1262,7 @@ export class CityTrackManager {
         car.emitSparks(prop.group.position);
         cyberAudio.playCrash();
         car.totalScore += 100;
+        this.addWantedStars(1);
       }
     }
   }
@@ -1223,9 +1273,12 @@ export class CityTrackManager {
     const playerU = this.getClosestU(playerPos);
     const now = Date.now();
 
-    // Hide Forza garage showroom during live racing
     if (this.garageGroup) {
       this.garageGroup.visible = !isRaceRunning;
+    }
+
+    if (isRaceRunning) {
+      this.recordAIRivalsHistory();
     }
 
     // 1. Rain
@@ -1240,14 +1293,21 @@ export class CityTrackManager {
       posAttr.needsUpdate = true;
     }
 
-    // 2. Helicopter
+    // 2. Helicopter (Active at 3 Stars Wanted)
     if (this.helicopter) {
+      const isHeliWanted = this.wantedLevel >= 3 || (this.wantedLevel >= 2 && Math.random() > 0.4);
       if (this.heliRotor) this.heliRotor.rotation.y += delta * 25;
-      this.helicopter.position.x = THREE.MathUtils.lerp(this.helicopter.position.x, playerPos.x, delta * 2.0);
-      this.helicopter.position.z = THREE.MathUtils.lerp(this.helicopter.position.z, playerPos.z, delta * 2.0);
+
+      if (isHeliWanted) {
+        this.helicopter.position.x = THREE.MathUtils.lerp(this.helicopter.position.x, playerPos.x, delta * 2.0);
+        this.helicopter.position.z = THREE.MathUtils.lerp(this.helicopter.position.z, playerPos.z, delta * 2.0);
+        this.helicopter.position.y = 85;
+      } else {
+        this.helicopter.position.y = 200; // flies away
+      }
     }
 
-    // 3. BALANCED FAIR AI RIVALS (Akira, Ghost, ⚡ Razor)
+    // 3. BALANCED FAIR AI RIVALS
     for (let i = 0; i < this.aiRivals.length; i++) {
       const rival = this.aiRivals[i];
       if (isRaceRunning) {
@@ -1297,6 +1357,7 @@ export class CityTrackManager {
           cyberAudio.playCameraFlash();
           const pts = Math.round(playerSpeed * 4);
           playerCar.totalScore += pts;
+          this.addWantedStars(1);
           if (this.onSpeedTrapCallback) {
             this.onSpeedTrapCallback(Math.round(playerSpeed), pts);
           }
@@ -1361,7 +1422,7 @@ export class CityTrackManager {
       }
     }
 
-    // 7. Police Pursuits
+    // 7. Police Pursuits & Wanted Aggression
     let nearestPoliceDist = 999999;
     const isBlink = Math.sin(now * 0.025) > 0;
 
@@ -1381,7 +1442,9 @@ export class CityTrackManager {
       police.redLight.material.color.setHex(!isBlink ? 0xff0022 : 0x330008);
 
       let speedMultiplier = 1.0;
-      if (playerSpeed > 30) speedMultiplier = 1.25;
+      if (this.wantedLevel === 1) speedMultiplier = 1.15;
+      else if (this.wantedLevel === 2) speedMultiplier = 1.35;
+      else if (this.wantedLevel >= 3) speedMultiplier = 1.55;
 
       police.u = (police.u + police.speedU * speedMultiplier * delta) % 1.0;
       const pt = this.trackCurve.getPointAt(police.u);
@@ -1403,6 +1466,7 @@ export class CityTrackManager {
           cyberAudio.playTakedownCrunch();
           playerCar.emitSparks(police.group.position);
           playerCar.totalScore += 1500;
+          this.addWantedStars(2);
 
           if (this.onTakedownCallback) {
             this.onTakedownCallback("🚓 POLICE TAKEDOWN! +1500 PTS");
@@ -1425,6 +1489,36 @@ export class CityTrackManager {
     this.nearestPoliceDist = nearestPoliceDist;
     this.isPoliceNearby = nearestPoliceDist < 120;
     if (playerSpeed > 35) this.bustedTimer = Math.max(0, this.bustedTimer - delta * 2);
+
+    // ⭐ GTA LOSE THE COPS EVASION LOGIC
+    if (this.wantedLevel > 0) {
+      if (nearestPoliceDist > 140) {
+        this.evasionTimer -= delta;
+        this.isEvasionFlashing = true;
+        if (this.onWantedLevelChange) {
+          this.onWantedLevelChange(this.wantedLevel, true);
+        }
+
+        if (this.evasionTimer <= 0) {
+          this.wantedLevel = 0;
+          this.isEvasionFlashing = false;
+          playerCar.totalScore += 2500;
+          cyberAudio.playEvasionChime();
+          if (this.onWantedLevelChange) {
+            this.onWantedLevelChange(0, false);
+          }
+          if (this.onEvasionSuccess) {
+            this.onEvasionSuccess("⭐ ПОГОНЯ СБРОШЕНА! +2500 PTS EVASION BONUS");
+          }
+        }
+      } else {
+        this.evasionTimer = 8.0;
+        this.isEvasionFlashing = false;
+        if (this.onWantedLevelChange) {
+          this.onWantedLevelChange(this.wantedLevel, false);
+        }
+      }
+    }
 
     // 8. Traffic Cars
     for (const car of this.trafficCars) {

@@ -1,4 +1,4 @@
-// game.js - Cyber Drift 3D: Formula 1 Autodrome with Forza Horizon Festival 3D Studio Showroom, Underglow Neon, Window Tint & Custom Rims
+// game.js - Cyber Drift 3D: Formula 1 Autodrome with Forza Horizon 5 Studio, Rewind System, GTA Wanted Stars & Skill Chains
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { CyberCar } from "./car.js";
 import { CityTrackManager } from "./city.js";
@@ -17,6 +17,7 @@ export class CyberDriftGame {
     this.clock = new THREE.Clock();
     this.cameraMode = "CHASE";
     this.gameState = "GARAGE"; // "GARAGE", "COUNTDOWN", "RACING", "BUSTED", "FINISHED"
+    this.isRewinding = false;
     this.garageOrbitAngle = 0.5;
     this.isDraggingGarage = false;
     this.prevMouseX = 0;
@@ -28,6 +29,11 @@ export class CyberDriftGame {
     this.prevPlayerU = 0.002;
     this.finalRacePosition = 4;
 
+    // Skill Chain tracking
+    this.lastNearMissTime = 0;
+    this.lastSpeedDemonTime = 0;
+    this.lastUltimateDriftTime = 0;
+
     this.keys = {
       forward: false,
       backward: false,
@@ -35,6 +41,7 @@ export class CyberDriftGame {
       right: false,
       drift: false,
       nitro: false,
+      rewind: false,
     };
 
     this.initThree();
@@ -112,6 +119,15 @@ export class CyberDriftGame {
     this.trackManager.onSpeedTrapCallback = (speedKmH, pts) => {
       this.showBanner(`📸 РАДАР СКОРОСТИ: ${speedKmH} КМ/Ч! +${pts} PTS`, 2800);
     };
+
+    this.trackManager.onWantedLevelChange = (level, isFlashing) => {
+      this.updateWantedUI(level, isFlashing);
+    };
+
+    this.trackManager.onEvasionSuccess = (bannerText) => {
+      this.showBanner(bannerText, 3500);
+      this.showSkillBadge("⭐ LOSE THE COPS EVASION +2500");
+    };
   }
 
   initInputs() {
@@ -125,6 +141,14 @@ export class CyberDriftGame {
       if (e.code === "KeyD" || e.code === "ArrowRight") this.keys.right = true;
       if (e.code === "Space") this.keys.drift = true;
       if (e.code === "ShiftLeft" || e.code === "ShiftRight") this.keys.nitro = true;
+
+      // ⏪ FORZA REWIND KEY
+      if (e.code === "KeyE" && this.gameState === "RACING") {
+        if (!this.keys.rewind) {
+          this.keys.rewind = true;
+          this.startRewind();
+        }
+      }
 
       if (e.code === "KeyC") this.toggleCamera();
       if (e.code === "KeyR") this.resetCar();
@@ -143,9 +167,13 @@ export class CyberDriftGame {
       if (e.code === "KeyD" || e.code === "ArrowRight") this.keys.right = false;
       if (e.code === "Space") this.keys.drift = false;
       if (e.code === "ShiftLeft" || e.code === "ShiftRight") this.keys.nitro = false;
+
+      if (e.code === "KeyE") {
+        this.keys.rewind = false;
+        this.stopRewind();
+      }
     });
 
-    // Mouse Drag to Spin Car in Garage Showroom
     window.addEventListener("mousedown", (e) => {
       if (this.gameState === "GARAGE" && e.clientX > 440) {
         this.isDraggingGarage = true;
@@ -193,8 +221,17 @@ export class CyberDriftGame {
     this.camModeEl = document.getElementById("hud-cam-mode");
     this.bannerEl = document.getElementById("hud-banner");
     this.countdownEl = document.getElementById("countdown-overlay");
+    this.rewindOverlayEl = document.getElementById("rewind-overlay");
+    this.skillBadgeEl = document.getElementById("hud-skill-badge");
 
-    // 1. Car Model Switch
+    this.wantedStarsEl = document.getElementById("hud-wanted-stars");
+    this.stars = [
+      document.getElementById("star-1"),
+      document.getElementById("star-2"),
+      document.getElementById("star-3"),
+    ];
+
+    // Car Model Switch
     document.querySelectorAll("[data-cartype]").forEach((btn) => {
       btn.addEventListener("click", () => {
         document.querySelectorAll("[data-cartype]").forEach((b) => b.classList.remove("active"));
@@ -203,7 +240,7 @@ export class CyberDriftGame {
       });
     });
 
-    // 2. Body Color
+    // Body Color
     document.querySelectorAll("[data-color]").forEach((swatch) => {
       swatch.addEventListener("click", () => {
         document.querySelectorAll("[data-color]").forEach((s) => s.classList.remove("active"));
@@ -213,7 +250,7 @@ export class CyberDriftGame {
       });
     });
 
-    // 3. Underglow Neon
+    // Underglow Neon
     document.querySelectorAll("[data-neon]").forEach((swatch) => {
       swatch.addEventListener("click", () => {
         document.querySelectorAll("[data-neon]").forEach((s) => s.classList.remove("active"));
@@ -223,7 +260,7 @@ export class CyberDriftGame {
       });
     });
 
-    // 4. Custom Rims
+    // Custom Rims
     document.querySelectorAll("[data-rim]").forEach((btn) => {
       btn.addEventListener("click", () => {
         document.querySelectorAll("[data-rim]").forEach((b) => b.classList.remove("active"));
@@ -233,7 +270,7 @@ export class CyberDriftGame {
       });
     });
 
-    // 5. Window Tint
+    // Window Tint
     document.querySelectorAll("[data-tint]").forEach((btn) => {
       btn.addEventListener("click", () => {
         document.querySelectorAll("[data-tint]").forEach((b) => b.classList.remove("active"));
@@ -242,7 +279,7 @@ export class CyberDriftGame {
       });
     });
 
-    // 6. Spoiler Wing
+    // Spoiler Wing
     document.querySelectorAll("[data-spoiler]").forEach((btn) => {
       btn.addEventListener("click", () => {
         document.querySelectorAll("[data-spoiler]").forEach((b) => b.classList.remove("active"));
@@ -268,6 +305,51 @@ export class CyberDriftGame {
     if (finishRestartBtn) {
       finishRestartBtn.addEventListener("click", () => this.resetCar());
     }
+  }
+
+  // ⭐ UPDATE GTA WANTED STARS HUD
+  updateWantedUI(level, isFlashing) {
+    if (!this.wantedStarsEl) return;
+    if (level === 0) {
+      this.wantedStarsEl.style.display = "none";
+      return;
+    }
+
+    this.wantedStarsEl.style.display = "flex";
+    for (let i = 0; i < 3; i++) {
+      const star = this.stars[i];
+      if (i < level) {
+        star.classList.add("active");
+        if (isFlashing) star.classList.add("flashing");
+        else star.classList.remove("flashing");
+      } else {
+        star.classList.remove("active", "flashing");
+      }
+    }
+  }
+
+  // 🏆 SHOW FORZA SKILL BADGE
+  showSkillBadge(text) {
+    if (!this.skillBadgeEl) return;
+    this.skillBadgeEl.textContent = text;
+    this.skillBadgeEl.classList.add("show");
+    clearTimeout(this.skillBadgeTimer);
+    this.skillBadgeTimer = setTimeout(() => {
+      if (this.skillBadgeEl) this.skillBadgeEl.classList.remove("show");
+    }, 1800);
+  }
+
+  // ⏪ FORZA REWIND HANDLERS
+  startRewind() {
+    this.isRewinding = true;
+    if (this.rewindOverlayEl) this.rewindOverlayEl.style.display = "block";
+    cyberAudio.playRewindSound();
+  }
+
+  stopRewind() {
+    this.isRewinding = false;
+    if (this.rewindOverlayEl) this.rewindOverlayEl.style.display = "none";
+    cyberAudio.stopRewindSound();
   }
 
   initMinimapCanvas() {
@@ -368,6 +450,7 @@ export class CyberDriftGame {
     this.playerLapsCompleted = 0;
     this.prevPlayerU = 0.002;
     this.finalRacePosition = 4;
+    this.isRewinding = false;
 
     document.getElementById("garage-screen").style.display = "none";
     document.getElementById("busted-screen").style.display = "none";
@@ -378,7 +461,6 @@ export class CyberDriftGame {
     if (this.studioSpotL) this.studioSpotL.intensity = 0;
     if (this.studioSpotR) this.studioSpotR.intensity = 0;
 
-    // Start on Grid Box 4
     this.car.position.set(5.5, 0.12, 8);
     this.car.speed = 0;
     this.car.heading = 0;
@@ -406,6 +488,8 @@ export class CyberDriftGame {
 
   triggerBusted() {
     this.gameState = "BUSTED";
+    this.isRewinding = false;
+    this.stopRewind();
     cyberAudio.playCrash();
     document.getElementById("busted-score").textContent = this.car.totalScore;
     document.getElementById("busted-screen").style.display = "grid";
@@ -413,6 +497,8 @@ export class CyberDriftGame {
 
   triggerFinish(finalPos) {
     this.gameState = "FINISHED";
+    this.isRewinding = false;
+    this.stopRewind();
     this.finalRacePosition = finalPos;
 
     const titles = {
@@ -458,6 +544,8 @@ export class CyberDriftGame {
     this.car.reset();
     this.startCountdown();
     this.trackManager.bustedTimer = 0;
+    this.trackManager.wantedLevel = 0;
+    this.updateWantedUI(0, false);
     this.showBanner("🔄 РЕСТАРТ ГОНКИ! НА СТАРТ");
   }
 
@@ -557,6 +645,42 @@ export class CyberDriftGame {
         carPos.z + Math.cos(carHeading) * 25
       );
       this.camera.lookAt(lookTarget);
+    }
+  }
+
+  // 🏆 CHECK FORZA SKILL CHAINS
+  checkSkillChains() {
+    const now = Date.now();
+    const speedKmH = Math.abs(this.car.speed);
+
+    // 1. Speed Demon (255+ km/h)
+    if (speedKmH > 255 && now - this.lastSpeedDemonTime > 6000) {
+      this.lastSpeedDemonTime = now;
+      this.car.totalScore += 400;
+      this.showSkillBadge("⚡ SPEED DEMON! +400 PTS");
+    }
+
+    // 2. Ultimate Drift (Drift Score > 2500)
+    if (this.car.currentDriftScore > 2500 && now - this.lastUltimateDriftTime > 8000) {
+      this.lastUltimateDriftTime = now;
+      this.showSkillBadge("🔥 ULTIMATE DRIFT! +1000 PTS");
+    }
+
+    // 3. Near Miss with Traffic / AI
+    if (speedKmH > 130 && now - this.lastNearMissTime > 3000) {
+      let isNear = false;
+      for (const car of this.trackManager.trafficCars) {
+        const d = this.car.position.distanceTo(car.mesh.position);
+        if (d < 5.8 && d > 2.8) {
+          isNear = true;
+          break;
+        }
+      }
+      if (isNear) {
+        this.lastNearMissTime = now;
+        this.car.totalScore += 350;
+        this.showSkillBadge("🏎️ ОПАСНОЕ СБЛИЖЕНИЕ (NEAR MISS)! +350 PTS");
+      }
     }
   }
 
@@ -660,13 +784,26 @@ export class CyberDriftGame {
       this.updateHUD();
       this.renderMinimap();
     } else if (this.gameState === "RACING") {
-      this.car.throttleInput = (this.keys.forward ? 1 : 0) - (this.keys.backward ? 1 : 0);
-      this.car.steerInput = (this.keys.right ? 1 : 0) - (this.keys.left ? 1 : 0);
-      this.car.driftActive = this.keys.drift;
-      this.car.nitroActive = this.keys.nitro;
+      if (this.isRewinding) {
+        // ⏪ FORZA REWIND: Play physics & AI backwards
+        for (let step = 0; step < 2; step++) {
+          const hasMore = this.car.stepRewind();
+          this.trackManager.stepRewindAIRivals();
+          if (!hasMore) {
+            this.stopRewind();
+            break;
+          }
+        }
+      } else {
+        this.car.throttleInput = (this.keys.forward ? 1 : 0) - (this.keys.backward ? 1 : 0);
+        this.car.steerInput = (this.keys.right ? 1 : 0) - (this.keys.left ? 1 : 0);
+        this.car.driftActive = this.keys.drift;
+        this.car.nitroActive = this.keys.nitro;
 
-      this.car.updatePhysics(delta, this.trackManager);
-      this.trackManager.update(delta, this.car, true);
+        this.car.updatePhysics(delta, this.trackManager);
+        this.trackManager.update(delta, this.car, true);
+        this.checkSkillChains();
+      }
 
       this.updateHUD();
       this.renderMinimap();

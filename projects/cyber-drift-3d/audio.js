@@ -1,4 +1,4 @@
-// audio.js - Realistic Automotive Sound Engine (Combustion, Exhaust Backfires, Slipstream, Sirens, Helicopter)
+// audio.js - Realistic Automotive Sound Engine (Combustion, Blow-Off Valve, Rewind, Evasion, Backfires, Slipstream, Sirens, Helicopter)
 class CyberAudioEngine {
   constructor() {
     this.ctx = null;
@@ -48,6 +48,10 @@ class CyberAudioEngine {
 
     // Rain
     this.rainGain = null;
+
+    // Forza Rewind Looping Audio
+    this.rewindGain = null;
+    this.rewindOsc = null;
   }
 
   init() {
@@ -69,6 +73,7 @@ class CyberAudioEngine {
       this._setupHelicopterRotor();
       this._setupTrafficFlyby();
       this._setupRainAcoustics();
+      this._setupRewindAudio();
 
       this.isInitialized = true;
     } catch (e) {
@@ -200,6 +205,58 @@ class CyberAudioEngine {
     this.slipstreamGain.gain.setTargetAtTime(isActive ? 0.45 : 0.0, this.ctx.currentTime, 0.1);
   }
 
+  // 💥 REALISTIC TURBO BLOW-OFF VALVE (pssshh-tsu-tsu-tsu)
+  playBlowOffValve() {
+    if (!this.isInitialized || this.isMuted || !this.ctx) return;
+    const t = this.ctx.currentTime;
+
+    // 1. Initial High-Pressure Psshh Release
+    const noiseBuffer = this._createNoiseBuffer(0.38);
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = noiseBuffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(1900, t);
+    filter.frequency.exponentialRampToValueAtTime(800, t + 0.35);
+    filter.Q.setValueAtTime(3.0, t);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.55, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+
+    noise.start(t);
+    noise.stop(t + 0.38);
+
+    // 2. Wastegate Resonant Flutter (tsu-tsu-tsu)
+    const flutterOsc = this.ctx.createOscillator();
+    flutterOsc.type = "triangle";
+    flutterOsc.frequency.setValueAtTime(240, t);
+    flutterOsc.frequency.exponentialRampToValueAtTime(140, t + 0.35);
+
+    const flutterGain = this.ctx.createGain();
+    flutterGain.gain.setValueAtTime(0.0, t);
+    flutterGain.gain.linearRampToValueAtTime(0.3, t + 0.05);
+
+    // Pulse envelope for flutter effect
+    const lfo = this.ctx.createOscillator();
+    lfo.frequency.setValueAtTime(18, t); // 18 Hz flutter
+    const lfoGain = this.ctx.createGain();
+    lfoGain.gain.setValueAtTime(0.2, t);
+    lfo.connect(lfoGain.gain);
+
+    flutterGain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    flutterOsc.connect(flutterGain);
+    flutterGain.connect(this.masterGain);
+
+    flutterOsc.start(t);
+    flutterOsc.stop(t + 0.35);
+  }
+
   playExhaustBackfire() {
     if (!this.isInitialized || this.isMuted || !this.ctx) return;
     const t = this.ctx.currentTime;
@@ -320,6 +377,61 @@ class CyberAudioEngine {
     this.rainGain.connect(this.masterGain);
 
     noiseNode.start();
+  }
+
+  // ⏪ FORZA REWIND TAPE AUDIO
+  _setupRewindAudio() {
+    this.rewindGain = this.ctx.createGain();
+    this.rewindGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
+
+    this.rewindOsc = this.ctx.createOscillator();
+    this.rewindOsc.type = "sawtooth";
+    this.rewindOsc.frequency.setValueAtTime(80, this.ctx.currentTime);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(450, this.ctx.currentTime);
+    filter.Q.setValueAtTime(3.0, this.ctx.currentTime);
+
+    this.rewindOsc.connect(filter);
+    filter.connect(this.rewindGain);
+    this.rewindGain.connect(this.masterGain);
+
+    this.rewindOsc.start();
+  }
+
+  playRewindSound() {
+    if (!this.rewindGain || !this.ctx || this.isMuted) return;
+    const t = this.ctx.currentTime;
+    this.rewindOsc.frequency.setValueAtTime(60, t);
+    this.rewindOsc.frequency.linearRampToValueAtTime(260, t + 0.3);
+    this.rewindGain.gain.setTargetAtTime(0.45, t, 0.05);
+  }
+
+  stopRewindSound() {
+    if (!this.rewindGain || !this.ctx) return;
+    this.rewindGain.gain.setTargetAtTime(0.0, this.ctx.currentTime, 0.08);
+  }
+
+  // ⭐ GTA EVASION CHIME
+  playEvasionChime() {
+    if (!this.isInitialized || this.isMuted || !this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(523.25, t); // C5
+    osc.frequency.setValueAtTime(659.25, t + 0.12); // E5
+    osc.frequency.setValueAtTime(783.99, t + 0.24); // G5
+    osc.frequency.setValueAtTime(1046.50, t + 0.36); // C6
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.35, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.75);
   }
 
   setRainActive(isRaining) {
