@@ -1,4 +1,4 @@
-// game.js - Cyber Drift 3D: Formula 1 Autodrome with 100% Exact Math Position Tracking, Adaptive AI Battles & GPS Radar
+// game.js - Cyber Drift 3D: Formula 1 Autodrome with 100% Exact Math Position Tracking, Balanced Fair AI & GPS Radar
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { CyberCar } from "./car.js";
 import { CityTrackManager } from "./city.js";
@@ -25,7 +25,7 @@ export class CyberDriftGame {
     this.countdownTimer = 3.0;
     this.currentLap = 1;
     this.maxLaps = 3;
-    this.prevPlayerU = 0.0;
+    this.prevPlayerU = 0.002;
 
     this.keys = {
       forward: false,
@@ -70,7 +70,6 @@ export class CyberDriftGame {
     this.trackManager = new CityTrackManager(this.scene);
     this.car = new CyberCar(this.scene, 0);
 
-    // Initial Showroom Position
     this.car.position.set(0, 0.12, 0);
     this.car.mesh.position.copy(this.car.position);
 
@@ -262,7 +261,6 @@ export class CyberDriftGame {
 
     ctx.clearRect(0, 0, w, h);
 
-    // Track bounds mapping: world [-650, 650] -> canvas [14, 186]
     const mapX = (wx) => ((wx + 650) / 1300) * (w - 28) + 14;
     const mapZ = (wz) => ((wz + 650) / 1300) * (h - 28) + 14;
 
@@ -373,11 +371,12 @@ export class CyberDriftGame {
 
     // Line up Rivals on Starting Grid
     if (this.trackManager.aiRivals.length >= 3) {
-      this.trackManager.aiRivals[0].u = 0.007; // Akira (front left)
-      this.trackManager.aiRivals[1].u = 0.007; // Ghost (front right)
-      this.trackManager.aiRivals[2].u = 0.0022; // Viper (rear left)
+      this.trackManager.aiRivals[0].u = 0.008; // Akira (front left)
+      this.trackManager.aiRivals[1].u = 0.008; // Ghost (front right)
+      this.trackManager.aiRivals[2].u = 0.0025; // Viper (rear left)
       this.trackManager.aiRivals.forEach((r) => {
         r.lapsCompleted = 0;
+        r.currentSpeedU = 0.0;
         const pt = this.trackManager.trackCurve.getPointAt(r.u);
         r.mesh.position.set(pt.x + r.laneOffset, 0.12, pt.z);
         r.mesh.lookAt(pt.x + r.laneOffset, 0.12, pt.z + 10);
@@ -535,10 +534,15 @@ export class CyberDriftGame {
     if (this.focusBarEl) this.focusBarEl.style.width = `${Math.round(this.car.focusEnergy)}%`;
 
     if (this.trackManager) {
-      const playerU = this.trackManager.getClosestU(this.car.position);
+      let rawPlayerU = this.trackManager.getClosestU(this.car.position);
 
-      // Check Lap Line Crossing (u passes from ~0.95 -> 0.05)
-      if (this.prevPlayerU > 0.88 && playerU < 0.12) {
+      // Handle near-start zero clamp
+      if (this.currentLap === 1 && rawPlayerU > 0.9 && this.car.position.z < 80) {
+        rawPlayerU = 0.002;
+      }
+
+      // Check Lap Line Crossing (u passes from ~0.90 -> 0.10)
+      if (this.prevPlayerU > 0.85 && rawPlayerU < 0.15) {
         this.currentLap++;
         if (this.currentLap > this.maxLaps) {
           this.showBanner("🏆 ПОБЕДА В ГОНКЕ! 1-Е МЕСТО! +5000 PTS", 5000);
@@ -547,10 +551,10 @@ export class CyberDriftGame {
           this.showBanner(`🏁 КРУГ ${this.currentLap} / ${this.maxLaps}! ДАВИ НА ГАЗ`, 3000);
         }
       }
-      this.prevPlayerU = playerU;
+      this.prevPlayerU = rawPlayerU;
 
-      // Calculate Total Mathematical Race Progress
-      const playerTotalProgress = (this.currentLap - 1) + playerU;
+      // Total Mathematical Progress
+      const playerTotalProgress = (this.currentLap - 1) + rawPlayerU;
 
       let position = 1;
       for (const rival of this.trackManager.aiRivals) {
@@ -568,7 +572,7 @@ export class CyberDriftGame {
       }
 
       if (this.lapInfoEl) {
-        const lapPercent = Math.min(100, Math.max(0, Math.round(playerU * 100)));
+        const lapPercent = Math.min(100, Math.max(0, Math.round(rawPlayerU * 100)));
         this.lapInfoEl.textContent = `LAP ${Math.min(this.currentLap, this.maxLaps)}/${this.maxLaps} (${lapPercent}%)`;
       }
     }

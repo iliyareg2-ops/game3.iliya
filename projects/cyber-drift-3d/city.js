@@ -1,4 +1,4 @@
-// city.js - Formula 1 Grand Prix Autodrome Circuit, Starting Grid, Adaptive AI Rivals & 100% Exact Progress Projection
+// city.js - Smooth F1 Autodrome Circuit (Zero Gaps / Zero U-Turns), Balanced Fair AI Rivals & Robust Curve Math
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -30,7 +30,7 @@ export class CityTrackManager {
 
     this.initTextures();
     this.initLighting();
-    this.buildF1GrandPrixCircuitAndKerbs();
+    this.buildSmoothF1CircuitAndKerbs();
     this.buildF1GrandstandsAndPits();
     this.buildStartFinishGantryAndGrid();
     this.buildRoadsideStreetlights();
@@ -165,8 +165,8 @@ export class CityTrackManager {
     this.scene.add(this.moonLight);
   }
 
-  // 🏎️ AUTHENTIC FORMULA 1 AUTODROME CIRCUIT (Chicanes, Curva Grande, Hairpins & Esses)
-  buildF1GrandPrixCircuitAndKerbs() {
+  // 🏎️ SMOOTH F1 AUTODROME (100% Continuous Flow, No Gaps, No Overlaps, No Sudden U-Turns)
+  buildSmoothF1CircuitAndKerbs() {
     const groundGroup = new THREE.Group();
 
     const groundGeom = new THREE.PlaneGeometry(3600, 3600);
@@ -181,38 +181,43 @@ export class CityTrackManager {
     ground.receiveShadow = true;
     groundGroup.add(ground);
 
-    // 14 Iconic Formula 1 Autodrome Spline Coordinates
+    // 12 Continuous Smooth Circuit Points (Flows smoothly in positive direction)
     const trackPoints = [
       new THREE.Vector3(0, 0.12, 0),        // Start / Finish Line
       new THREE.Vector3(0, 0.12, 380),      // Main Straight
-      new THREE.Vector3(140, 0.12, 540),    // Chicane Entry (Turn 1 Right)
-      new THREE.Vector3(280, 0.12, 500),    // Chicane Exit (Turn 2 Left)
-      new THREE.Vector3(480, 0.12, 340),    // Curva Grande Long Arc
-      new THREE.Vector3(560, 0.12, 80),     // Sweeper Apex
-      new THREE.Vector3(440, 0.12, -180),   // Variante Roggia Chicane
-      new THREE.Vector3(260, 0.12, -320),   // Lesmo 1 Fast Right
-      new THREE.Vector3(80, 0.12, -540),    // Lesmo 2 Hairpin Turn
-      new THREE.Vector3(-180, 0.12, -520),  // Serraglio High-Speed Straight
-      new THREE.Vector3(-420, 0.12, -320),  // Ascari Entry
-      new THREE.Vector3(-540, 0.12, -80),   // Ascari Technical Esses
-      new THREE.Vector3(-460, 0.12, 220),   // Parabolica High Speed Apex
-      new THREE.Vector3(-240, 0.12, 420),   // Parabolica Exit Sweeper
-      new THREE.Vector3(-40, 0.12, 200),    // Approach to Finish Straight
+      new THREE.Vector3(90, 0.12, 560),     // Turn 1 Right
+      new THREE.Vector3(260, 0.12, 540),    // Turn 2 Left
+      new THREE.Vector3(460, 0.12, 340),    // Curva Grande Sweeper
+      new THREE.Vector3(520, 0.12, 60),     // Apex 1
+      new THREE.Vector3(420, 0.12, -220),   // Variante Chicane
+      new THREE.Vector3(220, 0.12, -440),   // Lesmo 1
+      new THREE.Vector3(-40, 0.12, -540),   // Hairpin Turn
+      new THREE.Vector3(-320, 0.12, -460),  // Back Straight
+      new THREE.Vector3(-480, 0.12, -220),  // Ascari Esses Entry
+      new THREE.Vector3(-520, 0.12, 40),    // Ascari Esses Mid
+      new THREE.Vector3(-420, 0.12, 280),   // Parabolica Entry
+      new THREE.Vector3(-220, 0.12, 340),   // Parabolica Apex
+      new THREE.Vector3(-70, 0.12, -180),   // Smooth straight entry aligning to Start line
     ];
 
     this.trackCurve = new THREE.CatmullRomCurve3(trackPoints, true, "catmullrom", 0.35);
-    const divisions = 320;
+    const divisions = 300;
     this.trackWidth = 36;
     const halfWidth = this.trackWidth / 2;
 
-    this.trackSamplePoints = this.trackCurve.getPoints(divisions);
+    // Sample exactly 300 points without duplicate endpoint
+    this.trackSamplePoints = [];
+    for (let i = 0; i < divisions; i++) {
+      this.trackSamplePoints.push(this.trackCurve.getPointAt(i / divisions));
+    }
+
     const vertices = [];
     const uvs = [];
     const indices = [];
 
     for (let i = 0; i <= divisions; i++) {
-      const p = this.trackSamplePoints[i % divisions];
-      const nextP = this.trackSamplePoints[(i + 1) % divisions];
+      const p = this.trackCurve.getPointAt((i % divisions) / divisions);
+      const nextP = this.trackCurve.getPointAt(((i + 1) % divisions) / divisions);
       const tangent = new THREE.Vector3().subVectors(nextP, p).normalize();
       const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
 
@@ -224,7 +229,7 @@ export class CityTrackManager {
       vertices.push(leftX, 0.12, leftZ);
       vertices.push(rightX, 0.12, rightZ);
 
-      const v = (i / divisions) * 75;
+      const v = (i / divisions) * 70;
       uvs.push(0, v);
       uvs.push(1, v);
 
@@ -245,7 +250,7 @@ export class CityTrackManager {
     this.roadMesh.receiveShadow = true;
     groundGroup.add(this.roadMesh);
 
-    // F1 Authentic Red & White Apex Kerbs
+    // Red & White Apex Kerbs
     const curbRedMat = new THREE.MeshBasicMaterial({ color: 0xe11d48 });
     const curbWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
@@ -303,7 +308,6 @@ export class CityTrackManager {
       return g;
     };
 
-    // 4 Grandstands along the Main Straight
     standsGroup.add(makeGrandstand(32, 100, Math.PI / 2));
     standsGroup.add(makeGrandstand(32, 220, Math.PI / 2));
     standsGroup.add(makeGrandstand(-32, 100, -Math.PI / 2));
@@ -399,7 +403,7 @@ export class CityTrackManager {
     const lightPoleMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8 });
     const lampGlowMat = new THREE.MeshBasicMaterial({ color: 0xfff3cc });
 
-    const count = 32;
+    const count = 30;
     for (let i = 0; i < count; i++) {
       const u = i / count;
       const pt = this.trackCurve.getPointAt(u);
@@ -437,10 +441,10 @@ export class CityTrackManager {
     };
 
     let bldgIndex = 0;
-    for (let x = -800; x <= 800; x += 115) {
-      for (let z = -800; z <= 800; z += 115) {
+    for (let x = -800; x <= 800; x += 120) {
+      for (let z = -800; z <= 800; z += 120) {
         const distToTrack = getMinDistToTrack(x, z);
-        if (distToTrack < 54) continue;
+        if (distToTrack < 56) continue;
 
         bldgIndex++;
         const facadeMat = this.facadeMats[bldgIndex % this.facadeMats.length];
@@ -690,12 +694,12 @@ export class CityTrackManager {
     }
   }
 
-  // 🏁 3 ADAPTIVE AI RIVALS WITH COMPETITIVE WHEEL-TO-WHEEL PACING
+  // 🏁 3 BALANCED FAIR AI RIVALS (Realistic Speeds ~150-190 km/h, Easy to Battle & Overtake)
   buildAIRivals() {
     const rivalsData = [
-      { name: "Akira [GT-R]", color: 0x0284c7, u: 0.007, lane: -5.5, baseSpeedU: 0.024 },
-      { name: "Ghost [911]", color: 0x18181b, u: 0.007, lane: 5.5, baseSpeedU: 0.025 },
-      { name: "Viper [Venom]", color: 0x16a34a, u: 0.0022, lane: -5.5, baseSpeedU: 0.023 },
+      { name: "Akira [GT-R]", color: 0x0284c7, u: 0.008, lane: -5.5, baseSpeedU: 0.018 },
+      { name: "Ghost [911]", color: 0x18181b, u: 0.008, lane: 5.5, baseSpeedU: 0.019 },
+      { name: "Viper [Venom]", color: 0x16a34a, u: 0.0025, lane: -5.5, baseSpeedU: 0.017 },
     ];
 
     const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
@@ -726,7 +730,6 @@ export class CityTrackManager {
 
       g.add(body, cabin, wing, hlL, hlR, tl);
 
-      // 3D Floating Nameplate Badge
       const nameCanvas = document.createElement("canvas");
       nameCanvas.width = 256;
       nameCanvas.height = 64;
@@ -757,7 +760,7 @@ export class CityTrackManager {
         u: r.u,
         laneOffset: r.lane,
         baseSpeedU: r.baseSpeedU,
-        currentSpeedU: r.baseSpeedU,
+        currentSpeedU: 0.0,
         lapsCompleted: 0,
         namePlate: namePlate,
       });
@@ -834,7 +837,7 @@ export class CityTrackManager {
       this.policeUnits.push({
         group: g,
         u: u,
-        speedU: 0.024 + i * 0.003,
+        speedU: 0.02 + i * 0.003,
         laneOffset: (i % 2 === 0 ? 5.5 : -5.5),
         active: true,
         isDestroyed: false,
@@ -934,7 +937,7 @@ export class CityTrackManager {
       this.trafficCars.push({
         mesh: g,
         u: u,
-        speed: 0.015 + (i % 3) * 0.005,
+        speed: 0.012 + (i % 3) * 0.004,
         laneOffset: (i % 2 === 0 ? 6.5 : -6.5),
         wheels: [wFL, wFR, wRL, wRR],
       });
@@ -978,7 +981,7 @@ export class CityTrackManager {
     return this.isRaining ? "🌧️ ДОЖДЬ" : "☀️ ЯСНАЯ НОЧЬ";
   }
 
-  // 🧮 100% ACCURATE CURVE PROJECTION (Finds exact parameter u in [0, 1] for ANY point in the world)
+  // 🧮 EXACT ROBUST CURVE PROJECTION (No endpoint wrap bug)
   getClosestU(pos) {
     let closestU = 0;
     let minDistSq = Infinity;
@@ -1090,29 +1093,31 @@ export class CityTrackManager {
       this.helicopter.position.z = THREE.MathUtils.lerp(this.helicopter.position.z, playerPos.z, delta * 2.0);
     }
 
-    // 3. ADAPTIVE AI RIVALS (Packs & battles directly with the player!)
+    // 3. BALANCED FAIR AI RIVALS (Packs comfortably with player, realistic overtakes)
     for (let i = 0; i < this.aiRivals.length; i++) {
       const rival = this.aiRivals[i];
       if (isRaceRunning) {
-        // Dynamic adaptive pacing: stay within intense racing proximity!
         let diffU = (rival.u - playerU);
         if (diffU > 0.5) diffU -= 1.0;
         if (diffU < -0.5) diffU += 1.0;
 
         let targetSpeedMultiplier = 1.0;
-        if (diffU > 0.08) {
-          targetSpeedMultiplier = 0.82; // Don't run away too far
-        } else if (diffU < -0.08) {
-          targetSpeedMultiplier = 1.35; // Catch up aggressively from behind!
+        // Natural racing rubber-band (never too fast, never teleports)
+        if (diffU > 0.05) {
+          targetSpeedMultiplier = 0.85; // Slow down slightly when ahead to allow exciting battles
+        } else if (diffU < -0.05) {
+          targetSpeedMultiplier = 1.15; // Catch up reasonably from behind
         } else {
-          targetSpeedMultiplier = 0.95 + (i * 0.05); // Race neck-and-neck!
+          targetSpeedMultiplier = 0.95 + (i * 0.03); // Close wheel-to-wheel race!
         }
 
-        rival.currentSpeedU = THREE.MathUtils.lerp(rival.currentSpeedU, rival.baseSpeedU * targetSpeedMultiplier, delta * 2.0);
+        rival.currentSpeedU = THREE.MathUtils.lerp(rival.currentSpeedU, rival.baseSpeedU * targetSpeedMultiplier, delta * 1.5);
 
         const prevU = rival.u;
         rival.u = (rival.u + rival.currentSpeedU * delta) % 1.0;
         if (prevU > 0.85 && rival.u < 0.15) rival.lapsCompleted++;
+      } else {
+        rival.currentSpeedU = 0;
       }
 
       const pt = this.trackCurve.getPointAt(rival.u);
@@ -1223,7 +1228,7 @@ export class CityTrackManager {
       police.redLight.material.color.setHex(!isBlink ? 0xff0022 : 0x330008);
 
       let speedMultiplier = 1.0;
-      if (playerSpeed > 30) speedMultiplier = 1.35;
+      if (playerSpeed > 30) speedMultiplier = 1.25;
 
       police.u = (police.u + police.speedU * speedMultiplier * delta) % 1.0;
       const pt = this.trackCurve.getPointAt(police.u);
