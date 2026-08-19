@@ -27,8 +27,8 @@ export class CityTrackManager {
     this.rainParticles = null;
     this.rainGeom = null;
     this.dustParticles = null;
-    this.dustGeom = null;
-
+    this.nitroPickups = [];
+    this.onNitroPickupCallback = null;
     this.onSpeedTrapCallback = null;
     this.lastKerbRumbleTime = 0;
     this.lastCrowdCheerTime = 0;
@@ -410,6 +410,74 @@ export class CityTrackManager {
     this.buildDestructibleProps();
     this.buildAIRivals();
     this.buildRichCityTrafficFleet();
+    this.buildNitroPickups();
+  }
+
+  // ⚡ REALISTIC 3D NOS / N2O NITROUS OXIDE CYLINDERS
+  buildNitroPickups() {
+    const pickupU = [0.07, 0.19, 0.33, 0.47, 0.59, 0.71, 0.83, 0.94];
+    const nosBlueMat = new THREE.MeshStandardMaterial({
+      color: 0x0284c7,
+      metalness: 0.92,
+      roughness: 0.15,
+    });
+    const chromeMat = new THREE.MeshStandardMaterial({
+      color: 0xd4d4d8,
+      metalness: 0.98,
+      roughness: 0.1,
+    });
+    const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
+    const glowRingMat = new THREE.MeshBasicMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.6,
+      side: THREE.DoubleSide,
+    });
+
+    const bottleGeom = new THREE.CylinderGeometry(0.38, 0.38, 1.6, 16);
+    const neckGeom = new THREE.CylinderGeometry(0.14, 0.22, 0.35, 12);
+    const valveGeom = new THREE.BoxGeometry(0.24, 0.18, 0.24);
+    const ringGeom = new THREE.TorusGeometry(0.85, 0.04, 8, 24);
+    ringGeom.rotateX(Math.PI / 2);
+
+    for (let i = 0; i < pickupU.length; i++) {
+      const u = pickupU[i];
+      const pt = this.trackCurve.getPointAt(u);
+      const tangent = this.trackCurve.getTangentAt(u).normalize();
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+      const laneOffset = (i % 3 === 0 ? -6.0 : (i % 3 === 1 ? 6.0 : 0.0));
+      const pos = pt.clone().addScaledVector(normal, laneOffset);
+
+      const g = new THREE.Group();
+
+      const bottle = new THREE.Mesh(bottleGeom, nosBlueMat);
+      bottle.position.y = 0.8;
+
+      const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.385, 0.385, 0.4, 16), whiteMat);
+      stripe.position.y = 0.8;
+
+      const neck = new THREE.Mesh(neckGeom, chromeMat);
+      neck.position.y = 1.7;
+
+      const valve = new THREE.Mesh(valveGeom, chromeMat);
+      valve.position.y = 1.95;
+
+      const ring = new THREE.Mesh(ringGeom, glowRingMat);
+      ring.position.y = 0.05;
+
+      g.add(bottle, stripe, neck, valve, ring);
+      g.position.set(pos.x, 0.6, pos.z);
+      this.trackWorldGroup.add(g);
+
+      this.nitroPickups.push({
+        mesh: g,
+        u: u,
+        baseY: 0.6,
+        collected: false,
+        respawnTimer: 0,
+      });
+    }
   }
 
   // 🏁 BRAKING DISTANCE BOARDS (150m, 100m, 50m)
@@ -1636,6 +1704,35 @@ export class CityTrackManager {
         cyberAudio.playTrafficFlyby();
       } else if (d > 22.0) {
         car.passedAudio = false;
+      }
+    }
+
+    // 7. ⚡ N2O Nitro Canister Pickups
+    for (const pickup of this.nitroPickups) {
+      if (pickup.collected) {
+        pickup.respawnTimer -= delta;
+        if (pickup.respawnTimer <= 0) {
+          pickup.collected = false;
+          pickup.mesh.visible = true;
+        }
+      } else {
+        pickup.mesh.rotation.y += delta * 2.2;
+        pickup.mesh.position.y = pickup.baseY + Math.sin(Date.now() * 0.004 + pickup.u * 10) * 0.18;
+
+        const dist = pickup.mesh.position.distanceTo(playerPos);
+        if (dist < 4.2) {
+          pickup.collected = true;
+          pickup.mesh.visible = false;
+          pickup.respawnTimer = 12.0;
+
+          playerCar.nitroFuel = 100;
+          playerCar.totalScore += 300;
+          playerCar.emitSparks(pickup.mesh.position);
+
+          if (this.onNitroPickupCallback) {
+            this.onNitroPickupCallback("⚡ БАЛЛОН ЗАКИСИ АЗОТА (NOS) +100% N2O!");
+          }
+        }
       }
     }
   }

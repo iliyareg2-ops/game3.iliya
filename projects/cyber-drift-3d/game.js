@@ -106,6 +106,11 @@ export class CyberDriftGame {
     this.trackManager.onSpeedTrapCallback = (speedKmH, pts) => {
       this.showBanner(`📸 РАДАР СКОРОСТИ: ${speedKmH} КМ/Ч! +${pts} PTS`, 2800);
     };
+
+    this.trackManager.onNitroPickupCallback = (bannerText) => {
+      this.showBanner(bannerText, 2400);
+      this.showSkillBadge("⚡ N2O NITRO BOTTLE REFILL +100%");
+    };
   }
 
   initInputs() {
