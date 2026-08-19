@@ -664,6 +664,7 @@ export class CityTrackManager {
       tg.add(counter, roof, p1, p2, p3, p4, surfMenu);
       tg.position.set(bx, 0.10, bz);
       tg.rotation.y = brot;
+      this.colliders.push({ minX: bx - 6, maxX: bx + 6, minZ: bz - 4, maxZ: bz + 4 });
       return tg;
     };
 
@@ -1108,10 +1109,15 @@ export class CityTrackManager {
       return g;
     };
 
-    standsGroup.add(makeGrandstand(34, 100, Math.PI / 2));
-    standsGroup.add(makeGrandstand(34, 220, Math.PI / 2));
-    standsGroup.add(makeGrandstand(-34, 100, -Math.PI / 2));
-    standsGroup.add(makeGrandstand(-34, 220, -Math.PI / 2));
+    const addStand = (x, z, rotY) => {
+      standsGroup.add(makeGrandstand(x, z, rotY));
+      this.colliders.push({ minX: x - 12, maxX: x + 12, minZ: z - 20, maxZ: z + 20 });
+    };
+
+    addStand(34, 100, Math.PI / 2);
+    addStand(34, 220, Math.PI / 2);
+    addStand(-34, 100, -Math.PI / 2);
+    addStand(-34, 220, -Math.PI / 2);
 
     this.trackWorldGroup.add(standsGroup);
   }
@@ -1967,6 +1973,7 @@ export class CityTrackManager {
       g.add(wall);
       g.position.set(x, y, z);
       g.rotation.y = rotY;
+      this.colliders.push({ minX: x - 15, maxX: x + 15, minZ: z - 5, maxZ: z + 5 });
       return g;
     };
 
@@ -2045,7 +2052,7 @@ export class CityTrackManager {
   handleCarTrackCollision(car) {
     const px = car.position.x;
     const pz = car.position.z;
-    const carRadius = 2.6;
+    const carRadius = 2.4;
 
     // 📳 KERB RUMBLE DETECTION (Distance to track edge ~ 18m)
     const closestU = this.getClosestU(car.position);
@@ -2068,7 +2075,9 @@ export class CityTrackManager {
       }
     }
 
-    for (const b of this.colliders) {
+    // 💥 SOLID OBSTACLE & BUILDING COLLISION RESOLVER
+    for (let i = 0; i < this.colliders.length; i++) {
+      const b = this.colliders[i];
       const cx = Math.max(b.minX, Math.min(b.maxX, px));
       const cz = Math.max(b.minZ, Math.min(b.maxZ, pz));
 
@@ -2080,6 +2089,18 @@ export class CityTrackManager {
         const dist = Math.sqrt(distSq) || 0.001;
         const nx = dx / dist;
         const nz = dz / dist;
+        const overlap = carRadius - dist;
+
+        car.position.x += nx * (overlap + 0.35);
+        car.position.z += nz * (overlap + 0.35);
+        car.mesh.position.copy(car.position);
+
+        if (Math.abs(car.speed) > 15) {
+          car.speed = -car.speed * 0.45;
+          car.emitSparks(new THREE.Vector3(cx, 0.6, cz));
+          cyberAudio.playCrash();
+        }
+        break;
       }
     }
 
