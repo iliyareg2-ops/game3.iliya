@@ -680,16 +680,16 @@ export class CyberDriftGame {
     const rpm = Math.floor(1200 + ((spd % 65) / 65) * 7200 + (this.car.throttleInput > 0 ? 800 : 0));
     const rpmRatio = Math.min(1.0, Math.max(0, (rpm - 1000) / 8000));
     if (this.svgRpmArc) {
-      // Stroke dasharray 376: 376 (empty) -> 125 (full)
-      const targetRpmOffset = 376 - (rpmRatio * 251);
+      // 398 when 0% (empty) -> 0 when 100% (full)
+      const targetRpmOffset = (1.0 - rpmRatio) * 398;
       this.svgRpmArc.style.strokeDashoffset = targetRpmOffset;
     }
     if (this.rpmValEl) this.rpmValEl.textContent = `${rpm} RPM`;
 
-    // Nitro Gauge: stroke dasharray 424: 284 (empty) -> 140 (full)
+    // Nitro Gauge: 452 when 0% (depleted) -> 0 when 100% (full)
     const nitroRatio = Math.max(0, Math.min(1, this.car.nitroFuel / 100));
     if (this.svgNitroArc) {
-      const targetNitroOffset = 284 - (nitroRatio * 144);
+      const targetNitroOffset = (1.0 - nitroRatio) * 452;
       this.svgNitroArc.style.strokeDashoffset = targetNitroOffset;
     }
 
