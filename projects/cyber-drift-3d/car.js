@@ -134,7 +134,6 @@ export class CyberCar {
       const grill = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.3, 0.2), plasticMat);
       grill.position.set(0, 0.55, 4.62);
 
-      // Authentic GT-R Twin Round Taillights
       const tlMatOuter = new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.2, metalness: 0.1 });
       const tlL1 = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.1, 16), tlMatOuter);
       tlL1.rotateX(Math.PI / 2);
@@ -174,7 +173,7 @@ export class CyberCar {
       tl.position.set(0, 0.75, -4.51);
 
       this.bodyGroup.add(chassis, cabin, roof, flareL, flareR, frontAirDam, tl);
-    } else {
+    } else if (this.carTypeIndex === 2) {
       // 🚀 3. HENNESSEY VENOM F5 HYPERCAR
       const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.62, 9.6), bodyMat);
       chassis.position.y = 0.6;
@@ -194,10 +193,99 @@ export class CyberCar {
       tl.position.set(0, 0.68, -4.81);
 
       this.bodyGroup.add(chassis, cabin, roof, diffuser, tl);
+    } else if (this.carTypeIndex === 3) {
+      // 🏆 4. BMW M3 E46 GTR (Most Wanted Icon)
+      const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.75, 9.1), bodyMat);
+      chassis.position.y = 0.66;
+      chassis.castShadow = true;
+
+      const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.7, 4.6), glassMat);
+      cabin.position.set(0, 1.34, -0.2);
+
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.06, 3.6), carbonMat);
+      roof.position.set(0, 1.68, -0.2);
+
+      const hoodVentsL = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.06, 1.8), carbonMat);
+      hoodVentsL.position.set(0.9, 1.05, 2.4);
+      hoodVentsL.rotation.z = 0.1;
+      const hoodVentsR = hoodVentsL.clone();
+      hoodVentsR.position.x = -0.9;
+      hoodVentsR.rotation.z = -0.1;
+
+      const gtrFlares = new THREE.Mesh(new THREE.BoxGeometry(4.7, 0.6, 2.8), bodyMat);
+      gtrFlares.position.set(0, 0.65, 2.4);
+
+      const kidneyL = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.45, 0.15), carbonMat);
+      kidneyL.position.set(0.5, 0.65, 4.58);
+      const kidneyR = kidneyL.clone();
+      kidneyR.position.x = -0.5;
+
+      const tl = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.25, 0.1), new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.2 }));
+      tl.position.set(0, 0.75, -4.56);
+
+      this.bodyGroup.add(chassis, cabin, roof, hoodVentsL, hoodVentsR, gtrFlares, kidneyL, kidneyR, tl);
+    } else if (this.carTypeIndex === 4) {
+      // 🎌 5. TOYOTA SUPRA MK4 A80 (2JZ-GTE)
+      const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.72, 9.2), bodyMat);
+      chassis.position.y = 0.65;
+      chassis.castShadow = true;
+
+      const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.66, 4.7), glassMat);
+      cabin.position.set(0, 1.28, -0.3);
+
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.06, 3.5), bodyMat);
+      roof.position.set(0, 1.62, -0.3);
+
+      const hoodScoop = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.12, 2.2), bodyMat);
+      hoodScoop.position.set(0, 1.05, 2.5);
+
+      const frontAirMouth = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.35, 0.3), carbonMat);
+      frontAirMouth.position.set(0, 0.42, 4.6);
+
+      // Supra 4-Pod Round Taillights
+      const tlMatOuter = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.2 });
+      for (let k = 0; k < 4; k++) {
+        const podL = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.1, 14), tlMatOuter);
+        podL.rotateX(Math.PI / 2);
+        podL.position.set(0.6 + k * 0.42, 0.72, -4.61);
+        const podR = podL.clone();
+        podR.position.x = -(0.6 + k * 0.42);
+        this.bodyGroup.add(podL, podR);
+      }
+
+      this.bodyGroup.add(chassis, cabin, roof, hoodScoop, frontAirMouth);
+    } else {
+      // ⚡ 6. LAMBORGHINI AVENTADOR SVJ
+      const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.58, 9.8), bodyMat);
+      chassis.position.y = 0.58;
+      chassis.castShadow = true;
+
+      const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.58, 4.2), glassMat);
+      cabin.position.set(0, 1.15, -0.2);
+
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.06, 3.0), carbonMat);
+      roof.position.set(0, 1.44, -0.2);
+
+      const sideScoopL = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 2.2), carbonMat);
+      sideScoopL.position.set(2.42, 0.65, -1.8);
+      const sideScoopR = sideScoopL.clone();
+      sideScoopR.position.x = -2.42;
+
+      const frontWedge = new THREE.Mesh(new THREE.ConeGeometry(2.4, 1.8, 3), bodyMat);
+      frontWedge.rotateX(Math.PI / 2);
+      frontWedge.position.set(0, 0.52, 4.8);
+
+      const tl = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.12, 0.1), new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.2 }));
+      tl.position.set(0, 0.68, -4.91);
+
+      this.bodyGroup.add(chassis, cabin, roof, sideScoopL, sideScoopR, frontWedge, tl);
     }
 
     // Cockpit Interior: 3D Steering Wheel & Pilot Helmet
     this._buildCockpitInterior();
+
+    // Bodykit Aero Styling (Stock, Street GT, Widebody)
+    this._buildBodykitAero(bodyMat, carbonMat);
 
     // Titanium Exhaust Tips
     const exhaustMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.95, roughness: 0.2 });
@@ -208,7 +296,98 @@ export class CyberCar {
     pipeR.position.x = -0.95;
     this.bodyGroup.add(pipeL, pipeR);
 
-    // Realistic Xenon Projector Headlights
+    // Realistic Xenon Projector Headlights with Light Beams
+    this._buildHeadlights();
+
+    // Custom Underglow Neon (RGB)
+    this._buildUnderglowNeon();
+
+    this._buildSpoiler(carbonMat);
+    this._buildWheelsWithBremboBrakes();
+
+    this.mesh.position.copy(this.position);
+  }
+
+  // 🛠️ CUSTOM BODYKIT AERO (Stock, Street GT, Widebody Bolt-on)
+  _buildBodykitAero(bodyMat, carbonMat) {
+    if (this.bodykit === "street") {
+      const splitter = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.08, 1.6), carbonMat);
+      splitter.position.set(0, 0.22, 4.8);
+
+      const skirtL = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 6.8), carbonMat);
+      skirtL.position.set(2.35, 0.25, 0);
+      const skirtR = skirtL.clone();
+      skirtR.position.x = -2.35;
+
+      const diffuser = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.3, 1.8), carbonMat);
+      diffuser.position.set(0, 0.32, -4.8);
+      diffuser.rotation.x = -0.2;
+
+      this.bodyGroup.add(splitter, skirtL, skirtR, diffuser);
+    } else if (this.bodykit === "widebody") {
+      const wideFlaresF = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.65, 3.4), bodyMat);
+      wideFlaresF.position.set(0, 0.68, 2.6);
+      const wideFlaresR = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.7, 3.6), bodyMat);
+      wideFlaresR.position.set(0, 0.72, -2.5);
+
+      const raceSplitter = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.08, 2.0), carbonMat);
+      raceSplitter.position.set(0, 0.2, 5.0);
+
+      const canardL1 = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.06, 0.6), carbonMat);
+      canardL1.position.set(2.5, 0.5, 4.4);
+      canardL1.rotation.z = -0.3;
+      const canardR1 = canardL1.clone();
+      canardR1.position.x = -2.5;
+      canardR1.rotation.z = 0.3;
+
+      this.bodyGroup.add(wideFlaresF, wideFlaresR, raceSplitter, canardL1, canardR1);
+    }
+  }
+
+  // 💡 CUSTOM UNDERGLOW RGB NEON
+  _buildUnderglowNeon() {
+    if (this.underglowMesh) {
+      this.mesh.remove(this.underglowMesh);
+      this.underglowMesh = null;
+    }
+
+    if (!this.underglowNeon || this.underglowNeon === "none") return;
+
+    let hexColor = 0x00f0ff;
+    if (this.underglowNeon === "magenta") hexColor = 0xff007f;
+    else if (this.underglowNeon === "lime") hexColor = 0x39ff14;
+    else if (this.underglowNeon === "red") hexColor = 0xff073a;
+    else if (this.underglowNeon === "gold") hexColor = 0xffd700;
+
+    const c = document.createElement("canvas");
+    c.width = 128;
+    c.height = 128;
+    const ctx = c.getContext("2d");
+    const grad = ctx.createRadialGradient(64, 64, 10, 64, 64, 60);
+    grad.addColorStop(0, "rgba(255, 255, 255, 0.95)");
+    grad.addColorStop(0.5, "rgba(255, 255, 255, 0.6)");
+    grad.addColorStop(1, "rgba(255, 255, 255, 0.0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 128, 128);
+
+    const neonTex = new THREE.CanvasTexture(c);
+    const neonMat = new THREE.MeshBasicMaterial({
+      map: neonTex,
+      color: hexColor,
+      transparent: true,
+      opacity: 0.85,
+      depthWrite: false,
+    });
+
+    const neonGeom = new THREE.PlaneGeometry(5.6, 9.6);
+    neonGeom.rotateX(-Math.PI / 2);
+    this.underglowMesh = new THREE.Mesh(neonGeom, neonMat);
+    this.underglowMesh.position.set(0, 0.06, 0);
+    this.mesh.add(this.underglowMesh);
+  }
+
+  // 💡 REALISTIC PROJECTOR HEADLIGHTS WITH ILLUMINATING BEAMS
+  _buildHeadlights() {
     const hlHousingMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3, metalness: 0.8 });
     const hlLensMat = new THREE.MeshPhysicalMaterial({ color: 0xf8fafc, roughness: 0.05, metalness: 0.1, transmission: 0.9, transparent: true });
 
@@ -612,6 +791,20 @@ export class CyberCar {
     this.initCarModel();
   }
 
+  setBodykit(bodykit) {
+    this.bodykit = bodykit;
+    this.initCarModel();
+  }
+
+  setUnderglowNeon(neon) {
+    this.underglowNeon = neon;
+    this.initCarModel();
+  }
+
+  setStage(stage) {
+    this.stage = stage;
+  }
+
   emitSparks(pos) {
     for (let i = 0; i < 15; i++) {
       const p = this.sparkPool.find((s) => s.life <= 0);
@@ -725,17 +918,21 @@ export class CyberCar {
   updatePhysics(delta, trackManager) {
     this.recordHistoryState();
 
+    const stageSpeedBonus = [0, 22, 44, 70][this.stage || 0];
+    const stageAccelBonus = [0, 25, 55, 90][this.stage || 0];
+
     const isNitroFiring = this.nitroActive && this.nitroFuel > 0;
-    let maxForwardSpeed = isNitroFiring ? 360 : 255;
+    let maxForwardSpeed = (isNitroFiring ? 360 : 255) + stageSpeedBonus;
     if (this.isDrafting) maxForwardSpeed += 25;
 
     const maxReverseSpeed = -75;
-    const accelRate = (isNitroFiring ? 190 : (this.isDrafting ? 140 : 110)) * delta;
+    const accelRate = (isNitroFiring ? (190 + stageAccelBonus) : (this.isDrafting ? 140 : (110 + stageAccelBonus))) * delta;
     const brakeRate = 230 * delta;
     const coastDrag = 38 * delta;
 
     if (isNitroFiring) {
-      this.nitroFuel = Math.max(0, this.nitroFuel - delta * 24);
+      const nitroBurnRate = this.stage === 3 ? 14 : 24;
+      this.nitroFuel = Math.max(0, this.nitroFuel - delta * nitroBurnRate);
     }
 
     if (this.throttleInput > 0.8 && this.speed > 90) {

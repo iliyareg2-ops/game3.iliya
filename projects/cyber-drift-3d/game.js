@@ -112,6 +112,55 @@ export class CyberDriftGame {
       this.showBanner(bannerText, 2400);
       this.showSkillBadge("⚡ N2O NITRO BOTTLE REFILL +100%");
     };
+
+    // 👻 Holographic Ghost Car System
+    this.currentLapTelemetry = [];
+    this.bestLapTelemetry = [];
+    this.ghostCarMesh = this._createGhostCarMesh();
+    this.scene.add(this.ghostCarMesh);
+    this.ghostCarMesh.visible = false;
+  }
+
+  _createGhostCarMesh() {
+    const g = new THREE.Group();
+    const ghostMat = new THREE.MeshPhysicalMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.5,
+      roughness: 0.1,
+      metalness: 0.8,
+      emissive: 0x0284c7,
+      emissiveIntensity: 0.9,
+    });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.75, 9.2), ghostMat);
+    body.position.y = 0.68;
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.68, 4.8), ghostMat);
+    cabin.position.set(0, 1.32, -0.2);
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.1, 1.2), ghostMat);
+    wing.position.set(0, 1.6, -4.2);
+    g.add(body, cabin, wing);
+    return g;
+  }
+
+  updateGhostCar(delta) {
+    if (!this.ghostCarMesh) return;
+    if (this.bestLapTelemetry && this.bestLapTelemetry.length > 10 && this.gameState === "RACING" && this.gameMode !== "BEACH") {
+      this.ghostCarMesh.visible = true;
+      const rawPlayerU = this.trackManager.getClosestU(this.car.position);
+      let closestPt = this.bestLapTelemetry[0];
+      let minDiff = 999;
+      for (const pt of this.bestLapTelemetry) {
+        const diff = Math.abs(pt.u - rawPlayerU);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestPt = pt;
+        }
+      }
+      this.ghostCarMesh.position.lerp(new THREE.Vector3(closestPt.x, 0.15, closestPt.z), delta * 12.0);
+      this.ghostCarMesh.rotation.y = THREE.MathUtils.lerp(this.ghostCarMesh.rotation.y, closestPt.heading, delta * 12.0);
+    } else {
+      this.ghostCarMesh.visible = false;
+    }
   }
 
   initInputs() {
@@ -289,6 +338,36 @@ export class CyberDriftGame {
         document.querySelectorAll("[data-spoiler]").forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
         this.car.setSpoilerType(parseInt(btn.dataset.spoiler));
+      });
+    });
+
+    // 9. 🛠️ Bodykit Aero Styling
+    document.querySelectorAll("[data-bodykit]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("[data-bodykit]").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        this.car.setBodykit(btn.dataset.bodykit);
+      });
+    });
+
+    // 10. 💡 Underglow RGB Neon
+    document.querySelectorAll("[data-neon]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("[data-neon]").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        this.car.setUnderglowNeon(btn.dataset.neon);
+      });
+    });
+
+    // 11. ⚡ Performance Tuning Stages (1 / 2 / 3)
+    document.querySelectorAll("[data-stage]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("[data-stage]").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        const stageNum = parseInt(btn.dataset.stage);
+        this.car.setStage(stageNum);
+        const stageNames = ["Stock OEM (320 л.с.)", "Stage 1 ECU (+15% Power)", "Stage 2 Twin-Turbo (+30% Power)", "Stage 3 Pro NOS (+55% Power, 360+ km/h!)"];
+        this.showSkillBadge(`⚡ ТЮНИНГ: ${stageNames[stageNum]}`);
       });
     });
 
@@ -755,6 +834,12 @@ export class CyberDriftGame {
         if (this.prevPlayerU > 0.85 && rawPlayerU < 0.15 && this.gameState === "RACING") {
           this.playerLapsCompleted++;
 
+          if (this.currentLapTelemetry.length > 20) {
+            this.bestLapTelemetry = [...this.currentLapTelemetry];
+            this.currentLapTelemetry = [];
+            this.showSkillBadge("👻 ПРИЗРАК ЛУЧШЕГО КРУГА ОБНОВЛЕН!");
+          }
+
           if (this.playerLapsCompleted >= this.maxLaps) {
             let finalPos = 1;
             for (const rival of this.trackManager.aiRivals) {
@@ -856,6 +941,12 @@ export class CyberDriftGame {
         this.car.updatePhysics(delta, this.trackManager);
         this.trackManager.update(delta, this.car, true, this.playerLapsCompleted);
         this.checkSkillChains();
+
+        if (this.gameMode !== "BEACH") {
+          const u = this.trackManager.getClosestU(this.car.position);
+          this.currentLapTelemetry.push({ u: u, x: this.car.position.x, z: this.car.position.z, heading: this.car.heading });
+          this.updateGhostCar(delta);
+        }
       }
 
       this.updateHUD();

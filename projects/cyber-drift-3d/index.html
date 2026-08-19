@@ -561,6 +561,12 @@
       gap: 5px;
     }
 
+    .tuning-options-6 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+    }
+
     .tune-btn {
       background: rgba(255, 255, 255, 0.06);
       border: 1px solid rgba(255, 255, 255, 0.18);
@@ -789,20 +795,58 @@
       <!-- ☀️ ВРЕМЯ СУТОК И ПОГОДА -->
       <div class="custom-row">
         <div class="custom-row-title">☀️ Время суток & Погода:</div>
-        <div class="tuning-options">
-          <button class="tune-btn active" data-atmosphere="DAY">☀️ Ясный день</button>
+        <div class="tuning-options-4">
+          <button class="tune-btn active" data-atmosphere="DAY">☀️ День</button>
           <button class="tune-btn" data-atmosphere="SUNSET">🌅 Закат</button>
+          <button class="tune-btn" data-atmosphere="NIGHT">🌃 Ночь</button>
           <button class="tune-btn" data-atmosphere="RAINSTORM">🌧️ Дождь</button>
         </div>
       </div>
 
       <!-- ВЫБОР АВТОМОБИЛЯ -->
       <div class="custom-row">
-        <div class="custom-row-title">Выбор спорткара:</div>
-        <div class="tuning-options">
-          <button class="tune-btn active" data-cartype="0">GT-R Skyline</button>
-          <button class="tune-btn" data-cartype="1">911 GT3 RS</button>
+        <div class="custom-row-title">🏎️ Выбор спорткара:</div>
+        <div class="tuning-options-6">
+          <button class="tune-btn active" data-cartype="0">GT-R R34</button>
+          <button class="tune-btn" data-cartype="1">911 GT3</button>
           <button class="tune-btn" data-cartype="2">Venom F5</button>
+          <button class="tune-btn" data-cartype="3">M3 GTR</button>
+          <button class="tune-btn" data-cartype="4">Supra MK4</button>
+          <button class="tune-btn" data-cartype="5">Aventador</button>
+        </div>
+      </div>
+
+      <!-- 🛠️ ОБВЕСЫ / BODYKIT -->
+      <div class="custom-row">
+        <div class="custom-row-title">🛠️ Аэродинамический обвес (Bodykit):</div>
+        <div class="tuning-options">
+          <button class="tune-btn active" data-bodykit="stock">Stock OEM</button>
+          <button class="tune-btn" data-bodykit="street">Street GT</button>
+          <button class="tune-btn" data-bodykit="widebody">Widebody Bolt-on</button>
+        </div>
+      </div>
+
+      <!-- 💡 НЕОН ДНИЩА -->
+      <div class="custom-row">
+        <div class="custom-row-title">💡 Неоновая подсветка днища (Underglow):</div>
+        <div class="tuning-options-6">
+          <button class="tune-btn active" data-neon="none">Выкл</button>
+          <button class="tune-btn" data-neon="cyan">💎 Cyan</button>
+          <button class="tune-btn" data-neon="magenta">🟣 Purple</button>
+          <button class="tune-btn" data-neon="lime">🟢 Lime</button>
+          <button class="tune-btn" data-neon="red">🔴 Red</button>
+          <button class="tune-btn" data-neon="gold">🟡 Gold</button>
+        </div>
+      </div>
+
+      <!-- ⚡ ТЮНИНГ МОТОРА (STAGE 1/2/3) -->
+      <div class="custom-row">
+        <div class="custom-row-title">⚡ Тюнинг двигателя & Турбо (Stage):</div>
+        <div class="tuning-options-4">
+          <button class="tune-btn active" data-stage="0">Stock</button>
+          <button class="tune-btn" data-stage="1">Stage 1</button>
+          <button class="tune-btn" data-stage="2">Stage 2</button>
+          <button class="tune-btn" data-stage="3">Stage 3 Pro</button>
         </div>
       </div>
 

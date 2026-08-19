@@ -292,6 +292,16 @@ export class CityTrackManager {
       this.mainSunLight.color.setHex(0x94a3b8);
       this.mainSunLight.position.set(300, 600, 300);
       this.mainSunLight.intensity = 2.2;
+    } else if (timeOfDay === "NIGHT") {
+      this.scene.fog.color.setHex(0x070b19);
+      this.scene.background.setHex(0x030712);
+      this.ambLight.color.setHex(0x38bdf8);
+      this.ambLight.intensity = 0.9;
+      this.hemiLight.color.setHex(0x818cf8);
+      this.hemiLight.groundColor.setHex(0x020617);
+      this.mainSunLight.color.setHex(0x60a5fa);
+      this.mainSunLight.position.set(200, 450, 200);
+      this.mainSunLight.intensity = 1.4;
     } else {
       this.scene.fog.color.setHex(0x7dd3fc);
       this.scene.background.setHex(0x0284c7);
