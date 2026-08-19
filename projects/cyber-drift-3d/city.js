@@ -1365,47 +1365,49 @@ export class CityTrackManager {
 
   buildAIRivals() {
     const rivalsData = [
-      { name: "Akira [GT-R]", color: 0x1d4ed8, u: 0.008, lane: -5.5, baseSpeedU: 0.0235 },
-      { name: "Ghost [911]", color: 0x1e293b, u: 0.008, lane: 5.5, baseSpeedU: 0.0248 },
-      { name: "⚡ Razor [M3 GTR]", color: 0x15803d, u: 0.0025, lane: -5.5, baseSpeedU: 0.0225 },
+      {
+        name: "Ghost [911 GT3]",
+        carType: 1, // Porsche 911 GT3 RS
+        color: 0x1e293b, // Satin Stealth Slate
+        rimColor: 0xb45309, // Bronze GT3 Wheels
+        neonColor: 0x39ff14, // Acid Lime Underglow
+        u: 0.008,
+        lane: 5.5,
+        baseSpeedU: 0.0202, // ~236 km/h (Calibrated)
+      },
+      {
+        name: "Akira [GT-R R34]",
+        carType: 0, // Nissan Skyline GT-R R34
+        color: 0x1d4ed8, // Bayside Blue Pearl
+        rimColor: 0xeab308, // Gold BBS Rims
+        neonColor: 0x00f0ff, // Cyan Underglow
+        u: 0.008,
+        lane: -5.5,
+        baseSpeedU: 0.0192, // ~225 km/h
+      },
+      {
+        name: "⚡ Razor [M3 GTR]",
+        carType: 3, // BMW M3 E46 GTR
+        color: 0x94a3b8, // Silver Metallic with Blue Livery
+        rimColor: 0xd4d4d8, // Deep Chrome BBS
+        neonColor: 0xff007f, // Magenta Underglow
+        u: 0.0025,
+        lane: -5.5,
+        baseSpeedU: 0.0182, // ~215 km/h
+      },
     ];
 
-    const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
-    const carbonMat = new THREE.MeshStandardMaterial({ color: 0x181a20, roughness: 0.4 });
-
     for (const r of rivalsData) {
-      const g = new THREE.Group();
-      const paintMat = new THREE.MeshPhysicalMaterial({
-        color: r.color,
-        metalness: 0.85,
-        roughness: 0.18,
-        clearcoat: 1.0,
-      });
-
-      const body = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.72, 9.2), paintMat);
-      body.position.y = 0.65;
-      const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.65, 4.4), glassMat);
-      cabin.position.set(0, 1.25, -0.3);
-      const wing = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.08, 1.0), carbonMat);
-      wing.position.set(0, 1.55, -4.2);
-
-      const hlL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.25, 0.1), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 }));
-      hlL.position.set(1.4, 0.7, 4.61);
-      const hlR = hlL.clone();
-      hlR.position.x = -1.4;
-      const tl = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.18, 0.1), new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.2 }));
-      tl.position.set(0, 0.7, -4.61);
-
-      g.add(body, cabin, wing, hlL, hlR, tl);
+      const { group: g, wheels } = this._buildDetailedAIRivalCar(r);
 
       const nameCanvas = document.createElement("canvas");
       nameCanvas.width = 256;
       nameCanvas.height = 64;
       const nCtx = nameCanvas.getContext("2d");
-      nCtx.fillStyle = "rgba(15, 23, 42, 0.9)";
+      nCtx.fillStyle = "rgba(15, 23, 42, 0.92)";
       nCtx.roundRect(0, 0, 256, 64, 12);
       nCtx.fill();
-      nCtx.strokeStyle = "#94a3b8";
+      nCtx.strokeStyle = "#38bdf8";
       nCtx.lineWidth = 3;
       nCtx.stroke();
       nCtx.fillStyle = "#ffffff";
@@ -1425,6 +1427,7 @@ export class CityTrackManager {
       this.aiRivals.push({
         name: r.name,
         mesh: g,
+        wheels: wheels,
         u: r.u,
         laneOffset: r.lane,
         baseSpeedU: r.baseSpeedU,
@@ -1433,6 +1436,212 @@ export class CityTrackManager {
         namePlate: namePlate,
       });
     }
+  }
+
+  _buildDetailedAIRivalCar(rival) {
+    const g = new THREE.Group();
+    const wheels = [];
+
+    const paintMat = new THREE.MeshPhysicalMaterial({
+      color: rival.color,
+      metalness: 0.9,
+      roughness: 0.18,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.06,
+    });
+    const carbonMat = new THREE.MeshStandardMaterial({ color: 0x181a20, roughness: 0.35, metalness: 0.7 });
+    const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x050811, roughness: 0.05, metalness: 0.9, transmission: 0.7, transparent: true, opacity: 0.92 });
+    const tireMat = new THREE.MeshStandardMaterial({ color: 0x16171a, roughness: 0.85 });
+    const rimMat = new THREE.MeshStandardMaterial({ color: rival.rimColor || 0xd4d4d8, metalness: 0.92, roughness: 0.18 });
+    const caliperMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, metalness: 0.6, roughness: 0.3 });
+    const hlMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const tlMat = new THREE.MeshBasicMaterial({ color: 0xdc2626 });
+
+    // 1. Car Type Specific Body Shapes
+    if (rival.carType === 0) {
+      // Nissan Skyline GT-R R34 Spec
+      const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.76, 9.2), paintMat);
+      chassis.position.y = 0.68;
+      const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.7, 4.8), glassMat);
+      cabin.position.set(0, 1.35, -0.2);
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.06, 3.8), carbonMat);
+      roof.position.set(0, 1.7, -0.2);
+      const hoodVents = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.08, 1.8), carbonMat);
+      hoodVents.position.set(0, 1.08, 2.5);
+      const splitter = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.1, 1.2), carbonMat);
+      splitter.position.set(0, 0.32, 4.6);
+
+      // Skyline Taillights
+      for (let k = -1; k <= 1; k += 2) {
+        const tl1 = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.1, 16), tlMat);
+        tl1.rotateX(Math.PI / 2);
+        tl1.position.set(k * 1.4, 0.75, -4.61);
+        const tl2 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.1, 16), tlMat);
+        tl2.rotateX(Math.PI / 2);
+        tl2.position.set(k * 0.9, 0.75, -4.61);
+        g.add(tl1, tl2);
+      }
+      g.add(chassis, cabin, roof, hoodVents, splitter);
+    } else if (rival.carType === 1) {
+      // Porsche 911 GT3 RS
+      const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.7, 9.0), paintMat);
+      chassis.position.y = 0.65;
+      const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.68, 4.4), glassMat);
+      cabin.position.set(0, 1.32, -0.5);
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.06, 3.4), carbonMat);
+      roof.position.set(0, 1.66, -0.5);
+      const rearFenderL = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.75, 3.8), paintMat);
+      rearFenderL.position.set(2.25, 0.72, -2.4);
+      const rearFenderR = rearFenderL.clone();
+      rearFenderR.position.x = -2.25;
+      const frontWedge = new THREE.Mesh(new THREE.ConeGeometry(2.1, 2.0, 4), paintMat);
+      frontWedge.rotateX(Math.PI / 2);
+      frontWedge.position.set(0, 0.6, 4.5);
+      const tlBar = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.08, 0.1), tlMat);
+      tlBar.position.set(0, 0.78, -4.51);
+      g.add(chassis, cabin, roof, rearFenderL, rearFenderR, frontWedge, tlBar);
+    } else if (rival.carType === 3) {
+      // BMW M3 E46 GTR
+      const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.74, 9.1), paintMat);
+      chassis.position.y = 0.67;
+      const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.72, 4.6), glassMat);
+      cabin.position.set(0, 1.38, -0.3);
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.06, 3.6), carbonMat);
+      roof.position.set(0, 1.74, -0.3);
+      const powerBulge = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.14, 2.6), paintMat);
+      powerBulge.position.set(0, 1.08, 2.2);
+      const dtmFlL = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.65, 3.4), paintMat);
+      dtmFlL.position.set(2.22, 0.68, 2.4);
+      const dtmFlR = dtmFlL.clone();
+      dtmFlR.position.x = -2.22;
+      const dtmRlL = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.68, 3.6), paintMat);
+      dtmRlL.position.set(2.26, 0.7, -2.4);
+      const dtmRlR = dtmRlL.clone();
+      dtmRlR.position.x = -2.26;
+      g.add(chassis, cabin, roof, powerBulge, dtmFlL, dtmFlR, dtmRlL, dtmRlR);
+    } else if (rival.carType === 4) {
+      // Toyota Supra MK4
+      const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.74, 9.2), paintMat);
+      chassis.position.y = 0.66;
+      const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.66, 4.6), glassMat);
+      cabin.position.set(0, 1.3, -0.3);
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(3.1, 0.06, 3.6), carbonMat);
+      roof.position.set(0, 1.62, -0.3);
+      const hoodScoop = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.12, 2.2), paintMat);
+      hoodScoop.position.set(0, 1.05, 2.5);
+      g.add(chassis, cabin, roof, hoodScoop);
+    } else {
+      // Lamborghini Aventador SVJ / Venom F5
+      const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.58, 9.8), paintMat);
+      chassis.position.y = 0.58;
+      const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.58, 4.2), glassMat);
+      cabin.position.set(0, 1.15, -0.2);
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.06, 3.0), carbonMat);
+      roof.position.set(0, 1.44, -0.2);
+      const sideScoopL = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 2.2), carbonMat);
+      sideScoopL.position.set(2.42, 0.65, -1.8);
+      const sideScoopR = sideScoopL.clone();
+      sideScoopR.position.x = -2.42;
+      const frontWedge = new THREE.Mesh(new THREE.ConeGeometry(2.4, 1.8, 3), paintMat);
+      frontWedge.rotateX(Math.PI / 2);
+      frontWedge.position.set(0, 0.52, 4.8);
+      g.add(chassis, cabin, roof, sideScoopL, sideScoopR, frontWedge);
+    }
+
+    // 2. High GT Carbon Wing
+    const postL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.65, 0.3), carbonMat);
+    postL.position.set(1.4, 1.25, -4.2);
+    const postR = postL.clone();
+    postR.position.x = -1.4;
+    const wingBlade = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.08, 1.2), carbonMat);
+    wingBlade.position.set(0, 1.6, -4.2);
+    g.add(postL, postR, wingBlade);
+
+    // 3. Headlights & Taillights
+    const hlL = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.28, 0.1), hlMat);
+    hlL.position.set(1.45, 0.75, 4.61);
+    const hlR = hlL.clone();
+    hlR.position.x = -1.45;
+    const tlL = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.2, 0.1), tlMat);
+    tlL.position.set(1.2, 0.72, -4.61);
+    const tlR = tlL.clone();
+    tlR.position.x = -1.2;
+    g.add(hlL, hlR, tlL, tlR);
+
+    // 4. Titanium Dual Exhaust Tips
+    const exhaustMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.95, roughness: 0.2 });
+    const tipL = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.5, 12), exhaustMat);
+    tipL.rotateX(Math.PI / 2);
+    tipL.position.set(0.95, 0.45, -4.75);
+    const tipR = tipL.clone();
+    tipR.position.x = -0.95;
+    g.add(tipL, tipR);
+
+    // 5. 3D Wheels with Rim Spoke Detailing & Brake Calipers
+    const wheelGeom = new THREE.CylinderGeometry(0.52, 0.52, 0.45, 18);
+    wheelGeom.rotateZ(Math.PI / 2);
+    const rimGeom = new THREE.CylinderGeometry(0.38, 0.38, 0.47, 16);
+    rimGeom.rotateZ(Math.PI / 2);
+    const brakeGeom = new THREE.CylinderGeometry(0.32, 0.32, 0.42, 14);
+    brakeGeom.rotateZ(Math.PI / 2);
+    const caliperGeom = new THREE.BoxGeometry(0.18, 0.28, 0.32);
+
+    const makeWheel = (x, z) => {
+      const wg = new THREE.Group();
+      const tire = new THREE.Mesh(wheelGeom, tireMat);
+      const rim = new THREE.Mesh(rimGeom, rimMat);
+      const brake = new THREE.Mesh(brakeGeom, new THREE.MeshStandardMaterial({ color: 0x71717a, metalness: 0.95 }));
+      const caliper = new THREE.Mesh(caliperGeom, caliperMat);
+      caliper.position.set(x > 0 ? -0.1 : 0.1, 0.2, 0.1);
+      wg.add(tire, rim, brake, caliper);
+      wg.position.set(x, 0.52, z);
+      g.add(wg);
+      wheels.push(wg);
+    };
+
+    makeWheel(1.95, 2.7);
+    makeWheel(-1.95, 2.7);
+    makeWheel(1.95, -2.7);
+    makeWheel(-1.95, -2.7);
+
+    // 6. Underglow RGB Neon (Glowing Ground Reflection)
+    if (rival.neonColor) {
+      const c = document.createElement("canvas");
+      c.width = 128;
+      c.height = 128;
+      const ctx = c.getContext("2d");
+      const grad = ctx.createRadialGradient(64, 64, 10, 64, 64, 60);
+      grad.addColorStop(0, "rgba(255, 255, 255, 0.95)");
+      grad.addColorStop(0.5, "rgba(255, 255, 255, 0.6)");
+      grad.addColorStop(1, "rgba(255, 255, 255, 0.0)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 128, 128);
+
+      const neonTex = new THREE.CanvasTexture(c);
+      const neonMat = new THREE.MeshBasicMaterial({
+        map: neonTex,
+        color: rival.neonColor,
+        transparent: true,
+        opacity: 0.85,
+        depthWrite: false,
+      });
+      const neonMesh = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 9.4), neonMat);
+      neonMesh.rotateX(-Math.PI / 2);
+      neonMesh.position.set(0, 0.06, 0);
+      g.add(neonMesh);
+    }
+
+    // 7. Pilot Helmet inside cockpit
+    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.38, 14, 14), new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2 }));
+    helmet.scale.set(0.9, 1.05, 1.0);
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.18, 0.25), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.05, metalness: 0.95 }));
+    visor.position.set(0, 0.05, 0.25);
+    const pilot = new THREE.Group();
+    pilot.add(helmet, visor);
+    pilot.position.set(-0.7, 1.35, -0.2);
+    g.add(pilot);
+
+    return { group: g, wheels: wheels };
   }
 
   // 🚒 🚌 🏎️ DIVERSE CITY VEHICLE FLEET BUILDERS
@@ -2147,17 +2356,17 @@ export class CityTrackManager {
         const diffProgress = rivalTotal - playerTotal;
 
         let targetSpeedMultiplier = 1.0;
-        if (diffProgress > 0.04) {
-          targetSpeedMultiplier = 0.95;
-        } else if (diffProgress < -0.01) {
-          targetSpeedMultiplier = 1.20;
+        if (diffProgress > 0.035) {
+          targetSpeedMultiplier = 0.94;
+        } else if (diffProgress < -0.02) {
+          targetSpeedMultiplier = 1.08;
         } else if (diffProgress < 0.0) {
-          targetSpeedMultiplier = 1.10;
+          targetSpeedMultiplier = 1.04;
         } else {
-          targetSpeedMultiplier = 1.02 + (i * 0.03);
+          targetSpeedMultiplier = 0.98 + (i * 0.02);
         }
 
-        rival.currentSpeedU = THREE.MathUtils.lerp(rival.currentSpeedU, rival.baseSpeedU * targetSpeedMultiplier, delta * 3.0);
+        rival.currentSpeedU = THREE.MathUtils.lerp(rival.currentSpeedU, rival.baseSpeedU * targetSpeedMultiplier, delta * 2.5);
 
         const prevU = rival.u;
         rival.u = (rival.u + rival.currentSpeedU * delta) % 1.0;
@@ -2175,6 +2384,13 @@ export class CityTrackManager {
 
       const lookPt = pt.clone().addScaledVector(tangent, 6).addScaledVector(normal, rival.laneOffset);
       rival.mesh.lookAt(lookPt.x, 0.15, lookPt.z);
+
+      if (rival.wheels && rival.currentSpeedU > 0) {
+        const rotDelta = rival.currentSpeedU * delta * 1400;
+        for (let w = 0; w < rival.wheels.length; w++) {
+          rival.wheels[w].rotation.x += rotDelta;
+        }
+      }
 
       if (rival.namePlate) {
         rival.namePlate.lookAt(playerPos.x, 3.4, playerPos.z);
