@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Sky Jet 3D: Альпийский Перехватчик</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #090c12;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color: #fff;
+    }
+
+    #canvas-container {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+    }
+
+    /* HUD Overlay Layer */
+    #hud {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px;
+    }
+
+    /* Top Status Bar */
+    .hud-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .hud-cluster {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .hud-pill {
+      background: rgba(10, 16, 26, 0.82);
+      border: 1px solid rgba(0, 240, 255, 0.45);
+      border-radius: 10px;
+      padding: 8px 14px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 0 10px rgba(0, 240, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+      min-width: 90px;
+    }
+
+    .hud-label {
+      font-size: 10px;
+      font-weight: 800;
+      color: #8da4be;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .hud-val {
+      font-size: 22px;
+      font-weight: 900;
+      color: #00f0ff;
+      letter-spacing: 0.05em;
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.6);
+    }
+
+    .hud-val.alt { color: #55ff99; text-shadow: 0 0 10px rgba(85, 255, 153, 0.6); }
+    .hud-val.gold { color: #ffcc00; text-shadow: 0 0 10px rgba(255, 204, 0, 0.6); }
+
+    /* Nitro Fuel Bar */
+    .nitro-box {
+      width: 140px;
+    }
+
+    .nitro-track {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 4px;
+      margin-top: 6px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 120, 0, 0.4);
+    }
+
+    #hud-nitro-bar {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, #ff5500, #ffaa00, #ffff00);
+      box-shadow: 0 0 8px #ff7700;
+      transition: width 0.1s linear;
+    }
+
+    /* Central Crosshair & Reticle */
+    #crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 48px;
+      height: 48px;
+      pointer-events: none;
+      opacity: 0.75;
+    }
+
+    #crosshair::before, #crosshair::after {
+      content: '';
+      position: absolute;
+      background: rgba(0, 240, 255, 0.8);
+      box-shadow: 0 0 6px #00f0ff;
+    }
+
+    #crosshair::before {
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 2px;
+      transform: translateY(-50%);
+    }
+
+    #crosshair::after {
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      transform: translateX(-50%);
+    }
+
+    .reticle-bracket {
+      position: absolute;
+      inset: 6px;
+      border: 2px solid #00f0ff;
+      border-radius: 50%;
+    }
+
+    /* Notification Banner */
+    #hud-banner {
+      position: absolute;
+      top: 18%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(8, 14, 24, 0.88);
+      border: 1px solid #00f0ff;
+      border-radius: 12px;
+      padding: 10px 24px;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: #fff;
+      text-shadow: 0 0 12px #00f0ff;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 240, 255, 0.3);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      text-align: center;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    /* Bottom Status & Radar */
+    .hud-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .controls-hint {
+      background: rgba(10, 16, 26, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #9ab0c7;
+      line-height: 1.5;
+    }
+
+    .controls-hint b {
+      color: #00f0ff;
+    }
+
+    .radar-wrapper {
+      position: relative;
+      width: 140px;
+      height: 140px;
+      background: rgba(8, 12, 18, 0.85);
+      border-radius: 50%;
+      border: 2px solid rgba(0, 240, 255, 0.5);
+      box-shadow: 0 0 16px rgba(0, 240, 255, 0.25);
+      overflow: hidden;
+    }
+
+    #radar-canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Quick Action Buttons */
+    .quick-actions {
+      display: flex;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .hud-btn {
+      background: rgba(12, 20, 32, 0.85);
+      border: 1px solid rgba(0, 240, 255, 0.5);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: #00f0ff;
+      font-weight: 800;
+      font-size: 12px;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: all 0.15s ease;
+    }
+
+    .hud-btn:hover {
+      background: rgba(0, 240, 255, 0.25);
+      color: #fff;
+      box-shadow: 0 0 12px #00f0ff;
+    }
+
+    /* Touch Controls for Mobile/Tablets */
+    #touch-controls {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 15;
+      pointer-events: none;
+    }
+
+    .touch-pad-left {
+      position: absolute;
+      bottom: 24px;
+      left: 20px;
+      display: grid;
+      grid-template-columns: repeat(3, 56px);
+      grid-template-rows: repeat(3, 56px);
+      gap: 6px;
+      pointer-events: auto;
+    }
+
+    .touch-pad-right {
+      position: absolute;
+      bottom: 24px;
+      right: 170px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .touch-btn {
+      background: rgba(10, 18, 30, 0.7);
+      border: 2px solid rgba(0, 240, 255, 0.6);
+      border-radius: 12px;
+      color: #00f0ff;
+      font-size: 18px;
+      font-weight: 900;
+      display: grid;
+      place-items: center;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    }
+
+    .touch-btn:active {
+      background: rgba(0, 240, 255, 0.4);
+      color: #fff;
+    }
+
+    @media (max-width: 860px) {
+      #touch-controls { display: block; }
+      .controls-hint { display: none; }
+    }
+
+    /* Modal Screens (Intro, Over, Victory) */
+    .screen-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at center, rgba(14, 22, 34, 0.92) 0%, rgba(5, 8, 14, 0.98) 100%);
+      backdrop-filter: blur(12px);
+      padding: 20px;
+    }
+
+    .modal-card {
+      width: min(620px, 92vw);
+      background: linear-gradient(145deg, #101622 0%, #172030 100%);
+      border: 2px solid rgba(0, 240, 255, 0.5);
+      border-radius: 20px;
+      padding: 34px 30px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(0, 240, 255, 0.25);
+      text-align: center;
+      position: relative;
+    }
+
+    .modal-tag {
+      color: #00f0ff;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .modal-card h1 {
+      font-size: clamp(28px, 5vw, 42px);
+      font-weight: 900;
+      line-height: 1.1;
+      margin-bottom: 14px;
+      background: linear-gradient(90deg, #ffffff 0%, #a5e9ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .modal-desc {
+      font-size: 15px;
+      color: #b0c4de;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    .key-table {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 26px;
+      text-align: left;
+    }
+
+    .key-row {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .key-row kbd {
+      background: #00f0ff;
+      color: #050c18;
+      font-weight: 900;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    .btn-main {
+      width: 100%;
+      background: linear-gradient(135deg, #00f0ff 0%, #0088cc 100%);
+      border: none;
+      border-radius: 12px;
+      padding: 16px 24px;
+      color: #031020;
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      box-shadow: 0 8px 25px rgba(0, 240, 255, 0.4);
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+
+    .btn-main:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.1);
+    }
+
+    .btn-main:active {
+      transform: translateY(1px);
+    }
+  </style>
+</head>
+<body>
+  <!-- 3D Canvas -->
+  <div id="canvas-container"></div>
+
+  <!-- HUD Flight Overlay -->
+  <div id="hud">
+    <!-- Top Stats -->
+    <div class="hud-top">
+      <div class="hud-cluster">
+        <div class="hud-pill">
+          <span class="hud-label">СКОРОСТЬ</span>
+          <span class="hud-val"><span id="hud-speed">0</span> <small style="font-size:12px">КМ/Ч</small></span>
+        </div>
+        <div class="hud-pill">
+          <span class="hud-label">ВЫСОТА</span>
+          <span class="hud-val alt"><span id="hud-altitude">0</span> <small style="font-size:12px">М</small></span>
+        </div>
+        <div class="hud-pill">
+          <span class="hud-label">ЯЩИКИ</span>
+          <span class="hud-val gold" id="hud-crates">0/14</span>
+        </div>
+        <div class="hud-pill">
+          <span class="hud-label">ОЧКИ</span>
+          <span class="hud-val" id="hud-score">0</span>
+        </div>
+      </div>
+
+      <div class="hud-cluster">
+        <div class="hud-pill nitro-box">
+          <span class="hud-label">ФОРСАЖ / НИТРО</span>
+          <div class="nitro-track">
+            <div id="hud-nitro-bar"></div>
+          </div>
+        </div>
+
+        <div class="quick-actions">
+          <button class="hud-btn" id="btn-cam-switch"><span id="hud-cam-mode">ОБЗОР (3P)</span></button>
+          <button class="hud-btn" id="btn-sound-toggle">🔊</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center Reticle -->
+    <div id="crosshair">
+      <div class="reticle-bracket"></div>
+    </div>
+
+    <!-- Banner Alerts -->
+    <div id="hud-banner">ВЗЛЁТНАЯ ПОЛОСА ГОТОВА</div>
+
+    <!-- Bottom Flight Info & Radar -->
+    <div class="hud-bottom">
+      <div class="controls-hint">
+        <b>W / S:</b> Тангаж (Тянуть на себя / От себя)<br>
+        <b>A / D:</b> Крен влево / вправо<br>
+        <b>SHIFT:</b> Форсаж (Nitro Boost) &bull; <b>SPACE:</b> Тормоз<br>
+        <b>C:</b> Переключить камеру в кабину &bull; <b>R:</b> Рестарт
+      </div>
+
+      <div class="radar-wrapper">
+        <canvas id="radar-canvas" width="140" height="140"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Touch Controls -->
+  <div id="touch-controls">
+    <div class="touch-pad-left">
+      <div></div>
+      <button class="touch-btn" id="btn-pitch-down">▲</button>
+      <div></div>
+      <button class="touch-btn" id="btn-roll-left">◀</button>
+      <div></div>
+      <button class="touch-btn" id="btn-roll-right">▶</button>
+      <div></div>
+      <button class="touch-btn" id="btn-pitch-up">▼</button>
+      <div></div>
+    </div>
+
+    <div class="touch-pad-right">
+      <button class="touch-btn" id="btn-boost" style="height: 60px; width: 68px; border-color:#ff7700; color:#ffaa00;">🔥 БУСТ</button>
+      <button class="touch-btn" id="btn-brake" style="height: 50px; width: 68px;">🛑 ТОРМОЗ</button>
+    </div>
+  </div>
+
+  <!-- Screen: Intro / Briefing -->
+  <div class="screen-overlay" id="intro-screen">
+    <div class="modal-card">
+      <div class="modal-tag">СИМУЛЯТОР ПОЛЁТА 3D &bull; АЛЬПЫ</div>
+      <h1>Sky Jet 3D</h1>
+      <p class="modal-desc">
+        Взлетайте с горного аэродрома на сверхзвуковом реактивном джете. Собирайте сброшенные на парашютах ящики снабжения в ущельях, над горными дорогами и снежными вершинами!
+      </p>
+
+      <div class="key-table">
+        <div class="key-row"><span>Взлёт / Подъём (Тянуть штурвал):</span><kbd>W / ↓</kbd></div>
+        <div class="key-row"><span>Нырок / Снижение:</span><kbd>S / ↑</kbd></div>
+        <div class="key-row"><span>Крен (Поворот в вираже):</span><kbd>A / D</kbd></div>
+        <div class="key-row"><span>Форсаж (Сверхзвуковой буст):</span><kbd>SHIFT</kbd></div>
+        <div class="key-row"><span>Вид из кабины / 3-е лицо:</span><kbd>C</kbd></div>
+        <div class="key-row"><span>Тормоз / Рестарт:</span><kbd>SPACE / R</kbd></div>
+      </div>
+
+      <button class="btn-main" id="btn-start-game">ВЫЛЕТЕТЬ НА МИССИЮ</button>
+    </div>
+  </div>
+
+  <!-- Screen: Crash / Game Over -->
+  <div class="screen-overlay" id="game-over-screen" style="display: none;">
+    <div class="modal-card" style="border-color: #ff3344; box-shadow: 0 0 35px rgba(255, 51, 68, 0.4);">
+      <div class="modal-tag" style="color: #ff4455;">КРУШЕНИЕ САМОЛЁТА</div>
+      <h1 style="background: linear-gradient(90deg, #ff4455, #ffa8b0); -webkit-background-clip: text;">Столкновение!</h1>
+      <p class="modal-desc">
+        Джет задел скалы. Ваш итоговый счёт: <b id="game-over-score" style="color:#00f0ff;">0</b> очков.
+      </p>
+      <button class="btn-main" id="btn-restart-game" style="background: linear-gradient(135deg, #ff4455, #990011); color: #fff;">ПОВТОРИТЬ ВЫЛЕТ (R)</button>
+    </div>
+  </div>
+
+  <!-- Screen: Victory -->
+  <div class="screen-overlay" id="victory-screen" style="display: none;">
+    <div class="modal-card" style="border-color: #ffd700; box-shadow: 0 0 35px rgba(255, 215, 0, 0.4);">
+      <div class="modal-tag" style="color: #ffd700;">МИССИЯ ВЫПОЛНЕНА!</div>
+      <h1 style="background: linear-gradient(90deg, #ffd700, #fff); -webkit-background-clip: text;">Все ящики собраны!</h1>
+      <p class="modal-desc">
+        Превосходный пилотаж в горах! Вы собрали все контейнеры припасов. Итоговый счёт: <b id="victory-score" style="color:#ffd700;">0</b> очков.
+      </p>
+      <button class="btn-main" id="btn-victory-again" style="background: linear-gradient(135deg, #ffd700, #ff8800); color: #1a0f00;">ЛЕТАТЬ ЕЩЁ РАЗ</button>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module" src="game.js"></script>
+</body>
+</html>
