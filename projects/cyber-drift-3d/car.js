@@ -1,4 +1,4 @@
-// car.js - Gold-Standard Arcade Racing & Drift Physics (NFS / GTA V Style: Punchy Acceleration, Grip Handling, Controlled Power-Slide Drift)
+// car.js - Gold-Standard Arcade Racing & Drift Physics with 100% Synced Steering & Smooth Progressive Turns
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -39,11 +39,11 @@ export class CyberCar {
     this.maxSpeed = 265; // km/h
     this.nitroMaxSpeed = 360; // km/h
     this.maxReverseSpeed = -70; // km/h
-    this.accelRate = 135; // km/h per second (0-100 in ~2.3s!)
-    this.nitroAccelRate = 260; // km/h per second
+    this.accelRate = 140; // km/h per second (0-100 in ~2.2s!)
+    this.nitroAccelRate = 270; // km/h per second
     this.brakeRate = 220; // km/h per second
     this.coastDecelRate = 45; // Natural drag
-    this.baseTurnSpeed = 2.8;
+    this.baseTurnSpeed = 2.35;
 
     this.throttleInput = 0; // -1 (brake/rev) to +1 (gas)
     this.steerInput = 0; // -1 (Left, A/←) to +1 (Right, D/→)
@@ -560,7 +560,7 @@ export class CyberCar {
   }
 
   // =========================================================================
-  // 🏎️ PROVEN HIGH-ADRENALINE ARCADE DRIVING ENGINE (NFS / GTA V MODEL)
+  // 🏎️ GUARANTEED CONTROLS: A/← = LEFT, D/→ = RIGHT (WHEELS, NOSE, HEADING)
   // =========================================================================
   updatePhysics(delta, trackManager) {
     const isNitro = this.nitroActive && this.nitroFuel > 0;
@@ -574,7 +574,7 @@ export class CyberCar {
       this.flameCones.forEach((f) => (f.visible = false));
     }
 
-    // 1. Acceleration & Braking Dynamics
+    // 1. Acceleration & Braking
     if (this.throttleInput > 0) {
       if (this.speed < topSpd) {
         this.speed = Math.min(topSpd, this.speed + accel * this.throttleInput * delta);
@@ -586,28 +586,26 @@ export class CyberCar {
         this.speed = Math.max(this.maxReverseSpeed, this.speed - this.accelRate * 0.7 * delta);
       }
     } else {
-      // Coasting Deceleration
       if (this.speed > 0) this.speed = Math.max(0, this.speed - this.coastDecelRate * delta);
       if (this.speed < 0) this.speed = Math.min(0, this.speed + this.coastDecelRate * delta);
     }
 
-    // 2. Crisp, Intuitive Steering (A/← = -1 Left, D/→ = +1 Right)
-    this.steerAngle = THREE.MathUtils.lerp(this.steerAngle, this.steerInput * 0.55, delta * 12);
-    this.frontLeftWheelGroup.rotation.y = -this.steerAngle;
-    this.frontRightWheelGroup.rotation.y = -this.steerAngle;
+    // 2. Wheel Steering Angles (steerInput: -1 Left, +1 Right)
+    this.steerAngle = THREE.MathUtils.lerp(this.steerAngle, this.steerInput * 0.52, delta * 12);
+    this.frontLeftWheelGroup.rotation.y = this.steerAngle;
+    this.frontRightWheelGroup.rotation.y = this.steerAngle;
 
-    // 3. Controlled Power-Slide Drift (Only on Handbrake or high-speed hard turns)
+    // 3. Controlled Power-Slide Drift
     const absSpeed = Math.abs(this.speed);
 
     if (this.handbrake && absSpeed > 35) {
       this.isDrifting = true;
-      this.speed = Math.max(25, this.speed - delta * 40); // Maintain good drift speed
-      // Controlled, clamped drift angle (Max 32 degrees)
-      const targetDrift = -this.steerInput * 0.55;
+      this.speed = Math.max(25, this.speed - delta * 40);
+      const targetDrift = this.steerInput * 0.5;
       this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, targetDrift, delta * 7);
     } else if (Math.abs(this.steerInput) > 0.6 && absSpeed > 140) {
       this.isDrifting = true;
-      const targetDrift = -this.steerInput * 0.35;
+      const targetDrift = this.steerInput * 0.35;
       this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, targetDrift, delta * 5);
     } else {
       this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, 0, delta * 8);
@@ -622,26 +620,25 @@ export class CyberCar {
       }
     }
 
-    // 4. Update Heading (Turn left when steerInput = -1, turn right when steerInput = +1)
-    const speedRatio = Math.min(1.0, absSpeed / 90);
-    const turnFactor = this.isDrifting ? 1.45 : 1.0;
+    // 4. Smooth Progressive Turn Rate (A decreases heading -> Left, D increases heading -> Right)
+    const speedRatio = Math.min(1.0, (absSpeed + 20) / 95);
+    const turnFactor = this.isDrifting ? 1.4 : 1.0;
     const effectiveTurn = this.steerInput * this.baseTurnSpeed * speedRatio * turnFactor;
 
-    // Heading increases for right turn, decreases for left turn
     this.heading += effectiveTurn * delta * Math.sign(this.speed || 1);
     this.mesh.rotation.y = this.heading + this.driftAngle;
 
-    // 5. Direct, Rock-Solid Road Movement (No sliding off into grass!)
+    // 5. Road Movement
     const speedMs = (this.speed * 1000) / 3600;
     const forwardX = Math.sin(this.heading);
     const forwardZ = Math.cos(this.heading);
 
     this.position.x += forwardX * speedMs * delta;
     this.position.z += forwardZ * speedMs * delta;
-    this.position.y = 0.12; // Strictly rolling on top of the road surface!
+    this.position.y = 0.12;
     this.mesh.position.copy(this.position);
 
-    // 6. Suspension Visual Leans (Body Roll & Pitch)
+    // 6. Suspension Leans
     const targetRoll = THREE.MathUtils.clamp(-this.steerInput * (absSpeed / 200) * 0.08, -0.1, 0.1);
     this.bodyRoll = THREE.MathUtils.lerp(this.bodyRoll, targetRoll, delta * 10);
 
@@ -658,7 +655,7 @@ export class CyberCar {
     this.wheelRL.rotation.x += wheelRot;
     this.wheelRR.rotation.x += wheelRot;
 
-    // 8. Drift Scoring & FX
+    // 8. Drift Scoring & Smoke
     if (this.isDrifting && absSpeed > 35) {
       this.driftMultiplier = Math.min(8.0, this.driftMultiplier + delta * 0.9);
       const pts = absSpeed * Math.abs(this.driftAngle) * this.driftMultiplier * delta * 18;

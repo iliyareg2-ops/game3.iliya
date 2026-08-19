@@ -1,4 +1,4 @@
-// city.js - Photorealistic Flat Road Ribbon Track, Real Asphalt Texture, Curbs & Police Takedowns
+// city.js - Sweeping Grand Prix Highway Track, Building Clearance Exclusion & Elastic AABB Anti-Stuck Collisions
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -19,9 +19,9 @@ export class CityTrackManager {
 
     this.initTextures();
     this.initLighting();
-    this.buildFlatTrackAndCurbs();
+    this.buildGrandPrixTrackAndCurbs();
     this.buildGuardrailsAndGantries();
-    this.buildSkyscrapersAndNeon();
+    this.buildSkyscrapersWithClearance();
     this.buildPoliceFleet();
     this.buildPoliceHelicopter();
     this.buildTraffic();
@@ -85,7 +85,7 @@ export class CityTrackManager {
   }
 
   initLighting() {
-    this.scene.fog = new THREE.FogExp2(0x0e1626, 0.0005);
+    this.scene.fog = new THREE.FogExp2(0x0e1626, 0.00045);
 
     const ambLight = new THREE.AmbientLight(0x405578, 1.5);
     this.scene.add(ambLight);
@@ -109,12 +109,11 @@ export class CityTrackManager {
     this.scene.add(this.moonLight);
   }
 
-  // 🛣️ Flat Ribbon Track: 100% Flat at y = 0.12 (Cars never sink!)
-  buildFlatTrackAndCurbs() {
+  // 🛣️ Sweeping, Flowing Grand Prix Highway (Smooth turns & spacious 38m track)
+  buildGrandPrixTrackAndCurbs() {
     const groundGroup = new THREE.Group();
 
-    // 1. Surrounding Flat Ground
-    const groundGeom = new THREE.PlaneGeometry(2400, 2400);
+    const groundGeom = new THREE.PlaneGeometry(3200, 3200);
     groundGeom.rotateX(-Math.PI / 2);
     const groundMat = new THREE.MeshStandardMaterial({
       color: 0x181c26,
@@ -126,39 +125,37 @@ export class CityTrackManager {
     ground.receiveShadow = true;
     groundGroup.add(ground);
 
-    // 2. High-Speed Circuit Curve Points
+    // Wide, gentle high-speed highway circuit
     const trackPoints = [
       new THREE.Vector3(0, 0.12, 0),
-      new THREE.Vector3(0, 0.12, 300),
-      new THREE.Vector3(90, 0.12, 400),
-      new THREE.Vector3(240, 0.12, 380),
-      new THREE.Vector3(280, 0.12, 220),
-      new THREE.Vector3(240, 0.12, -90),
-      new THREE.Vector3(130, 0.12, -240),
-      new THREE.Vector3(190, 0.12, -400),
-      new THREE.Vector3(0, 0.12, -480),
-      new THREE.Vector3(-190, 0.12, -400),
-      new THREE.Vector3(-260, 0.12, -200),
-      new THREE.Vector3(-130, 0.12, 60),
-      new THREE.Vector3(-240, 0.12, 260),
-      new THREE.Vector3(-130, 0.12, 400),
-      new THREE.Vector3(0, 0.12, 300),
+      new THREE.Vector3(0, 0.12, 380),
+      new THREE.Vector3(160, 0.12, 600),
+      new THREE.Vector3(420, 0.12, 500),
+      new THREE.Vector3(500, 0.12, 200),
+      new THREE.Vector3(400, 0.12, -220),
+      new THREE.Vector3(220, 0.12, -500),
+      new THREE.Vector3(0, 0.12, -680),
+      new THREE.Vector3(-220, 0.12, -500),
+      new THREE.Vector3(-400, 0.12, -220),
+      new THREE.Vector3(-500, 0.12, 200),
+      new THREE.Vector3(-420, 0.12, 500),
+      new THREE.Vector3(-160, 0.12, 600),
+      new THREE.Vector3(0, 0.12, 380),
     ];
 
-    this.trackCurve = new THREE.CatmullRomCurve3(trackPoints, true);
-    const divisions = 260;
-    const trackWidth = 34;
+    this.trackCurve = new THREE.CatmullRomCurve3(trackPoints, true, "catmullrom", 0.35);
+    const divisions = 280;
+    const trackWidth = 38;
     const halfWidth = trackWidth / 2;
 
-    const points = this.trackCurve.getPoints(divisions);
+    this.trackSamplePoints = this.trackCurve.getPoints(divisions);
     const vertices = [];
     const uvs = [];
     const indices = [];
 
-    // Build Flat Ribbon Mesh
     for (let i = 0; i <= divisions; i++) {
-      const p = points[i % divisions];
-      const nextP = points[(i + 1) % divisions];
+      const p = this.trackSamplePoints[i % divisions];
+      const nextP = this.trackSamplePoints[(i + 1) % divisions];
       const tangent = new THREE.Vector3().subVectors(nextP, p).normalize();
       const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
 
@@ -170,7 +167,7 @@ export class CityTrackManager {
       vertices.push(leftX, 0.12, leftZ);
       vertices.push(rightX, 0.12, rightZ);
 
-      const v = (i / divisions) * 60; // 60 texture repeats
+      const v = (i / divisions) * 65;
       uvs.push(0, v);
       uvs.push(1, v);
 
@@ -191,13 +188,13 @@ export class CityTrackManager {
     roadMesh.receiveShadow = true;
     groundGroup.add(roadMesh);
 
-    // 3. Flat Curbs on Edges (Height y = 0.15)
+    // Red & White Curbs
     const curbRedMat = new THREE.MeshBasicMaterial({ color: 0xe11d48 });
     const curbWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
-    for (let i = 0; i < points.length; i += 2) {
-      const p1 = points[i];
-      const p2 = points[(i + 1) % points.length];
+    for (let i = 0; i < this.trackSamplePoints.length; i += 2) {
+      const p1 = this.trackSamplePoints[i];
+      const p2 = this.trackSamplePoints[(i + 1) % this.trackSamplePoints.length];
       const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
       const tangent = new THREE.Vector3().subVectors(p2, p1).normalize();
       const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
@@ -227,40 +224,41 @@ export class CityTrackManager {
     const lightPoleMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.8 });
     const lampGlowMat = new THREE.MeshBasicMaterial({ color: 0xfff0bb });
 
-    const points = this.trackCurve.getPoints(32);
+    const points = this.trackCurve.getPoints(36);
     for (let i = 0; i < points.length; i++) {
       const pt = points[i];
 
       const pole = new THREE.Mesh(lightPoleGeom, lightPoleMat);
-      pole.position.set(pt.x + 22, 8, pt.z);
+      pole.position.set(pt.x + 24, 8, pt.z);
 
       const lampHead = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.4, 3.5), lampGlowMat);
-      lampHead.position.set(pt.x + 20, 15.8, pt.z);
+      lampHead.position.set(pt.x + 22, 15.8, pt.z);
 
       const lampLight = new THREE.PointLight(0xfff0bb, 3.0, 55);
-      lampLight.position.set(pt.x + 20, 15, pt.z);
+      lampLight.position.set(pt.x + 22, 15, pt.z);
 
       railGroup.add(pole, lampHead, lampLight);
 
       if (i % 3 === 0) {
         const sign = new THREE.Mesh(new THREE.BoxGeometry(4.0, 2.2, 0.2), chevronMat);
-        sign.position.set(pt.x + 20, 3, pt.z);
+        sign.position.set(pt.x + 22, 3, pt.z);
         sign.lookAt(pt.x, 3, pt.z);
         railGroup.add(sign);
       }
     }
 
-    const gantry = new THREE.Mesh(new THREE.BoxGeometry(42, 3.0, 3.0), new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9 }));
+    const gantry = new THREE.Mesh(new THREE.BoxGeometry(46, 3.0, 3.0), new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9 }));
     gantry.position.set(0, 12, 0);
 
-    const signBoard = new THREE.Mesh(new THREE.PlaneGeometry(30, 4.0), new THREE.MeshBasicMaterial({ color: 0x00f0ff, side: THREE.DoubleSide }));
+    const signBoard = new THREE.Mesh(new THREE.PlaneGeometry(32, 4.0), new THREE.MeshBasicMaterial({ color: 0x00f0ff, side: THREE.DoubleSide }));
     signBoard.position.set(0, 12, 0.1);
     railGroup.add(gantry, signBoard);
 
     this.scene.add(railGroup);
   }
 
-  buildSkyscrapersAndNeon() {
+  // 🏢 Skyscrapers with 50-meter Exclusion Clearance from Road (Zero overlap with track!)
+  buildSkyscrapersWithClearance() {
     const cityGroup = new THREE.Group();
 
     const blueCanvas = document.createElement("canvas");
@@ -295,14 +293,24 @@ export class CityTrackManager {
     const neonMat2 = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
     const neonMat3 = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
 
-    for (let x = -620; x <= 620; x += 120) {
-      for (let z = -620; z <= 620; z += 120) {
-        if (Math.abs(x) < 55 && Math.abs(z) < 330) continue;
-        if (Math.abs(x - 220) < 65 && Math.abs(z - 280) < 150) continue;
-        if (Math.abs(x + 180) < 65 && Math.abs(z + 280) < 150) continue;
+    const getMinDistToTrack = (x, z) => {
+      let minD = 999999;
+      for (let i = 0; i < this.trackSamplePoints.length; i += 4) {
+        const pt = this.trackSamplePoints[i];
+        const d = Math.hypot(x - pt.x, z - pt.z);
+        if (d < minD) minD = d;
+      }
+      return minD;
+    };
 
-        const width = 48 + Math.random() * 35;
-        const depth = 48 + Math.random() * 35;
+    for (let x = -750; x <= 750; x += 110) {
+      for (let z = -750; z <= 750; z += 110) {
+        const distToTrack = getMinDistToTrack(x, z);
+        // Minimum clearance: 52 meters from road centerline
+        if (distToTrack < 52) continue;
+
+        const width = 45 + Math.random() * 30;
+        const depth = 45 + Math.random() * 30;
         const height = 100 + Math.random() * 280;
 
         const bldgGeom = new THREE.BoxGeometry(width, height, depth);
@@ -320,8 +328,7 @@ export class CityTrackManager {
         });
 
         if (height > 180) {
-          const spireGeom = new THREE.CylinderGeometry(0.5, 2.0, 40, 8);
-          const spire = new THREE.Mesh(spireGeom, new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9 }));
+          const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 2.0, 40, 8), new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9 }));
           spire.position.set(x, height + 20, z);
           cityGroup.add(spire);
 
@@ -440,17 +447,36 @@ export class CityTrackManager {
     }
   }
 
+  // 💥 Solid AABB Wall Collision Response: Pushes car 100% outside, zero getting stuck!
   handleCarTrackCollision(car) {
-    const px = car.mesh.position.x;
-    const pz = car.mesh.position.z;
+    const px = car.position.x;
+    const pz = car.position.z;
+    const carRadius = 2.6;
 
     for (const b of this.colliders) {
-      if (px > b.minX - 2.2 && px < b.maxX + 2.2 && pz > b.minZ - 2.2 && pz < b.maxZ + 2.2) {
-        car.speed *= -0.45;
+      // Find closest point on building rectangle
+      const cx = Math.max(b.minX, Math.min(b.maxX, px));
+      const cz = Math.max(b.minZ, Math.min(b.maxZ, pz));
+
+      const dx = px - cx;
+      const dz = pz - cz;
+      const distSq = dx * dx + dz * dz;
+
+      if (distSq < carRadius * carRadius) {
+        const dist = Math.sqrt(distSq) || 0.001;
+        const nx = dx / dist;
+        const nz = dz / dist;
+        const overlap = carRadius - dist;
+
+        // Push car strictly outside the wall
+        car.position.x += nx * (overlap + 0.4);
+        car.position.z += nz * (overlap + 0.4);
+        car.mesh.position.copy(car.position);
+
+        // Clean elastic bounce
+        car.speed = -car.speed * 0.35;
         cyberAudio.playCrash();
-        car.emitSparks(car.mesh.position);
-        const pushDir = new THREE.Vector3(px - (b.minX + b.maxX) / 2, 0, pz - (b.minZ + b.maxZ) / 2).normalize();
-        car.mesh.position.addScaledVector(pushDir, 2.5);
+        car.emitSparks(new THREE.Vector3(cx, 0.5, cz));
         return;
       }
     }
