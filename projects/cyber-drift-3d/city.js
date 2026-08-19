@@ -1,4 +1,4 @@
-// city.js - Pure Formula 1 Grand Prix Circuit (Zero Stunt Ramps, Zero Barriers/Roadblocks, Pure Motorsport Tarmac)
+// city.js - Pure Formula 1 Grand Prix Circuit with Los Santos 3D Garage Workshop, Roadside Palm Trees, GTA Neon Billboards & Yellow Cabs
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -30,6 +30,9 @@ export class CityTrackManager {
     this.initTextures();
     this.initLighting();
     this.buildSmoothF1CircuitAndKerbs();
+    this.build3DGarageShowroom();
+    this.buildGTAPalmTrees();
+    this.buildGTANeonBillboards();
     this.buildF1GrandstandsAndPits();
     this.buildStartFinishGantryAndGrid();
     this.buildRoadsideStreetlights();
@@ -162,7 +165,135 @@ export class CityTrackManager {
     this.scene.add(this.moonLight);
   }
 
-  // 🏎️ CLEAN F1 AUTODROME CIRCUIT (No Ramps, No Roadblocks)
+  // 🏬 3D LOS SANTOS CUSTOMS WORKSHOP ENVIRONMENT (Showroom background)
+  build3DGarageShowroom() {
+    this.garageGroup = new THREE.Group();
+
+    // Workshop Brick & Concrete Walls
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
+    const backWall = new THREE.Mesh(new THREE.BoxGeometry(34, 14, 0.8), wallMat);
+    backWall.position.set(-2, 7, -12);
+
+    const sideWallL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 14, 26), wallMat);
+    sideWallL.position.set(-18, 7, 0);
+
+    // Neon Signs
+    const neonCanvas = document.createElement("canvas");
+    neonCanvas.width = 512;
+    neonCanvas.height = 128;
+    const nCtx = neonCanvas.getContext("2d");
+    nCtx.fillStyle = "#090d16";
+    nCtx.fillRect(0, 0, 512, 128);
+    nCtx.strokeStyle = "#38bdf8";
+    nCtx.lineWidth = 6;
+    nCtx.strokeRect(8, 8, 496, 112);
+    nCtx.fillStyle = "#38bdf8";
+    nCtx.font = "900 42px Segoe UI, sans-serif";
+    nCtx.textAlign = "center";
+    nCtx.fillText("LOS SANTOS CUSTOMS", 256, 75);
+
+    const neonTex = new THREE.CanvasTexture(neonCanvas);
+    const neonSign = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), new THREE.MeshBasicMaterial({ map: neonTex }));
+    neonSign.position.set(-2, 10.5, -11.5);
+
+    // Workshop Car Hydraulic Lift Posts
+    const steelMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.9, roughness: 0.2 });
+    const postL = new THREE.Mesh(new THREE.BoxGeometry(0.6, 10, 0.6), steelMat);
+    postL.position.set(-8, 5, -6);
+    const postR = postL.clone();
+    postR.position.x = 4;
+
+    // Tool Chests & Tire Stacks
+    const toolMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, metalness: 0.6, roughness: 0.3 });
+    const toolChest = new THREE.Mesh(new THREE.BoxGeometry(4.2, 3.2, 1.8), toolMat);
+    toolChest.position.set(-14, 1.6, -8);
+
+    const tireMat = new THREE.MeshStandardMaterial({ color: 0x111215, roughness: 0.9 });
+    const makeTireStack = (x, z) => {
+      const g = new THREE.Group();
+      for (let k = 0; k < 4; k++) {
+        const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.5, 14), tireMat);
+        tire.position.y = 0.25 + k * 0.5;
+        g.add(tire);
+      }
+      g.position.set(x, 0, z);
+      return g;
+    };
+
+    const tireStack1 = makeTireStack(-15, -3);
+    const tireStack2 = makeTireStack(-13.5, -3);
+
+    this.garageGroup.add(backWall, sideWallL, neonSign, postL, postR, toolChest, tireStack1, tireStack2);
+    this.scene.add(this.garageGroup);
+  }
+
+  // 🌴 GTA PALM TREES ALONG STRAIGHTS & PITS
+  buildGTAPalmTrees() {
+    const palmGroup = new THREE.Group();
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.9 });
+    const frondMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.6, side: THREE.DoubleSide });
+
+    const makePalmTree = (x, z) => {
+      const g = new THREE.Group();
+      const trunkGeom = new THREE.CylinderGeometry(0.3, 0.6, 14, 8);
+      const trunk = new THREE.Mesh(trunkGeom, trunkMat);
+      trunk.position.y = 7;
+      trunk.rotation.z = (Math.random() - 0.5) * 0.15;
+      g.add(trunk);
+
+      // Palm fronds
+      for (let k = 0; k < 7; k++) {
+        const frond = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 6.5), frondMat);
+        frond.position.set(0, 13.8, 0);
+        frond.rotation.y = (k / 7) * Math.PI * 2;
+        frond.rotation.x = 0.85;
+        g.add(frond);
+      }
+      g.position.set(x, 0, z);
+      return g;
+    };
+
+    // Plant along main straight & pits
+    for (let z = 50; z <= 350; z += 60) {
+      palmGroup.add(makePalmTree(45, z));
+      palmGroup.add(makePalmTree(-45, z));
+    }
+    this.scene.add(palmGroup);
+  }
+
+  // ✨ GTA NEON BILLBOARDS (Sprunk, Maze Bank, Los Santos)
+  buildGTANeonBillboards() {
+    const billGroup = new THREE.Group();
+
+    const makeBoard = (text, sub, bgColor, textColor, x, y, z, rotY) => {
+      const c = document.createElement("canvas");
+      c.width = 512;
+      c.height = 256;
+      const ctx = c.getContext("2d");
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, 512, 256);
+      ctx.fillStyle = textColor;
+      ctx.font = "900 64px Segoe UI, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(text, 256, 110);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "700 28px Segoe UI, sans-serif";
+      ctx.fillText(sub, 256, 175);
+
+      const tex = new THREE.CanvasTexture(c);
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(28, 14), new THREE.MeshBasicMaterial({ map: tex }));
+      mesh.position.set(x, y, z);
+      mesh.rotation.y = rotY;
+      return mesh;
+    };
+
+    billGroup.add(makeBoard("SPRUNK", "A TASTE OF ESCAPISM", "#15803d", "#facc15", 280, 85, 450, -0.4));
+    billGroup.add(makeBoard("MAZE BANK", "INVEST IN YOUR DREAMS", "#dc2626", "#ffffff", -380, 110, -280, 1.2));
+    billGroup.add(makeBoard("CYBER DRIFT", "HIGH OCTANE ADRENALINE", "#0284c7", "#38bdf8", -450, 95, 220, 2.1));
+
+    this.scene.add(billGroup);
+  }
+
   buildSmoothF1CircuitAndKerbs() {
     const groundGroup = new THREE.Group();
 
@@ -273,7 +404,6 @@ export class CityTrackManager {
     this.scene.add(groundGroup);
   }
 
-  // 🏟️ F1 PIT GRANDSTANDS ALONG MAIN STRAIGHT
   buildF1GrandstandsAndPits() {
     const standsGroup = new THREE.Group();
     const concreteMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.8 });
@@ -311,7 +441,6 @@ export class CityTrackManager {
     this.scene.add(standsGroup);
   }
 
-  // 🏁 START / FINISH GANTRY ARCH & STARTING GRID BOXES
   buildStartFinishGantryAndGrid() {
     const halfWidth = this.trackWidth / 2;
     const g = new THREE.Group();
@@ -638,7 +767,6 @@ export class CityTrackManager {
     }
   }
 
-  // 🏁 3 BALANCED FAIR AI RIVALS
   buildAIRivals() {
     const rivalsData = [
       { name: "Akira [GT-R]", color: 0x0284c7, u: 0.008, lane: -5.5, baseSpeedU: 0.018 },
@@ -821,8 +949,9 @@ export class CityTrackManager {
     this.helicopter = heliGroup;
   }
 
+  // 🚖 DETAILED CITY TRAFFIC WITH YELLOW CABS
   buildDetailedTraffic() {
-    const carColors = [0x0284c7, 0xd97706, 0xdc2626, 0x16a34a, 0x4f46e5, 0x475569];
+    const carColors = [0xfacc15, 0x0284c7, 0xfacc15, 0xdc2626, 0x475569, 0xfacc15];
     const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
     const tireMat = new THREE.MeshStandardMaterial({ color: 0x1c1d22, roughness: 0.8 });
     const rimMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.9 });
@@ -836,8 +965,9 @@ export class CityTrackManager {
 
     for (let i = 0; i < 8; i++) {
       const g = new THREE.Group();
+      const isTaxi = i % 2 === 0;
       const paintMat = new THREE.MeshStandardMaterial({
-        color: carColors[i % carColors.length],
+        color: isTaxi ? 0xf59e0b : carColors[i % carColors.length],
         metalness: 0.6,
         roughness: 0.25,
       });
@@ -848,6 +978,15 @@ export class CityTrackManager {
       cabin.position.set(0, 1.15, -0.3);
       const roof = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.06, 3.5), paintMat);
       roof.position.set(0, 1.48, -0.3);
+
+      if (isTaxi) {
+        // Taxi Top Sign
+        const signGeom = new THREE.BoxGeometry(1.6, 0.4, 0.6);
+        const signMat = new THREE.MeshBasicMaterial({ color: 0xfff000 });
+        const sign = new THREE.Mesh(signGeom, signMat);
+        sign.position.set(0, 1.72, -0.3);
+        g.add(sign);
+      }
 
       const makeWheel = (x, z) => {
         const wg = new THREE.Group();

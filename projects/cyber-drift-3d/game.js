@@ -1,4 +1,4 @@
-// game.js - Cyber Drift 3D: Formula 1 Autodrome with Clean HUD, Exact Lap Progression & Fair Podium Finish
+// game.js - Cyber Drift 3D: Formula 1 Autodrome with Los Santos Customs 3D Garage, Underglow Neon, Window Tint & Rims
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { CyberCar } from "./car.js";
 import { CityTrackManager } from "./city.js";
@@ -194,28 +194,60 @@ export class CyberDriftGame {
     this.bannerEl = document.getElementById("hud-banner");
     this.countdownEl = document.getElementById("countdown-overlay");
 
-    document.querySelectorAll(".color-swatch").forEach((swatch) => {
+    // 1. Car Model Switch
+    document.querySelectorAll("[data-cartype]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("[data-cartype]").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        this.car.setCarType(parseInt(btn.dataset.cartype));
+      });
+    });
+
+    // 2. Body Color
+    document.querySelectorAll("[data-color]").forEach((swatch) => {
       swatch.addEventListener("click", () => {
-        document.querySelectorAll(".color-swatch").forEach((s) => s.classList.remove("active"));
+        document.querySelectorAll("[data-color]").forEach((s) => s.classList.remove("active"));
         swatch.classList.add("active");
         const hex = parseInt(swatch.dataset.color, 16);
         this.car.setBodyColor(hex);
       });
     });
 
+    // 3. Underglow Neon
+    document.querySelectorAll("[data-neon]").forEach((swatch) => {
+      swatch.addEventListener("click", () => {
+        document.querySelectorAll("[data-neon]").forEach((s) => s.classList.remove("active"));
+        swatch.classList.add("active");
+        const hex = parseInt(swatch.dataset.neon, 16);
+        this.car.setUnderglowColor(hex);
+      });
+    });
+
+    // 4. Custom Rims
+    document.querySelectorAll("[data-rim]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("[data-rim]").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        const hex = parseInt(btn.dataset.rim, 16);
+        this.car.setRimColor(hex);
+      });
+    });
+
+    // 5. Window Tint
+    document.querySelectorAll("[data-tint]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("[data-tint]").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        this.car.setWindowTint(btn.dataset.tint);
+      });
+    });
+
+    // 6. Spoiler Wing
     document.querySelectorAll("[data-spoiler]").forEach((btn) => {
       btn.addEventListener("click", () => {
         document.querySelectorAll("[data-spoiler]").forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
         this.car.setSpoilerType(parseInt(btn.dataset.spoiler));
-      });
-    });
-
-    document.querySelectorAll("[data-finish]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll("[data-finish]").forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        this.car.setFinishType(btn.dataset.finish);
       });
     });
 
@@ -534,7 +566,6 @@ export class CyberDriftGame {
     }
   }
 
-  // 🧮 EXACT POSITION & LAP PROGRESSION WITHOUT SUDDEN JUMPS
   updateHUD() {
     const spd = Math.round(Math.abs(this.car.speed));
     if (this.speedEl) this.speedEl.textContent = spd;
@@ -555,17 +586,14 @@ export class CyberDriftGame {
     if (this.trackManager) {
       let rawPlayerU = this.trackManager.getClosestU(this.car.position);
 
-      // Handle near-start zero clamp on Lap 1
       if (this.playerLapsCompleted === 0 && rawPlayerU > 0.9 && this.car.position.z < 80) {
         rawPlayerU = 0.002;
       }
 
-      // Check Lap Line Crossing (u goes from >0.85 -> <0.15)
       if (this.prevPlayerU > 0.85 && rawPlayerU < 0.15 && this.gameState === "RACING") {
         this.playerLapsCompleted++;
 
         if (this.playerLapsCompleted >= this.maxLaps) {
-          // Compute Final Place
           let finalPos = 1;
           for (const rival of this.trackManager.aiRivals) {
             const rivalTotal = rival.lapsCompleted + rival.u;
@@ -580,7 +608,6 @@ export class CyberDriftGame {
       }
       this.prevPlayerU = rawPlayerU;
 
-      // Real Mathematical Progress: (lapsCompleted) + current_u
       const playerTotalProgress = this.playerLapsCompleted + rawPlayerU;
 
       let position = 1;
@@ -650,7 +677,6 @@ export class CyberDriftGame {
       this.updateHUD();
       this.renderMinimap();
     } else if (this.gameState === "FINISHED") {
-      // Smoothly bring car to a stop on finish
       this.car.throttleInput = 0;
       this.car.steerInput = 0;
       this.car.speed = Math.max(0, this.car.speed - delta * 60);
