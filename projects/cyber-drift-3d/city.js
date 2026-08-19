@@ -121,6 +121,7 @@ export class CityTrackManager {
     });
 
     this.sandTex = this._createHighResSandTexture();
+    this.waterCausticTex = this._createWaterCausticsTexture();
 
     // High-Definition Modern Architectural Facade Textures
     this.facadeMats = [
@@ -174,6 +175,30 @@ export class CityTrackManager {
     tex.wrapT = THREE.RepeatWrapping;
     tex.repeat.set(40, 40);
     tex.anisotropy = 8;
+    return tex;
+  }
+
+  _createWaterCausticsTexture() {
+    const c = document.createElement("canvas");
+    c.width = 512;
+    c.height = 512;
+    const ctx = c.getContext("2d");
+
+    ctx.fillStyle = "#0077b6";
+    ctx.fillRect(0, 0, 512, 512);
+
+    ctx.strokeStyle = "rgba(180, 240, 255, 0.4)";
+    ctx.lineWidth = 4;
+    for (let i = 0; i < 45; i++) {
+      ctx.beginPath();
+      ctx.arc(Math.random() * 512, Math.random() * 512, 25 + Math.random() * 45, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(24, 24);
     return tex;
   }
 
@@ -248,35 +273,35 @@ export class CityTrackManager {
     cyberAudio.setRainActive(this.isRaining);
 
     if (timeOfDay === "SUNSET") {
-      this.scene.fog.color.setHex(0x52363e);
-      this.scene.background.setHex(0x3d212b);
-      this.ambLight.color.setHex(0xfb923c);
-      this.ambLight.intensity = 2.0;
+      this.scene.fog.color.setHex(0x9a3412);
+      this.scene.background.setHex(0x7c2d12);
+      this.ambLight.color.setHex(0xfdba74);
+      this.ambLight.intensity = 2.4;
       this.hemiLight.color.setHex(0xf472b6);
       this.hemiLight.groundColor.setHex(0x431407);
-      this.mainSunLight.color.setHex(0xfdba74);
-      this.mainSunLight.position.set(700, 220, 350);
-      this.mainSunLight.intensity = 3.8;
+      this.mainSunLight.color.setHex(0xf97316);
+      this.mainSunLight.position.set(750, 180, 350);
+      this.mainSunLight.intensity = 4.2;
     } else if (timeOfDay === "RAINSTORM") {
-      this.scene.fog.color.setHex(0x334155);
-      this.scene.background.setHex(0x1e293b);
-      this.ambLight.color.setHex(0x94a3b8);
+      this.scene.fog.color.setHex(0x1e293b);
+      this.scene.background.setHex(0x0f172a);
+      this.ambLight.color.setHex(0x64748b);
       this.ambLight.intensity = 1.4;
-      this.hemiLight.color.setHex(0x64748b);
+      this.hemiLight.color.setHex(0x475569);
       this.hemiLight.groundColor.setHex(0x0f172a);
-      this.mainSunLight.color.setHex(0xcbd5e1);
+      this.mainSunLight.color.setHex(0x94a3b8);
       this.mainSunLight.position.set(300, 600, 300);
-      this.mainSunLight.intensity = 2.0;
+      this.mainSunLight.intensity = 2.2;
     } else {
-      this.scene.fog.color.setHex(0x94a3b8);
-      this.scene.background.setHex(0x60a5fa);
+      this.scene.fog.color.setHex(0x7dd3fc);
+      this.scene.background.setHex(0x0284c7);
       this.ambLight.color.setHex(0xffffff);
-      this.ambLight.intensity = 1.8;
+      this.ambLight.intensity = 2.0;
       this.hemiLight.color.setHex(0xe0f2fe);
-      this.hemiLight.groundColor.setHex(0x334155);
+      this.hemiLight.groundColor.setHex(0x0369a1);
       this.mainSunLight.color.setHex(0xfffaed);
       this.mainSunLight.position.set(450, 750, 350);
-      this.mainSunLight.intensity = 3.8;
+      this.mainSunLight.intensity = 4.0;
     }
 
     if (this.roadMat) {
@@ -505,6 +530,7 @@ export class CityTrackManager {
     this.oceanGeom.rotateX(-Math.PI / 2);
     this.oceanOrigPos = this.oceanGeom.attributes.position.clone();
     const oceanMat = new THREE.MeshStandardMaterial({
+      map: this.waterCausticTex,
       color: 0x0077c8,
       emissive: 0x002244,
       emissiveIntensity: 0.35,
@@ -520,6 +546,7 @@ export class CityTrackManager {
     const lagoonGeom = new THREE.PlaneGeometry(90, 3500, 16, 32);
     lagoonGeom.rotateX(-Math.PI / 2);
     const lagoonMat = new THREE.MeshStandardMaterial({
+      map: this.waterCausticTex,
       color: 0x00b4d8,
       roughness: 0.15,
       metalness: 0.2,
