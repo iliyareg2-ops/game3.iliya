@@ -383,18 +383,18 @@
     .gauge-nitro-bg {
       fill: none;
       stroke: rgba(56, 189, 248, 0.15);
-      stroke-width: 4.5;
+      stroke-width: 4;
     }
 
     .gauge-nitro-bar {
       fill: none;
       stroke: #38bdf8;
-      stroke-width: 4.5;
+      stroke-width: 4;
       stroke-linecap: round;
-      stroke-dasharray: 424 142;
-      stroke-dashoffset: 140;
-      filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.9));
-      transition: stroke-dashoffset 0.06s linear;
+      stroke-dasharray: 440;
+      stroke-dashoffset: 0;
+      filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.8));
+      transition: stroke-dashoffset 0.08s linear;
     }
 
     .gauge-rpm-bar {
@@ -402,9 +402,8 @@
       stroke: url(#rpmGradient);
       stroke-width: 9;
       stroke-linecap: round;
-      stroke-dasharray: 376 190;
-      stroke-dashoffset: 376;
-      filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.5));
+      stroke-dasharray: 534;
+      stroke-dashoffset: 534;
       transition: stroke-dashoffset 0.04s linear;
     }
 
@@ -716,7 +715,7 @@
         <span class="radar-tag">GPS RADAR</span>
       </div>
 
-      <!-- 🔘 FORZA HORIZON 5 / GT7 CIRCULAR DIGITAL SPEEDOMETER & TACHOMETER (with tightly wrapping nitro arc) -->
+      <!-- 🔘 FORZA HORIZON 5 / GT7 CIRCULAR DIGITAL SPEEDOMETER & TACHOMETER -->
       <div class="gauge-container">
         <svg class="gauge-svg" viewBox="0 0 200 200">
           <defs>
@@ -729,13 +728,13 @@
             </linearGradient>
           </defs>
 
-          <!-- Outer N2O Nitro Track & Arc (Radius 90 - wraps tight around speedo circle) -->
-          <circle class="gauge-nitro-bg" cx="100" cy="100" r="90" stroke-dasharray="424 142" stroke-dashoffset="140" />
-          <circle id="svg-nitro-arc" class="gauge-nitro-bar" cx="100" cy="100" r="90" stroke-dasharray="424 142" stroke-dashoffset="140" />
+          <!-- Outer N2O Nitro Track & Arc (Radius 90) -->
+          <circle class="gauge-nitro-bg" cx="100" cy="100" r="90" stroke-dasharray="424" stroke-dashoffset="140" />
+          <circle id="svg-nitro-arc" class="gauge-nitro-bar" cx="100" cy="100" r="90" stroke-dasharray="424" stroke-dashoffset="140" />
 
           <!-- Middle RPM Tachometer Track & Arc (Radius 80) -->
-          <circle class="gauge-bg-circle" cx="100" cy="100" r="80" stroke-dasharray="376 190" stroke-dashoffset="125" />
-          <circle id="svg-rpm-arc" class="gauge-rpm-bar" cx="100" cy="100" r="80" stroke-dasharray="376 190" stroke-dashoffset="376" />
+          <circle class="gauge-bg-circle" cx="100" cy="100" r="80" stroke-dasharray="376" stroke-dashoffset="125" />
+          <circle id="svg-rpm-arc" class="gauge-rpm-bar" cx="100" cy="100" r="80" stroke-dasharray="376" stroke-dashoffset="376" />
         </svg>
 
         <!-- Center Dial Window -->

@@ -676,7 +676,7 @@ export class CyberDriftGame {
     if (this.gearEl) this.gearEl.textContent = gear;
     if (this.scoreEl) this.scoreEl.textContent = this.car.totalScore;
 
-    // 🔘 SVG CIRCULAR TACHOMETER & CURVED NITRO GAUGE (Forza Horizon 5 Style)
+    // 🔘 SVG CIRCULAR TACHOMETER & NITRO GAUGE (Forza Horizon 5 Style)
     const rpm = Math.floor(1200 + ((spd % 65) / 65) * 7200 + (this.car.throttleInput > 0 ? 800 : 0));
     const rpmRatio = Math.min(1.0, Math.max(0, (rpm - 1000) / 8000));
     if (this.svgRpmArc) {
@@ -686,10 +686,10 @@ export class CyberDriftGame {
     }
     if (this.rpmValEl) this.rpmValEl.textContent = `${rpm} RPM`;
 
-    // ⚡ Semi-Circular Nitro Arc (Radius 90 - wraps tight around speedo): 424 (0% empty) -> 140 (100% full)
+    // Nitro Gauge: stroke dasharray 424: 284 (empty) -> 140 (full)
     const nitroRatio = Math.max(0, Math.min(1, this.car.nitroFuel / 100));
     if (this.svgNitroArc) {
-      const targetNitroOffset = 424 - (nitroRatio * 284);
+      const targetNitroOffset = 284 - (nitroRatio * 144);
       this.svgNitroArc.style.strokeDashoffset = targetNitroOffset;
     }
 
