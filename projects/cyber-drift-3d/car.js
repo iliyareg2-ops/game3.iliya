@@ -1,4 +1,4 @@
-// car.js - Space = Drift, Shift = Nitro Boost, Smooth Grip Turns & Crisp Controls
+// car.js - Space = Drift, Shift = Nitro Boost, Smooth Grip Turns, Tire Skidmarks & Crash Responses
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -25,9 +25,10 @@ export class CyberCar {
     this.exhaustTips = [];
     this.flameCones = [];
 
-    // Particles
+    // Particles & Decals
     this.smokeParticles = [];
     this.sparkParticles = [];
+    this.skidmarks = [];
 
     // ==========================================
     // 🏎️ DRIVING STATS (SPACE=DRIFT, SHIFT=NITRO)
@@ -68,6 +69,7 @@ export class CyberCar {
     this.createExhaustFlames();
     this.createSmokeParticles();
     this.createSparkParticles();
+    this.createSkidmarks();
     this.scene.add(this.mesh);
   }
 
@@ -489,6 +491,36 @@ export class CyberCar {
     }
   }
 
+  createSkidmarks() {
+    const skidGeom = new THREE.PlaneGeometry(0.45, 1.8);
+    skidGeom.rotateX(-Math.PI / 2);
+    const skidMat = new THREE.MeshBasicMaterial({ color: 0x111317, transparent: true, opacity: 0.45, depthWrite: false });
+
+    for (let i = 0; i < 60; i++) {
+      const mesh = new THREE.Mesh(skidGeom, skidMat.clone());
+      mesh.visible = false;
+      mesh.position.y = 0.13;
+      this.scene.add(mesh);
+      this.skidmarks.push({ mesh, life: 0, maxLife: 8.0 });
+    }
+  }
+
+  emitSkidmark(isLeft) {
+    const s = this.skidmarks.find((m) => !m.mesh.visible);
+    if (!s) return;
+
+    const trackWidth = this.carType === 1 ? 2.4 : 2.15;
+    const offset = new THREE.Vector3(isLeft ? trackWidth : -trackWidth, 0, -2.85);
+    offset.applyQuaternion(this.mesh.quaternion);
+
+    s.mesh.position.copy(this.mesh.position).add(offset);
+    s.mesh.position.y = 0.13;
+    s.mesh.rotation.y = this.heading;
+    s.life = 0;
+    s.mesh.material.opacity = 0.45;
+    s.mesh.visible = true;
+  }
+
   emitSparks(pos) {
     for (let i = 0; i < 8; i++) {
       const sObj = this.sparkParticles.find((p) => !p.mesh.visible);
@@ -571,6 +603,10 @@ export class CyberCar {
     } else if (this.throttleInput < 0) {
       if (this.speed > 5) {
         this.speed = Math.max(0, this.speed - this.brakeRate * delta);
+        if (this.speed > 40 && Math.random() < 0.3) {
+          this.emitSkidmark(true);
+          this.emitSkidmark(false);
+        }
       } else {
         this.speed = Math.max(this.maxReverseSpeed, this.speed - this.accelRate * 0.7 * delta);
       }
@@ -579,14 +615,14 @@ export class CyberCar {
       if (this.speed < 0) this.speed = Math.min(0, this.speed + this.coastDecelRate * delta);
     }
 
-    // 3. Smooth Steering (A/Left: steerInput = +1, D/Right: steerInput = -1)
+    // 3. Smooth Steering
     this.steerAngle = THREE.MathUtils.lerp(this.steerAngle, this.steerInput * 0.45, delta * 8);
     this.frontLeftWheelGroup.rotation.y = this.steerAngle;
     this.frontRightWheelGroup.rotation.y = this.steerAngle;
 
     const absSpeed = Math.abs(this.speed);
 
-    // 4. DRIFT ONLY ON SPACE (Zero auto-drift on standard turns)
+    // 4. DRIFT ONLY ON SPACE
     if (this.driftActive && absSpeed > 30 && Math.abs(this.steerInput) > 0.1) {
       this.isDrifting = true;
       const targetDrift = this.steerInput * 0.42;
@@ -594,10 +630,14 @@ export class CyberCar {
       this.driftMultiplier = Math.min(8.0, this.driftMultiplier + delta * 0.9);
       const pts = absSpeed * Math.abs(this.driftAngle) * this.driftMultiplier * delta * 18;
       this.currentDriftScore += pts;
-      this.nitroFuel = Math.min(100, this.nitroFuel + delta * 15); // Refill nitro on drift!
+      this.nitroFuel = Math.min(100, this.nitroFuel + delta * 15);
 
       if (Math.random() < 0.9) this.emitTireSmoke(true);
       if (Math.random() < 0.9) this.emitTireSmoke(false);
+      if (Math.random() < 0.4) {
+        this.emitSkidmark(true);
+        this.emitSkidmark(false);
+      }
     } else {
       this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, 0, delta * 10);
       if (Math.abs(this.driftAngle) < 0.04) {
@@ -611,7 +651,7 @@ export class CyberCar {
       }
     }
 
-    // 5. Smooth Heading Progression (Gentle, comfortable arcs)
+    // 5. Smooth Heading Progression
     const speedRatio = Math.min(1.0, (absSpeed + 15) / 80);
     const turnFactor = this.isDrifting ? 1.35 : 1.0;
     const effectiveTurn = this.steerInput * this.baseTurnSpeed * speedRatio * turnFactor;
@@ -655,7 +695,7 @@ export class CyberCar {
     const rpmRatio = Math.min(1.0, (this.rpm - 800) / 7500);
     cyberAudio.update(rpmRatio, absSpeed, Math.abs(this.driftAngle), isNitro, false, false);
 
-    // Particles
+    // Particles & Decals
     for (const p of this.smokeParticles) {
       if (!p.mesh.visible) continue;
       p.life += delta;
@@ -676,6 +716,16 @@ export class CyberCar {
       } else {
         s.mesh.position.addScaledVector(s.velocity, delta);
         s.velocity.y -= delta * 30;
+      }
+    }
+
+    for (const skid of this.skidmarks) {
+      if (!skid.mesh.visible) continue;
+      skid.life += delta;
+      if (skid.life >= skid.maxLife) {
+        skid.mesh.visible = false;
+      } else {
+        skid.mesh.material.opacity = (1 - skid.life / skid.maxLife) * 0.45;
       }
     }
   }
