@@ -400,7 +400,7 @@ export class CyberDriftGame {
 
     if (this.gameState === "RACING") {
       this.car.throttleInput = (this.keys.forward ? 1 : 0) - (this.keys.backward ? 1 : 0);
-      this.car.steerInput = (this.keys.left ? 1 : 0) - (this.keys.right ? 1 : 0);
+      this.car.steerInput = (this.keys.right ? 1 : 0) - (this.keys.left ? 1 : 0);
       this.car.driftActive = this.keys.drift;
       this.car.nitroActive = this.keys.nitro;
 
