@@ -49,6 +49,7 @@ export class CyberCar {
     this.bodykit = "stock";
     this.underglowNeon = "none";
     this.stage = 0;
+    this.isWarpSpeed = false;
 
     this.throttleInput = 0;
     this.steerInput = 0;
@@ -1155,6 +1156,46 @@ export class CyberCar {
       }
     }
     spkPos.needsUpdate = true;
+  }
+
+  setCarType(typeIndex) {
+    this.carTypeIndex = typeIndex;
+    this.initCarModel();
+  }
+
+  setBodyColor(hex) {
+    this.bodyColorHex = hex;
+    this.initCarModel();
+  }
+
+  setRimColor(hex) {
+    this.rimColorHex = hex;
+    this.initCarModel();
+  }
+
+  setWindowTint(tint) {
+    this.windowTint = tint;
+    this.initCarModel();
+  }
+
+  setSpoilerType(type) {
+    this.spoilerType = type;
+    this.initCarModel();
+  }
+
+  setBodykit(bodykit) {
+    this.bodykit = bodykit;
+    this.initCarModel();
+  }
+
+  setUnderglowNeon(neon) {
+    this.underglowNeon = neon;
+    this._buildUnderglowNeon();
+  }
+
+  setStage(stageNum) {
+    this.stage = stageNum;
+    this.isWarpSpeed = (stageNum === 4);
   }
 
   reset() {

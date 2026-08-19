@@ -188,6 +188,19 @@ export class CyberDriftGame {
       if (e.code === "KeyV") this.toggleWeather();
       if (e.code === "KeyM") this.nextRadioStation();
 
+      if (e.code === "KeyK") {
+        this.car.isWarpSpeed = !this.car.isWarpSpeed;
+        if (this.car.isWarpSpeed) {
+          this.car.stage = 4;
+          cyberAudio.playScoreChime();
+          this.showBanner("🌌 СКОРОСТЬ 9999999999999999999 КМ/Ч АКТИВИРОВАНА! 🚀", 4000);
+          this.showSkillBadge("🌌 9999999999999999999 KM/H WARP SPEED");
+        } else {
+          this.car.stage = 0;
+          this.showBanner("🛑 СКОРОСТЬ 9999999999999999999 КМ/Ч ВЫКЛЮЧЕНА", 2000);
+        }
+      }
+
       if (this.gameState === "GARAGE" && (e.code === "Enter" || e.code === "Space")) {
         this.startCountdown();
       }
@@ -359,15 +372,24 @@ export class CyberDriftGame {
       });
     });
 
-    // 11. ⚡ Performance Tuning Stages (1 / 2 / 3)
+    // 11. ⚡ Performance Tuning Stages (1 / 2 / 3 / 4 Warp)
     document.querySelectorAll("[data-stage]").forEach((btn) => {
       btn.addEventListener("click", () => {
         document.querySelectorAll("[data-stage]").forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
         const stageNum = parseInt(btn.dataset.stage);
         this.car.setStage(stageNum);
-        const stageNames = ["Stock OEM (320 л.с.)", "Stage 1 ECU (+15% Power)", "Stage 2 Twin-Turbo (+30% Power)", "Stage 3 Pro NOS (+55% Power, 360+ km/h!)"];
+        const stageNames = [
+          "Stock OEM (320 л.с.)",
+          "Stage 1 ECU (+15% Power)",
+          "Stage 2 Twin-Turbo (+30% Power)",
+          "Stage 3 Pro NOS (+55% Power, 360+ km/h!)",
+          "🌌 WARP DRIVE (9999999999999999999 KM/H!)"
+        ];
         this.showSkillBadge(`⚡ ТЮНИНГ: ${stageNames[stageNum]}`);
+        if (stageNum === 4) {
+          this.showBanner("🌌 СКОРОСТЬ 9999999999999999999 КМ/Ч ГОТОВА К ЗАПУСКУ! 🚀", 4000);
+        }
       });
     });
 
@@ -681,8 +703,9 @@ export class CyberDriftGame {
       return;
     }
 
-    const isNitro = this.car.nitroActive && this.car.nitroFuel > 0;
-    const targetFov = isNitro ? 78 : (this.car.isDrafting ? 68 : 60);
+    const isWarp = this.car.isWarpSpeed && (Math.abs(this.car.speed) > 15 || this.keys.forward || this.keys.nitro);
+    const isNitro = (this.car.nitroActive && this.car.nitroFuel > 0) || isWarp;
+    const targetFov = isWarp ? 112 : (isNitro ? 78 : (this.car.isDrafting ? 68 : 60));
     this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFov, delta * 4);
     this.camera.updateProjectionMatrix();
 
@@ -690,8 +713,8 @@ export class CyberDriftGame {
     const carHeading = this.car.heading;
 
     if (this.cameraMode === "CHASE") {
-      const chaseDist = isNitro ? 16.0 : 14.0;
-      const chaseHeight = 4.2;
+      const chaseDist = isWarp ? 20.0 : (isNitro ? 16.0 : 14.0);
+      const chaseHeight = isWarp ? 5.2 : 4.2;
 
       const targetCamPos = new THREE.Vector3(
         carPos.x - Math.sin(carHeading) * chaseDist,
@@ -729,16 +752,16 @@ export class CyberDriftGame {
       this.camera.lookAt(lookTarget);
     } else {
       const cockpitPos = new THREE.Vector3(
-        carPos.x + Math.sin(carHeading + 0.3) * 0.5,
+        carPos.x - Math.sin(carHeading) * 0.4 - Math.cos(carHeading) * 0.7,
         carPos.y + 1.35,
-        carPos.z - Math.cos(carHeading) * 0.4
+        carPos.z - Math.cos(carHeading) * 0.4 + Math.sin(carHeading) * 0.7
       );
       this.camera.position.copy(cockpitPos);
 
       const lookTarget = new THREE.Vector3(
-        carPos.x + Math.sin(carHeading) * 25,
-        carPos.y + 1.3,
-        carPos.z + Math.cos(carHeading) * 25
+        carPos.x + Math.sin(carHeading) * 45,
+        carPos.y + 1.2,
+        carPos.z + Math.cos(carHeading) * 45
       );
       this.camera.lookAt(lookTarget);
     }
@@ -746,27 +769,26 @@ export class CyberDriftGame {
 
   checkSkillChains() {
     const now = Date.now();
-    const speedKmH = Math.abs(this.car.speed);
-
-    // 1. Speed Demon (255+ km/h)
-    if (speedKmH > 255 && now - this.lastSpeedDemonTime > 6000) {
-      this.lastSpeedDemonTime = now;
-      this.car.totalScore += 400;
-      this.showSkillBadge("⚡ SPEED DEMON! +400 PTS");
+    if (this.car.isDrifting && this.car.currentDriftScore > 2500) {
+      if (now - this.lastUltimateDriftTime > 4000) {
+        this.lastUltimateDriftTime = now;
+        this.showSkillBadge("🔥 ULTIMATE DRIFT KING! +1000 PTS");
+      }
     }
 
-    // 2. Ultimate Drift (Drift Score > 2500)
-    if (this.car.currentDriftScore > 2500 && now - this.lastUltimateDriftTime > 8000) {
-      this.lastUltimateDriftTime = now;
-      this.showSkillBadge("🔥 ULTIMATE DRIFT! +1000 PTS");
+    if (Math.abs(this.car.speed) > 280) {
+      if (now - this.lastSpeedDemonTime > 5000) {
+        this.lastSpeedDemonTime = now;
+        this.car.totalScore += 500;
+        this.showSkillBadge("⚡ SPEED DEMON: 280+ KM/H! +500 PTS");
+      }
     }
 
-    // 3. Near Miss with Traffic
-    if (speedKmH > 130 && now - this.lastNearMissTime > 3000) {
+    if (now - this.lastNearMissTime > 2500 && Math.abs(this.car.speed) > 120) {
       let isNear = false;
-      for (const car of this.trackManager.trafficCars) {
-        const d = this.car.position.distanceTo(car.mesh.position);
-        if (d < 5.8 && d > 2.8) {
+      for (const rival of this.trackManager.aiRivals) {
+        const d = this.car.position.distanceTo(rival.mesh.position);
+        if (d < 5.0 && d > 1.2) {
           isNear = true;
           break;
         }
@@ -781,10 +803,27 @@ export class CyberDriftGame {
 
   updateHUD() {
     const spd = Math.round(Math.abs(this.car.speed));
-    if (this.speedEl) this.speedEl.textContent = spd;
+    if (this.speedEl) {
+      if (this.car.isWarpSpeed && (spd > 15 || this.keys.forward || this.keys.nitro)) {
+        this.speedEl.textContent = "9999999999999999999";
+        this.speedEl.style.fontSize = "16px";
+        this.speedEl.style.letterSpacing = "0.02em";
+        this.speedEl.style.background = "linear-gradient(90deg, #f43f5e, #a855f7, #06b6d4, #10b981, #facc15)";
+        this.speedEl.style.webkitBackgroundClip = "text";
+        this.speedEl.style.webkitTextFillColor = "transparent";
+      } else {
+        this.speedEl.textContent = spd;
+        this.speedEl.style.fontSize = "";
+        this.speedEl.style.letterSpacing = "";
+        this.speedEl.style.background = "";
+        this.speedEl.style.webkitBackgroundClip = "";
+        this.speedEl.style.webkitTextFillColor = "";
+      }
+    }
 
     let gear = "1";
-    if (this.car.speed < -0.5) gear = "R";
+    if (this.car.isWarpSpeed) gear = "🌌";
+    else if (this.car.speed < -0.5) gear = "R";
     else if (spd < 5) gear = "N";
     else if (spd < 65) gear = "1";
     else if (spd < 115) gear = "2";
@@ -796,14 +835,15 @@ export class CyberDriftGame {
     if (this.scoreEl) this.scoreEl.textContent = this.car.totalScore;
 
     // 🔘 SVG CIRCULAR TACHOMETER & NITRO GAUGE (Forza Horizon 5 Style)
-    const rpm = Math.floor(1200 + ((spd % 65) / 65) * 7200 + (this.car.throttleInput > 0 ? 800 : 0));
-    const rpmRatio = Math.min(1.0, Math.max(0, (rpm - 1000) / 8000));
+    const rpm = this.car.isWarpSpeed ? 999999 : Math.floor(1200 + ((spd % 65) / 65) * 7200 + (this.car.throttleInput > 0 ? 800 : 0));
+    const rpmRatio = this.car.isWarpSpeed ? 1.0 : Math.min(1.0, Math.max(0, (rpm - 1000) / 8000));
     if (this.svgRpmArc) {
-      // Stroke dasharray 376: 376 (empty) -> 125 (full)
       const targetRpmOffset = 376 - (rpmRatio * 251);
       this.svgRpmArc.style.strokeDashoffset = targetRpmOffset;
     }
-    if (this.rpmValEl) this.rpmValEl.textContent = `${rpm} RPM`;
+    if (this.rpmValEl) {
+      this.rpmValEl.textContent = this.car.isWarpSpeed ? "∞ OVERDRIVE RPM" : `${rpm} RPM`;
+    }
 
     // Nitro Gauge: stroke dasharray 424: 424 (empty) -> 140 (full)
     const nitroRatio = Math.max(0, Math.min(1, this.car.nitroFuel / 100));
@@ -813,13 +853,15 @@ export class CyberDriftGame {
     }
 
     if (this.shiftFlashEl) {
-      this.shiftFlashEl.style.opacity = (rpmRatio > 0.88 && spd > 30) ? "0.9" : "0.0";
+      this.shiftFlashEl.style.opacity = (this.car.isWarpSpeed || (rpmRatio > 0.88 && spd > 30)) ? "0.9" : "0.0";
     }
 
     // 🌪️ HIGH-SPEED MOTION BLUR VIGNETTE
     if (this.speedVignetteEl) {
       let targetVig = 0.0;
-      if (spd > 180 || (this.car.nitroActive && this.car.nitroFuel > 0)) {
+      if (this.car.isWarpSpeed) {
+        targetVig = 0.92;
+      } else if (spd > 180 || (this.car.nitroActive && this.car.nitroFuel > 0)) {
         targetVig = Math.min(0.75, (spd - 160) / 180 + (this.car.nitroActive ? 0.35 : 0));
       }
       this.speedVignetteEl.style.opacity = targetVig.toFixed(2);
