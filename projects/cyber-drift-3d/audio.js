@@ -1,4 +1,4 @@
-// audio.js - 100% Realistic Automotive Internal Combustion & Environment Acoustic Soundscape (Police Sirens, Helicopter, Traffic Flybys, Rain)
+// audio.js - Realistic Automotive & Environment Sound Engine (Clear Audible Dual-Tone Police Siren, Helicopter Downwash, Tire Scrubbing, Rain)
 class CyberAudioEngine {
   constructor() {
     this.ctx = null;
@@ -30,22 +30,21 @@ class CyberAudioEngine {
     this.nitroFilter = null;
     this.nitroGain = null;
 
-    // 🚨 Realistic Police Siren
+    // 🚨 CLEAR & AUDIBLE REALISTIC POLICE SIREN
     this.sirenGain = null;
-    this.sirenOsc = null;
+    this.sirenOsc1 = null;
+    this.sirenOsc2 = null;
     this.sirenFilter = null;
 
-    // 🚁 Police Helicopter Rotor Blades Downwash
+    // 🚁 Police Helicopter Rotor Downwash
     this.heliGain = null;
-    this.heliNoise = null;
-    this.heliFilter = null;
     this.heliOsc = null;
 
-    // 🚗 Traffic / Rival Flyby Whoosh
+    // 🚗 Traffic Passing Whoosh
     this.flybyGain = null;
     this.flybyFilter = null;
 
-    // 🌧️ Rain Acoustics
+    // 🌧️ Rain
     this.rainNoiseNode = null;
     this.rainFilter = null;
     this.rainGain = null;
@@ -58,7 +57,7 @@ class CyberAudioEngine {
       this.ctx = new AudioContext();
 
       this.masterGain = this.ctx.createGain();
-      this.masterGain.gain.setValueAtTime(0.75, this.ctx.currentTime);
+      this.masterGain.gain.setValueAtTime(0.85, this.ctx.currentTime);
 
       this.bulletTimeFilter = this.ctx.createBiquadFilter();
       this.bulletTimeFilter.type = "lowpass";
@@ -71,7 +70,7 @@ class CyberAudioEngine {
       this._setupTireScrubbing();
       this._setupAerodynamicWind();
       this._setupPressurizedNitroJet();
-      this._setupRealisticPoliceSiren();
+      this._setupAudiblePoliceSiren();
       this._setupHelicopterRotor();
       this._setupTrafficFlyby();
       this._setupRainAcoustics();
@@ -98,7 +97,7 @@ class CyberAudioEngine {
     return buffer;
   }
 
-  // 🏎️ Real Internal Combustion Engine
+  // 🏎️ Internal Combustion Engine
   _setupRealisticEngine() {
     this.engineGain = this.ctx.createGain();
     this.engineGain.gain.setValueAtTime(0.01, this.ctx.currentTime);
@@ -145,20 +144,21 @@ class CyberAudioEngine {
     this.tireGain = this.ctx.createGain();
     this.tireGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
 
-    this.tireNoiseNode = this.ctx.createBufferSource();
-    this.tireNoiseNode.buffer = this._createNoiseBuffer(3);
-    this.tireNoiseNode.loop = true;
+    const noiseBuffer = this._createNoiseBuffer(3);
+    const noiseSource = this.ctx.createBufferSource();
+    noiseSource.buffer = noiseBuffer;
+    noiseSource.loop = true;
 
     this.tireFilter = this.ctx.createBiquadFilter();
     this.tireFilter.type = "bandpass";
     this.tireFilter.frequency.setValueAtTime(550, this.ctx.currentTime);
     this.tireFilter.Q.setValueAtTime(1.2, this.ctx.currentTime);
 
-    this.tireNoiseNode.connect(this.tireFilter);
+    noiseSource.connect(this.tireFilter);
     this.tireFilter.connect(this.tireGain);
     this.tireGain.connect(this.masterGain);
 
-    this.tireNoiseNode.start();
+    noiseSource.start();
   }
 
   // 💨 Aerodynamic Wind
@@ -166,73 +166,76 @@ class CyberAudioEngine {
     this.windGain = this.ctx.createGain();
     this.windGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
 
-    this.windNoiseNode = this.ctx.createBufferSource();
-    this.windNoiseNode.buffer = this._createNoiseBuffer(3);
-    this.windNoiseNode.loop = true;
+    const noiseBuffer = this._createNoiseBuffer(3);
+    const windNoise = this.ctx.createBufferSource();
+    windNoise.buffer = noiseBuffer;
+    windNoise.loop = true;
 
     this.windFilter = this.ctx.createBiquadFilter();
     this.windFilter.type = "lowpass";
     this.windFilter.frequency.setValueAtTime(280, this.ctx.currentTime);
 
-    this.windNoiseNode.connect(this.windFilter);
+    windNoise.connect(this.windFilter);
     this.windFilter.connect(this.windGain);
     this.windGain.connect(this.masterGain);
 
-    this.windNoiseNode.start();
+    windNoise.start();
   }
 
-  // ⚡ Pressurized Liquid Nitro Gas Jet
+  // ⚡ Nitro Gas Jet
   _setupPressurizedNitroJet() {
     this.nitroGain = this.ctx.createGain();
     this.nitroGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
 
-    this.nitroNoiseNode = this.ctx.createBufferSource();
-    this.nitroNoiseNode.buffer = this._createNoiseBuffer(3);
-    this.nitroNoiseNode.loop = true;
+    const noiseBuffer = this._createNoiseBuffer(3);
+    const nitroNoise = this.ctx.createBufferSource();
+    nitroNoise.buffer = noiseBuffer;
+    nitroNoise.loop = true;
 
     this.nitroFilter = this.ctx.createBiquadFilter();
     this.nitroFilter.type = "bandpass";
     this.nitroFilter.frequency.setValueAtTime(850, this.ctx.currentTime);
 
-    this.nitroNoiseNode.connect(this.nitroFilter);
+    nitroNoise.connect(this.nitroFilter);
     this.nitroFilter.connect(this.nitroGain);
     this.nitroGain.connect(this.masterGain);
 
-    this.nitroNoiseNode.start();
+    nitroNoise.start();
   }
 
-  // 🚨 REALISTIC POLICE SIREN (Doppler & Realistic Acoustic Resonance)
-  _setupRealisticPoliceSiren() {
+  // 🚨 CLEAR & AUTHENTIC POLICE DUAL-TONE YELP SIREN
+  _setupAudiblePoliceSiren() {
     this.sirenGain = this.ctx.createGain();
     this.sirenGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
 
-    this.sirenOsc = this.ctx.createOscillator();
-    this.sirenOsc.type = "triangle"; // Smooth acoustic siren wave
-    this.sirenOsc.frequency.setValueAtTime(500, this.ctx.currentTime);
+    this.sirenOsc1 = this.ctx.createOscillator();
+    this.sirenOsc1.type = "sawtooth";
+    this.sirenOsc1.frequency.setValueAtTime(600, this.ctx.currentTime);
 
     this.sirenFilter = this.ctx.createBiquadFilter();
     this.sirenFilter.type = "lowpass";
-    this.sirenFilter.frequency.setValueAtTime(900, this.ctx.currentTime);
+    this.sirenFilter.frequency.setValueAtTime(1600, this.ctx.currentTime);
+    this.sirenFilter.Q.setValueAtTime(2.0, this.ctx.currentTime);
 
-    this.sirenOsc.connect(this.sirenFilter);
+    this.sirenOsc1.connect(this.sirenFilter);
     this.sirenFilter.connect(this.sirenGain);
     this.sirenGain.connect(this.masterGain);
 
-    this.sirenOsc.start();
+    this.sirenOsc1.start();
   }
 
-  // 🚁 POLICE HELICOPTER ROTOR DOWNWASH (Thump-Thump Turbulences)
+  // 🚁 POLICE HELICOPTER HEAVY ROTOR CHOP
   _setupHelicopterRotor() {
     this.heliGain = this.ctx.createGain();
     this.heliGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
 
     this.heliOsc = this.ctx.createOscillator();
     this.heliOsc.type = "square";
-    this.heliOsc.frequency.setValueAtTime(22, this.ctx.currentTime); // Low blade rpm pulse
+    this.heliOsc.frequency.setValueAtTime(26, this.ctx.currentTime);
 
     const heliFilter = this.ctx.createBiquadFilter();
     heliFilter.type = "lowpass";
-    heliFilter.frequency.setValueAtTime(90, this.ctx.currentTime);
+    heliFilter.frequency.setValueAtTime(140, this.ctx.currentTime);
 
     this.heliOsc.connect(heliFilter);
     heliFilter.connect(this.heliGain);
@@ -241,7 +244,7 @@ class CyberAudioEngine {
     this.heliOsc.start();
   }
 
-  // 🚗 HIGH-SPEED TRAFFIC FLYBY WHOOSH
+  // 🚗 TRAFFIC FLYBY
   _setupTrafficFlyby() {
     this.flybyGain = this.ctx.createGain();
     this.flybyGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
@@ -261,29 +264,28 @@ class CyberAudioEngine {
     noiseNode.start();
   }
 
-  // 🌧️ Rain Acoustics
-  _setupRainSound() {
+  _setupRainAcoustics() {
     this.rainGain = this.ctx.createGain();
     this.rainGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
 
-    this.rainNoiseNode = this.ctx.createBufferSource();
-    this.rainNoiseNode.buffer = this._createNoiseBuffer(3);
-    this.rainNoiseNode.loop = true;
+    const noiseNode = this.ctx.createBufferSource();
+    noiseNode.buffer = this._createNoiseBuffer(3);
+    noiseNode.loop = true;
 
     this.rainFilter = this.ctx.createBiquadFilter();
     this.rainFilter.type = "lowpass";
     this.rainFilter.frequency.setValueAtTime(450, this.ctx.currentTime);
 
-    this.rainNoiseNode.connect(this.rainFilter);
+    noiseNode.connect(this.rainFilter);
     this.rainFilter.connect(this.rainGain);
     this.rainGain.connect(this.masterGain);
 
-    this.rainNoiseNode.start();
+    noiseNode.start();
   }
 
   setRainActive(isRaining) {
     if (!this.rainGain || !this.ctx) return;
-    this.rainGain.gain.setTargetAtTime(isRaining ? 0.3 : 0.0, this.ctx.currentTime, 0.4);
+    this.rainGain.gain.setTargetAtTime(isRaining ? 0.35 : 0.0, this.ctx.currentTime, 0.4);
   }
 
   setBulletTime(isActive) {
@@ -296,11 +298,11 @@ class CyberAudioEngine {
     const t = this.ctx.currentTime;
     this.flybyGain.gain.cancelScheduledValues(t);
     this.flybyGain.gain.setValueAtTime(0.0, t);
-    this.flybyGain.gain.linearRampToValueAtTime(0.35, t + 0.15);
-    this.flybyGain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+    this.flybyGain.gain.linearRampToValueAtTime(0.4, t + 0.12);
+    this.flybyGain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
   }
 
-  // 🎛️ Dynamic Engine & Environment Acoustics
+  // 🎛️ Real-Time Dynamic Audio Update
   update(rpmRatio, speedKmH, driftRatio, isNitro, policeDist, isHeliActive) {
     if (!this.isInitialized || this.isMuted) return;
     const t = this.ctx.currentTime;
@@ -313,10 +315,10 @@ class CyberAudioEngine {
     this.combustionFilter.frequency.setTargetAtTime(filterFreq, t, 0.06);
     this.exhaustResonator.frequency.setTargetAtTime(65 + (rpmRatio * 180), t, 0.06);
 
-    const targetEngineVol = 0.45 + (rpmRatio * 0.45);
+    const targetEngineVol = 0.42 + (rpmRatio * 0.42);
     this.engineGain.gain.setTargetAtTime(targetEngineVol, t, 0.06);
 
-    // 2. Tire Asphalt Friction
+    // 2. Tire Drift Scrubbing
     const targetTire = Math.min(0.55, driftRatio * 0.6);
     this.tireGain.gain.setTargetAtTime(targetTire, t, 0.08);
     this.tireFilter.frequency.setTargetAtTime(400 + (driftRatio * 450), t, 0.08);
@@ -330,19 +332,20 @@ class CyberAudioEngine {
     const targetNitro = isNitro ? 0.45 : 0.0;
     this.nitroGain.gain.setTargetAtTime(targetNitro, t, 0.06);
 
-    // 5. 🚨 POLICE SIREN (Proximity Volume & Natural Doppler Wail)
-    if (policeDist < 140) {
-      const distRatio = Math.max(0, 1.0 - (policeDist / 140)); // 0.0 to 1.0
-      const sirenWail = 440 + Math.sin(t * 3.8) * 180;
-      this.sirenOsc.frequency.setValueAtTime(sirenWail, t);
-      this.sirenGain.gain.setTargetAtTime(distRatio * 0.38, t, 0.08);
+    // 5. 🚨 CLEAR POLICE SIREN (Audible up to 350 meters!)
+    if (policeDist < 350) {
+      const distRatio = Math.max(0, 1.0 - (policeDist / 350));
+      // Yelp / Dual tone wail
+      const sirenFreq = 620 + Math.sin(t * 5.2) * 260;
+      this.sirenOsc1.frequency.setValueAtTime(sirenFreq, t);
+      this.sirenGain.gain.setTargetAtTime(distRatio * 0.42, t, 0.08);
     } else {
       this.sirenGain.gain.setTargetAtTime(0.0, t, 0.2);
     }
 
-    // 6. 🚁 POLICE HELICOPTER (Rotor Chop Downwash)
+    // 6. 🚁 POLICE HELICOPTER ROTOR CHOP
     if (isHeliActive) {
-      this.heliGain.gain.setTargetAtTime(0.32, t, 0.15);
+      this.heliGain.gain.setTargetAtTime(0.35, t, 0.15);
     } else {
       this.heliGain.gain.setTargetAtTime(0.0, t, 0.25);
     }
@@ -417,7 +420,7 @@ class CyberAudioEngine {
   toggleMute() {
     this.isMuted = !this.isMuted;
     if (this.masterGain) {
-      this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.75, this.ctx.currentTime);
+      this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.85, this.ctx.currentTime);
     }
     return this.isMuted;
   }

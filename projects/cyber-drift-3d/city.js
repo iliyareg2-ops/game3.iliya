@@ -1,4 +1,4 @@
-// city.js - Realistic Megacity: 3 AI Rivals, Rain Weather System, Stunt Launch Ramps & Highway Police
+// city.js - Realistic Megacity: Active Highway Police Interceptor Pursuits, Spatial Sirens, AI Rivals & Weather
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -25,9 +25,9 @@ export class CityTrackManager {
     this.onBustedCallback = null;
     this.onNitroPickupCallback = null;
     this.onSpeedTrapCallback = null;
-    this.onLapCompleteCallback = null;
     this.bustedTimer = 0;
     this.isPoliceNearby = false;
+    this.nearestPoliceDist = 999999;
 
     this.initTextures();
     this.initLighting();
@@ -413,7 +413,6 @@ export class CityTrackManager {
       const u = (i + 0.2) / count;
       const pt = this.trackCurve.getPointAt(u);
       const tangent = this.trackCurve.getTangentAt(u).normalize();
-      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
 
       const g = new THREE.Group();
 
@@ -462,7 +461,6 @@ export class CityTrackManager {
     }
   }
 
-  // 🛹 HIGHWAY STUNT LAUNCH RAMPS
   buildStuntRamps() {
     const rampU = [0.22, 0.68];
     const rampMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, metalness: 0.8, roughness: 0.2 });
@@ -473,14 +471,6 @@ export class CityTrackManager {
       const tangent = this.trackCurve.getTangentAt(u).normalize();
 
       const g = new THREE.Group();
-
-      const rampShape = new THREE.Shape();
-      rampShape.moveTo(-5, 0);
-      rampShape.lineTo(5, 0);
-      rampShape.lineTo(5, 12);
-      rampShape.lineTo(-5, 12);
-      rampShape.closePath();
-
       const rampGeom = new THREE.BoxGeometry(10, 2.2, 14);
       rampGeom.rotateX(0.18);
       const rampMesh = new THREE.Mesh(rampGeom, rampMat);
@@ -684,12 +674,11 @@ export class CityTrackManager {
     }
   }
 
-  // 🏁 3 AI RIVAL STREET RACERS (Akira, Ghost, Viper)
   buildAIRivals() {
     const rivalsData = [
-      { name: "Akira", color: 0x0284c7, u: 0.1, lane: -5.5, speedU: 0.024 },
-      { name: "Ghost", color: 0x18181b, u: 0.05, lane: 0.0, speedU: 0.026 },
-      { name: "Viper", color: 0x16a34a, u: 0.02, lane: 5.5, speedU: 0.023 },
+      { name: "Akira", color: 0x0284c7, u: 0.06, lane: -5.5, speedU: 0.024 },
+      { name: "Ghost", color: 0x18181b, u: 0.03, lane: 0.0, speedU: 0.026 },
+      { name: "Viper", color: 0x16a34a, u: 0.01, lane: 5.5, speedU: 0.023 },
     ];
 
     const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
@@ -771,6 +760,7 @@ export class CityTrackManager {
     }
   }
 
+  // 🚓 POLICE FLEET (Spawns near player for immediate action & sirens)
   buildPoliceFleet() {
     const policeCount = 4;
     const bodyMat = new THREE.MeshStandardMaterial({ color: 0x08090c, roughness: 0.2, metalness: 0.85 });
@@ -790,7 +780,8 @@ export class CityTrackManager {
       redLight.position.set(-0.7, 1.55, -0.4);
       g.add(chassis, doors, blueLight, redLight);
 
-      const u = (i * 0.25 + 0.15) % 1.0;
+      // Distribute along circuit
+      const u = (i * 0.22 + 0.04) % 1.0;
       const pt = this.trackCurve.getPointAt(u);
       g.position.set(pt.x, 0.12, pt.z);
       this.scene.add(g);
@@ -798,7 +789,7 @@ export class CityTrackManager {
       this.policeUnits.push({
         group: g,
         u: u,
-        speedU: 0.022 + i * 0.004,
+        speedU: 0.024 + i * 0.003,
         laneOffset: (i % 2 === 0 ? 5.5 : -5.5),
         active: true,
         isDestroyed: false,
@@ -905,7 +896,6 @@ export class CityTrackManager {
     }
   }
 
-  // 🌧️ REALISTIC RAIN WEATHER SYSTEM
   buildRainSystem() {
     const rainCount = 1800;
     this.rainGeom = new THREE.BufferGeometry();
@@ -999,13 +989,11 @@ export class CityTrackManager {
       }
     }
 
-    // Stunt Ramp Air-Time Launch
     for (const ramp of this.stuntRamps) {
       const dist = ramp.pos.distanceTo(car.position);
       if (dist < 7.0 && car.speed > 120 && car.position.y <= 0.2) {
-        car.verticalVelocity = 14.0; // Launch upward!
+        car.verticalVelocity = 14.0;
         car.totalScore += 1000;
-        cyberAudio.playScoreChime();
         if (this.onNitroPickupCallback) {
           this.onNitroPickupCallback("🚀 AIR TIME JUMP! +1000 PTS");
         }
@@ -1018,7 +1006,7 @@ export class CityTrackManager {
     const playerSpeed = Math.abs(playerCar.speed);
     const now = Date.now();
 
-    // 1. Rain Particles Animation
+    // 1. Rain
     if (this.isRaining && this.rainParticles) {
       this.rainParticles.position.copy(playerPos);
       const posAttr = this.rainGeom.attributes.position;
@@ -1037,7 +1025,7 @@ export class CityTrackManager {
       this.helicopter.position.z = THREE.MathUtils.lerp(this.helicopter.position.z, playerPos.z, delta * 2.0);
     }
 
-    // 3. AI Rivals Progression & Positioning
+    // 3. AI Rivals
     for (const rival of this.aiRivals) {
       const prevU = rival.u;
       rival.u = (rival.u + rival.speedU * delta) % 1.0;
@@ -1127,11 +1115,12 @@ export class CityTrackManager {
       }
     }
 
-    // 7. Police Pursuits
+    // 7. POLICE ACTIVE PURSUIT & SIREN SPATIAL POSITION
     let nearestPoliceDist = 999999;
     const isBlink = Math.sin(now * 0.025) > 0;
 
-    for (const police of this.policeUnits) {
+    for (let i = 0; i < this.policeUnits.length; i++) {
+      const police = this.policeUnits[i];
       if (police.isDestroyed) {
         police.group.position.y += delta * 8;
         police.group.rotation.x += delta * 12;
@@ -1145,7 +1134,11 @@ export class CityTrackManager {
       police.blueLight.material.color.setHex(isBlink ? 0x00f0ff : 0x001144);
       police.redLight.material.color.setHex(!isBlink ? 0xff0022 : 0x330008);
 
-      police.u = (police.u + police.speedU * delta) % 1.0;
+      // Patrol speed
+      let speedMultiplier = 1.0;
+      if (playerSpeed > 30) speedMultiplier = 1.35; // Accelerate during pursuit
+
+      police.u = (police.u + police.speedU * speedMultiplier * delta) % 1.0;
       const pt = this.trackCurve.getPointAt(police.u);
       const tangent = this.trackCurve.getTangentAt(police.u).normalize();
       const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
@@ -1185,7 +1178,7 @@ export class CityTrackManager {
     }
 
     this.nearestPoliceDist = nearestPoliceDist;
-    this.isPoliceNearby = nearestPoliceDist < 75;
+    this.isPoliceNearby = nearestPoliceDist < 120;
     if (playerSpeed > 35) this.bustedTimer = Math.max(0, this.bustedTimer - delta * 2);
 
     // 8. Traffic Cars
@@ -1206,10 +1199,10 @@ export class CityTrackManager {
       }
 
       const d = car.mesh.position.distanceTo(playerPos);
-      if (d < 8.0 && playerSpeed > 120 && !car.passedAudio) {
+      if (d < 9.0 && playerSpeed > 110 && !car.passedAudio) {
         car.passedAudio = true;
         cyberAudio.playTrafficFlyby();
-      } else if (d > 20.0) {
+      } else if (d > 22.0) {
         car.passedAudio = false;
       }
     }
