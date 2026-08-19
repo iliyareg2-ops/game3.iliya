@@ -1,4 +1,4 @@
-// car.js - Full-Physics Rigid Body Vehicle Dynamics (Bicycle Model, Pacejka Slip Angles, Weight Transfer & Natural Drift)
+// car.js - Gold-Standard Arcade Racing & Drift Physics (NFS / GTA V Style: Punchy Acceleration, Grip Handling, Controlled Power-Slide Drift)
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -6,7 +6,7 @@ export class CyberCar {
   constructor(scene, carType = 0) {
     this.scene = scene;
     this.mesh = new THREE.Group();
-    this.bodySubGroup = new THREE.Group(); // Inner group for suspension roll & pitch
+    this.bodySubGroup = new THREE.Group();
     this.mesh.add(this.bodySubGroup);
 
     this.carType = carType; // 0: Apex GT, 1: Phantom Drift, 2: Hyperion X
@@ -30,46 +30,38 @@ export class CyberCar {
     this.sparkParticles = [];
 
     // ==========================================
-    // 📐 REAL-PHYSICS RIGID BODY CONSTANTS & STATE
+    // 🏎️ FAST, RESPONSIVE ARCADE DRIVING STATS
     // ==========================================
-    this.mass = 1350; // kg
-    this.inertiaZ = 2200; // kg * m^2 (Yaw moment of inertia)
-    this.wheelbaseA = 1.35; // meters from CG to front axle
-    this.wheelbaseB = 1.45; // meters from CG to rear axle
-    this.corneringStiffnessFront = 46000; // N/rad
-    this.corneringStiffnessRear = 52000; // N/rad
-    this.maxGripFront = 9200; // N
-    this.maxGripRear = 10400; // N
-    this.slideFriction = 0.55; // Kinetic friction coeff on drift
-
-    // 2D State in Local Coordinates
-    this.vx = 0; // Longitudinal velocity (m/s) forward
-    this.vy = 0; // Lateral velocity (m/s) sideways
-    this.yawRate = 0; // Angular yaw rate (rad/s)
-    this.yaw = 0; // World heading angle (radians)
-
     this.position = new THREE.Vector3(0, 0.12, 0);
-    this.speed = 0; // km/h
-    this.steerAngle = 0;
-    this.throttleInput = 0;
-    this.steerInput = 0;
+    this.heading = 0; // World heading angle (radians)
+    this.speed = 0; // km/h (positive = forward, negative = reverse)
+
+    this.maxSpeed = 265; // km/h
+    this.nitroMaxSpeed = 360; // km/h
+    this.maxReverseSpeed = -70; // km/h
+    this.accelRate = 135; // km/h per second (0-100 in ~2.3s!)
+    this.nitroAccelRate = 260; // km/h per second
+    this.brakeRate = 220; // km/h per second
+    this.coastDecelRate = 45; // Natural drag
+    this.baseTurnSpeed = 2.8;
+
+    this.throttleInput = 0; // -1 (brake/rev) to +1 (gas)
+    this.steerInput = 0; // -1 (Left, A/←) to +1 (Right, D/→)
     this.handbrake = false;
     this.nitroActive = false;
     this.nitroFuel = 100;
 
-    // Suspension Pitch & Roll
-    this.bodyRoll = 0;
-    this.bodyPitch = 0;
-
-    this.rpm = 1000;
-    this.gear = 1;
-
-    // Drift Scoring
+    this.steerAngle = 0;
     this.driftAngle = 0;
     this.isDrifting = false;
     this.driftMultiplier = 1.0;
     this.currentDriftScore = 0;
     this.totalScore = 0;
+
+    this.bodyRoll = 0;
+    this.bodyPitch = 0;
+    this.rpm = 1000;
+    this.gear = 1;
 
     this.buildCarModel();
     this.createCarLights();
@@ -88,7 +80,6 @@ export class CyberCar {
     this.flameCones = [];
     this.carMaterials = [];
 
-    // Clearcoat Physical Paint (Vibrant in any lighting)
     this.bodyMat = new THREE.MeshPhysicalMaterial({
       color: this.bodyColor,
       metalness: 0.35,
@@ -175,7 +166,6 @@ export class CyberCar {
     chassis.castShadow = true;
     this.bodySubGroup.add(chassis);
 
-    // Front Bumper with Intercooler Grille
     const bumper = new THREE.Mesh(new THREE.BoxGeometry(4.35, 0.45, 1.2), this.carbonMat);
     bumper.position.set(0, 0.42, 4.4);
     this.bodySubGroup.add(bumper);
@@ -261,7 +251,6 @@ export class CyberCar {
 
     const frontFlares = new THREE.Mesh(new THREE.BoxGeometry(5.35, 0.55, 2.4), this.carbonMat);
     frontFlares.position.set(0, 0.64, 2.7);
-    const rearFlares = new THREE.Mesh(flareGeom => flareGeom, this.carbonMat);
     const rFlares = frontFlares.clone();
     rFlares.position.z = -2.7;
     this.bodySubGroup.add(frontFlares, rFlares);
@@ -401,7 +390,6 @@ export class CyberCar {
     const trackWidth = this.carType === 1 ? 2.4 : 2.15;
     const wheelBase = 2.85;
 
-    // Height of wheel center is exactly wheelRadius (0.55m) on top of road (y=0.12)
     this.frontLeftWheelGroup.position.set(trackWidth, 0.55, wheelBase);
     this.frontRightWheelGroup.position.set(-trackWidth, 0.55, wheelBase);
     this.rearLeftWheelGroup.position.set(trackWidth, 0.55, -wheelBase);
@@ -572,21 +560,12 @@ export class CyberCar {
   }
 
   // =========================================================================
-  // 📐 REAL-PHYSICS VEHICLE RIGID BODY SIMULATION (BICYCLE DYNAMICS ENGINE)
+  // 🏎️ PROVEN HIGH-ADRENALINE ARCADE DRIVING ENGINE (NFS / GTA V MODEL)
   // =========================================================================
   updatePhysics(delta, trackManager) {
-    // 1. Steering input (-1 = Left A/←, +1 = Right D/→)
-    const targetSteer = this.steerInput * 0.52;
-    this.steerAngle = THREE.MathUtils.lerp(this.steerAngle, targetSteer, delta * 9.0);
-
-    // Animate front wheels turning angle
-    this.frontLeftWheelGroup.rotation.y = -this.steerAngle;
-    this.frontRightWheelGroup.rotation.y = -this.steerAngle;
-
-    // 2. Engine Driving & Braking Forces
-    let engineForce = 0;
-    let brakeForce = 0;
     const isNitro = this.nitroActive && this.nitroFuel > 0;
+    const topSpd = isNitro ? this.nitroMaxSpeed : this.maxSpeed;
+    const accel = isNitro ? this.nitroAccelRate : this.accelRate;
 
     if (isNitro) {
       this.nitroFuel = Math.max(0, this.nitroFuel - delta * 25);
@@ -595,138 +574,109 @@ export class CyberCar {
       this.flameCones.forEach((f) => (f.visible = false));
     }
 
-    const drivePower = isNitro ? 18000 : 9200;
-
+    // 1. Acceleration & Braking Dynamics
     if (this.throttleInput > 0) {
-      engineForce = this.throttleInput * drivePower;
+      if (this.speed < topSpd) {
+        this.speed = Math.min(topSpd, this.speed + accel * this.throttleInput * delta);
+      }
     } else if (this.throttleInput < 0) {
-      if (this.vx > 2.0) {
-        brakeForce = 16000;
+      if (this.speed > 5) {
+        this.speed = Math.max(0, this.speed - this.brakeRate * delta);
       } else {
-        engineForce = this.throttleInput * 4500; // Reverse gear
+        this.speed = Math.max(this.maxReverseSpeed, this.speed - this.accelRate * 0.7 * delta);
+      }
+    } else {
+      // Coasting Deceleration
+      if (this.speed > 0) this.speed = Math.max(0, this.speed - this.coastDecelRate * delta);
+      if (this.speed < 0) this.speed = Math.min(0, this.speed + this.coastDecelRate * delta);
+    }
+
+    // 2. Crisp, Intuitive Steering (A/← = -1 Left, D/→ = +1 Right)
+    this.steerAngle = THREE.MathUtils.lerp(this.steerAngle, this.steerInput * 0.55, delta * 12);
+    this.frontLeftWheelGroup.rotation.y = -this.steerAngle;
+    this.frontRightWheelGroup.rotation.y = -this.steerAngle;
+
+    // 3. Controlled Power-Slide Drift (Only on Handbrake or high-speed hard turns)
+    const absSpeed = Math.abs(this.speed);
+
+    if (this.handbrake && absSpeed > 35) {
+      this.isDrifting = true;
+      this.speed = Math.max(25, this.speed - delta * 40); // Maintain good drift speed
+      // Controlled, clamped drift angle (Max 32 degrees)
+      const targetDrift = -this.steerInput * 0.55;
+      this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, targetDrift, delta * 7);
+    } else if (Math.abs(this.steerInput) > 0.6 && absSpeed > 140) {
+      this.isDrifting = true;
+      const targetDrift = -this.steerInput * 0.35;
+      this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, targetDrift, delta * 5);
+    } else {
+      this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, 0, delta * 8);
+      if (Math.abs(this.driftAngle) < 0.05) {
+        if (this.isDrifting && this.currentDriftScore > 50) {
+          this.totalScore += Math.round(this.currentDriftScore);
+          cyberAudio.playScoreChime();
+          this.currentDriftScore = 0;
+          this.driftMultiplier = 1.0;
+        }
+        this.isDrifting = false;
       }
     }
 
-    // 3. Tire Slip Angles & Cornering Forces (Pacejka Formula)
-    const safeVx = Math.max(1.5, Math.abs(this.vx));
+    // 4. Update Heading (Turn left when steerInput = -1, turn right when steerInput = +1)
+    const speedRatio = Math.min(1.0, absSpeed / 90);
+    const turnFactor = this.isDrifting ? 1.45 : 1.0;
+    const effectiveTurn = this.steerInput * this.baseTurnSpeed * speedRatio * turnFactor;
 
-    // Front tire slip angle: alpha_f = arctan((vy + a * yawRate) / vx) - delta
-    const slipAngleFront = Math.atan2(this.vy + this.wheelbaseA * this.yawRate, safeVx) - this.steerAngle * Math.sign(this.vx || 1);
-    // Rear tire slip angle: alpha_r = arctan((vy - b * yawRate) / vx)
-    const slipAngleRear = Math.atan2(this.vy - this.wheelbaseB * this.yawRate, safeVx);
+    // Heading increases for right turn, decreases for left turn
+    this.heading += effectiveTurn * delta * Math.sign(this.speed || 1);
+    this.mesh.rotation.y = this.heading + this.driftAngle;
 
-    // Front lateral force
-    let lateralForceFront = -this.corneringStiffnessFront * slipAngleFront;
-    lateralForceFront = Math.max(-this.maxGripFront, Math.min(this.maxGripFront, lateralForceFront));
+    // 5. Direct, Rock-Solid Road Movement (No sliding off into grass!)
+    const speedMs = (this.speed * 1000) / 3600;
+    const forwardX = Math.sin(this.heading);
+    const forwardZ = Math.cos(this.heading);
 
-    // Rear lateral force (Drops into sliding friction on Handbrake or Oversteer)
-    let lateralForceRear = 0;
-    if (this.handbrake && Math.abs(this.vx) > 5) {
-      this.isDrifting = true;
-      // Kinetic sliding friction
-      const normalLoad = (this.mass * 9.81 * this.wheelbaseA) / (this.wheelbaseA + this.wheelbaseB);
-      lateralForceRear = -Math.sign(slipAngleRear || 1) * normalLoad * this.slideFriction;
-      brakeForce += 6000; // Handbrake drag
-    } else if (Math.abs(slipAngleRear) > 0.18 && Math.abs(this.vx) > 12) {
-      // Power oversteer slide
-      this.isDrifting = true;
-      const normalLoad = (this.mass * 9.81 * this.wheelbaseA) / (this.wheelbaseA + this.wheelbaseB);
-      lateralForceRear = -Math.sign(slipAngleRear) * normalLoad * this.slideFriction;
-    } else {
-      lateralForceRear = -this.corneringStiffnessRear * slipAngleRear;
-      lateralForceRear = Math.max(-this.maxGripRear, Math.min(this.maxGripRear, lateralForceRear));
-      this.isDrifting = false;
-    }
-
-    // 4. Aerodynamic Drag & Rolling Resistance
-    const aeroDrag = -0.5 * 0.35 * 2.2 * 1.225 * this.vx * Math.abs(this.vx);
-    const rollingResistance = -0.015 * this.mass * 9.81 * Math.sign(this.vx || 1);
-
-    // Total forces in car frame
-    const fx = engineForce - Math.sign(this.vx || 1) * brakeForce + aeroDrag + rollingResistance - lateralForceFront * Math.sin(this.steerAngle);
-    const fy = lateralForceRear + lateralForceFront * Math.cos(this.steerAngle);
-
-    // Torque around yaw Z axis
-    const torque = this.wheelbaseA * lateralForceFront * Math.cos(this.steerAngle) - this.wheelbaseB * lateralForceRear;
-
-    // 5. Numerical Integration (Euler / Rigid Body)
-    const ax = fx / this.mass + this.vy * this.yawRate;
-    const ay = fy / this.mass - this.vx * this.yawRate;
-    const angularAccel = torque / this.inertiaZ;
-
-    this.vx += ax * delta;
-    this.vy += ay * delta;
-    this.yawRate += angularAccel * delta;
-
-    // Natural damping at rest
-    if (Math.abs(this.vx) < 0.2 && Math.abs(this.throttleInput) === 0) {
-      this.vx = 0;
-      this.vy = 0;
-      this.yawRate = 0;
-    }
-
-    this.yaw -= this.yawRate * delta;
-    this.mesh.rotation.y = this.yaw;
-
-    // 6. World Movement
-    const speedMs = Math.hypot(this.vx, this.vy);
-    this.speed = this.vx * 3.6; // km/h
-
-    const worldVelX = this.vx * Math.sin(this.yaw) + this.vy * Math.cos(this.yaw);
-    const worldVelZ = this.vx * Math.cos(this.yaw) - this.vy * Math.sin(this.yaw);
-
-    this.position.x += worldVelX * delta;
-    this.position.z += worldVelZ * delta;
-    this.position.y = 0.12; // Strictly on top of road!
+    this.position.x += forwardX * speedMs * delta;
+    this.position.z += forwardZ * speedMs * delta;
+    this.position.y = 0.12; // Strictly rolling on top of the road surface!
     this.mesh.position.copy(this.position);
 
-    // 7. Suspension Pitch & Roll Dynamics
-    const latG = (this.vx * this.yawRate) / 9.81;
-    const targetRoll = THREE.MathUtils.clamp(-latG * 0.065, -0.15, 0.15);
-    this.bodyRoll = THREE.MathUtils.lerp(this.bodyRoll, targetRoll, delta * 8);
+    // 6. Suspension Visual Leans (Body Roll & Pitch)
+    const targetRoll = THREE.MathUtils.clamp(-this.steerInput * (absSpeed / 200) * 0.08, -0.1, 0.1);
+    this.bodyRoll = THREE.MathUtils.lerp(this.bodyRoll, targetRoll, delta * 10);
 
-    const longG = ax / 9.81;
-    const targetPitch = THREE.MathUtils.clamp(-longG * 0.035, -0.08, 0.08);
-    this.bodyPitch = THREE.MathUtils.lerp(this.bodyPitch, targetPitch, delta * 8);
+    const targetPitch = this.throttleInput > 0 ? -0.03 : (this.throttleInput < 0 ? 0.04 : 0);
+    this.bodyPitch = THREE.MathUtils.lerp(this.bodyPitch, targetPitch, delta * 10);
 
     this.bodySubGroup.rotation.z = this.bodyRoll;
     this.bodySubGroup.rotation.x = this.bodyPitch;
 
-    // 8. Rotate Wheels
-    const wheelRot = (this.vx * delta) / 0.55;
+    // 7. Rotate Wheels
+    const wheelRot = (speedMs * delta * 4) / 0.55;
     this.wheelFL.rotation.x += wheelRot;
     this.wheelFR.rotation.x += wheelRot;
     this.wheelRL.rotation.x += wheelRot;
     this.wheelRR.rotation.x += wheelRot;
 
-    // 9. Drift Scoring & Smoke
-    this.driftAngle = Math.abs(Math.atan2(this.vy, Math.max(1.0, Math.abs(this.vx))));
-
-    if (this.isDrifting && Math.abs(this.speed) > 35) {
+    // 8. Drift Scoring & FX
+    if (this.isDrifting && absSpeed > 35) {
       this.driftMultiplier = Math.min(8.0, this.driftMultiplier + delta * 0.9);
-      const pts = Math.abs(this.speed) * this.driftAngle * this.driftMultiplier * delta * 15;
+      const pts = absSpeed * Math.abs(this.driftAngle) * this.driftMultiplier * delta * 18;
       this.currentDriftScore += pts;
-      this.nitroFuel = Math.min(100, this.nitroFuel + delta * 10);
+      this.nitroFuel = Math.min(100, this.nitroFuel + delta * 12);
 
       if (Math.random() < 0.9) this.emitTireSmoke(true);
       if (Math.random() < 0.9) this.emitTireSmoke(false);
-    } else {
-      if (this.currentDriftScore > 50) {
-        this.totalScore += Math.round(this.currentDriftScore);
-        cyberAudio.playScoreChime();
-        this.currentDriftScore = 0;
-        this.driftMultiplier = 1.0;
-      }
     }
 
     if (trackManager) {
       trackManager.handleCarTrackCollision(this);
     }
 
-    // Sound
-    this.rpm = 800 + (Math.abs(this.speed) % 55) * 140 + (this.throttleInput > 0 ? 1200 : 0);
+    // Audio Engine
+    this.rpm = 800 + (absSpeed % 55) * 140 + (this.throttleInput > 0 ? 1400 : 0);
     const rpmRatio = Math.min(1.0, (this.rpm - 800) / 7500);
-    cyberAudio.update(rpmRatio, this.speed, this.driftAngle, isNitro, false, false);
+    cyberAudio.update(rpmRatio, absSpeed, Math.abs(this.driftAngle), isNitro, false, false);
 
     // Particles
     for (const p of this.smokeParticles) {
@@ -756,12 +706,10 @@ export class CyberCar {
   reset() {
     this.position.set(0, 0.12, 0);
     this.mesh.position.copy(this.position);
-    this.vx = 0;
-    this.vy = 0;
-    this.yawRate = 0;
-    this.yaw = 0;
+    this.heading = 0;
     this.speed = 0;
     this.steerAngle = 0;
+    this.driftAngle = 0;
     this.bodyRoll = 0;
     this.bodyPitch = 0;
     this.isDrifting = false;

@@ -1,4 +1,4 @@
-// game.js - Cyber Drift 3D Main Director, Dynamic Rigid Body Camera & Police Takedowns
+// game.js - Cyber Drift 3D Main Director, Arcade Camera & Police Takedowns
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { CyberCar } from "./car.js";
 import { CityTrackManager } from "./city.js";
@@ -208,7 +208,7 @@ export class CyberDriftGame {
     document.getElementById("garage-screen").style.display = "none";
     document.getElementById("busted-screen").style.display = "none";
     document.getElementById("hud").style.display = "flex";
-    this.showBanner("🔥 СТАРТ! ВЫХОДИТЕ В ЗАНОС С ПОМОЩЬЮ ПРОБЕЛА (SPACE)");
+    this.showBanner("🔥 СТАРТ! ДАВИ НА ГАЗ, ДРИФТУЙ НА ПРОБЕЛ (SPACE)");
   }
 
   triggerBusted() {
@@ -273,16 +273,16 @@ export class CyberDriftGame {
     this.camera.updateProjectionMatrix();
 
     const carPos = this.car.mesh.position;
-    const carYaw = this.car.yaw;
+    const carHeading = this.car.heading;
 
     if (this.cameraMode === "CHASE") {
       const chaseDist = isNitro ? 16.5 : 13.5;
       const chaseHeight = 4.2;
 
       const targetCamPos = new THREE.Vector3(
-        carPos.x - Math.sin(carYaw) * chaseDist,
+        carPos.x - Math.sin(carHeading) * chaseDist,
         carPos.y + chaseHeight,
-        carPos.z - Math.cos(carYaw) * chaseDist
+        carPos.z - Math.cos(carHeading) * chaseDist
       );
 
       if (this.screenShake > 0) {
@@ -294,37 +294,37 @@ export class CyberDriftGame {
       this.camera.position.lerp(targetCamPos, delta * 9.0);
 
       const lookTarget = new THREE.Vector3(
-        carPos.x + Math.sin(carYaw) * 12,
+        carPos.x + Math.sin(carHeading) * 12,
         carPos.y + 1.2,
-        carPos.z + Math.cos(carYaw) * 12
+        carPos.z + Math.cos(carHeading) * 12
       );
       this.camera.lookAt(lookTarget);
     } else if (this.cameraMode === "HOOD") {
       const hoodPos = new THREE.Vector3(
-        carPos.x + Math.sin(carYaw) * 1.8,
+        carPos.x + Math.sin(carHeading) * 1.8,
         carPos.y + 1.2,
-        carPos.z + Math.cos(carYaw) * 1.8
+        carPos.z + Math.cos(carHeading) * 1.8
       );
       this.camera.position.copy(hoodPos);
 
       const lookTarget = new THREE.Vector3(
-        carPos.x + Math.sin(carYaw) * 35,
+        carPos.x + Math.sin(carHeading) * 35,
         carPos.y + 1.2,
-        carPos.z + Math.cos(carYaw) * 35
+        carPos.z + Math.cos(carHeading) * 35
       );
       this.camera.lookAt(lookTarget);
     } else {
       const cockpitPos = new THREE.Vector3(
-        carPos.x + Math.sin(carYaw + 0.3) * 0.5,
+        carPos.x + Math.sin(carHeading + 0.3) * 0.5,
         carPos.y + 1.35,
-        carPos.z - Math.cos(carYaw) * 0.4
+        carPos.z - Math.cos(carHeading) * 0.4
       );
       this.camera.position.copy(cockpitPos);
 
       const lookTarget = new THREE.Vector3(
-        carPos.x + Math.sin(carYaw) * 25,
+        carPos.x + Math.sin(carHeading) * 25,
         carPos.y + 1.3,
-        carPos.z + Math.cos(carYaw) * 25
+        carPos.z + Math.cos(carHeading) * 25
       );
       this.camera.lookAt(lookTarget);
     }
@@ -335,7 +335,7 @@ export class CyberDriftGame {
     if (this.speedEl) this.speedEl.textContent = spd;
 
     let gear = "1";
-    if (this.car.vx < -0.5) gear = "R";
+    if (this.car.speed < -0.5) gear = "R";
     else if (spd < 5) gear = "N";
     else if (spd < 65) gear = "1";
     else if (spd < 115) gear = "2";
