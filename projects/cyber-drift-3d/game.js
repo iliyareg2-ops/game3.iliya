@@ -371,17 +371,20 @@ export class CyberDriftGame {
       });
     });
 
-    const startBtn = document.getElementById("btn-start-race");
-    if (startBtn) {
-      startBtn.addEventListener("click", () => {
-        cyberAudio.init();
-        this.startCountdown();
-      });
-    }
+    const triggerStart = () => {
+      cyberAudio.init();
+      this.startCountdown();
+    };
+
+    document.querySelectorAll(".btn-start-trigger, #btn-start-race, #btn-start-race-top").forEach((btn) => {
+      btn.addEventListener("click", triggerStart);
+      btn.addEventListener("touchstart", triggerStart, { passive: true });
+    });
 
     const finishRestartBtn = document.getElementById("btn-restart-finish");
     if (finishRestartBtn) {
       finishRestartBtn.addEventListener("click", () => this.resetCar());
+      finishRestartBtn.addEventListener("touchstart", () => this.resetCar(), { passive: true });
     }
   }
 

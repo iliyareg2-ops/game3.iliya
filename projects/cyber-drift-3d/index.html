@@ -568,23 +568,31 @@
     }
 
     .tune-btn {
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.22);
       border-radius: 8px;
-      padding: 6px 4px;
-      color: #cbd5e1;
+      padding: 8px 4px;
+      color: #e2e8f0;
       cursor: pointer;
       font-family: 'Rajdhani', sans-serif;
       font-weight: 800;
       font-size: 12px;
       text-align: center;
       transition: all 0.15s ease;
+      user-select: none;
+    }
+
+    .tune-btn:hover {
+      background: rgba(56, 189, 248, 0.25);
+      border-color: #38bdf8;
+      color: #fff;
     }
 
     .tune-btn.active {
-      border-color: #f8fafc;
-      background: rgba(255, 255, 255, 0.2);
+      border-color: #38bdf8;
+      background: linear-gradient(135deg, #0284c7, #2563eb);
       color: #fff;
+      box-shadow: 0 0 15px rgba(2, 132, 199, 0.6);
     }
 
     .keymap-card {
@@ -772,6 +780,8 @@
     <div class="garage-card">
       <div class="modal-tag">MOTORSPORT SHOWROOM</div>
       <h1>Apex GT Racing</h1>
+
+      <button class="btn-main btn-start-trigger" id="btn-start-race-top" style="margin: 6px 0 12px 0; font-size: 17px; padding: 12px; background: linear-gradient(135deg, #0284c7, #2563eb); box-shadow: 0 0 25px rgba(37, 99, 235, 0.6); border: 1px solid rgba(255,255,255,0.4);">🏁 ВЫЕХАТЬ НА ТРАССУ (ENTER)</button>
 
       <!-- 🎮 ВЫБОР РЕЖИМА -->
       <div class="custom-row">
