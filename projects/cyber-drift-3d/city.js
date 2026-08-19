@@ -1,4 +1,4 @@
-// city.js - Smooth F1 Autodrome Circuit (Zero Gaps / Zero U-Turns), Balanced Fair AI Rivals & Robust Curve Math
+// city.js - Pure Formula 1 Grand Prix Circuit (Zero Stunt Ramps, Zero Barriers/Roadblocks, Pure Motorsport Tarmac)
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -12,7 +12,6 @@ export class CityTrackManager {
     this.pedestrians = [];
     this.speedCameras = [];
     this.destructibleProps = [];
-    this.stuntRamps = [];
     this.aiRivals = [];
     this.helicopter = null;
 
@@ -36,8 +35,6 @@ export class CityTrackManager {
     this.buildRoadsideStreetlights();
     this.buildDiverseSkyscrapers();
     this.buildSpeedTrapCameras();
-    this.buildStuntRamps();
-    this.buildPoliceRoadblocks();
     this.buildDestructibleProps();
     this.buildCityFurniture();
     this.buildNitroPickups();
@@ -165,7 +162,7 @@ export class CityTrackManager {
     this.scene.add(this.moonLight);
   }
 
-  // 🏎️ SMOOTH F1 AUTODROME (100% Continuous Flow, No Gaps, No Overlaps, No Sudden U-Turns)
+  // 🏎️ CLEAN F1 AUTODROME CIRCUIT (No Ramps, No Roadblocks)
   buildSmoothF1CircuitAndKerbs() {
     const groundGroup = new THREE.Group();
 
@@ -181,7 +178,6 @@ export class CityTrackManager {
     ground.receiveShadow = true;
     groundGroup.add(ground);
 
-    // 12 Continuous Smooth Circuit Points (Flows smoothly in positive direction)
     const trackPoints = [
       new THREE.Vector3(0, 0.12, 0),        // Start / Finish Line
       new THREE.Vector3(0, 0.12, 380),      // Main Straight
@@ -205,7 +201,6 @@ export class CityTrackManager {
     this.trackWidth = 36;
     const halfWidth = this.trackWidth / 2;
 
-    // Sample exactly 300 points without duplicate endpoint
     this.trackSamplePoints = [];
     for (let i = 0; i < divisions; i++) {
       this.trackSamplePoints.push(this.trackCurve.getPointAt(i / divisions));
@@ -490,33 +485,6 @@ export class CityTrackManager {
     this.scene.add(cityGroup);
   }
 
-  buildStuntRamps() {
-    const rampU = [0.25, 0.72];
-    const rampMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, metalness: 0.8, roughness: 0.2 });
-    const arrowMat = new THREE.MeshBasicMaterial({ color: 0xffd000 });
-
-    for (const u of rampU) {
-      const pt = this.trackCurve.getPointAt(u);
-      const tangent = this.trackCurve.getTangentAt(u).normalize();
-
-      const g = new THREE.Group();
-      const rampGeom = new THREE.BoxGeometry(10, 2.2, 14);
-      rampGeom.rotateX(0.18);
-      const rampMesh = new THREE.Mesh(rampGeom, rampMat);
-      rampMesh.position.y = 0.8;
-
-      const stripe = new THREE.Mesh(new THREE.BoxGeometry(8, 0.1, 2), arrowMat);
-      stripe.position.set(0, 1.8, 4);
-
-      g.add(rampMesh, stripe);
-      g.position.set(pt.x, 0.12, pt.z);
-      g.lookAt(pt.x + tangent.x, 0.12, pt.z + tangent.z);
-      this.scene.add(g);
-
-      this.stuntRamps.push({ pos: pt, u: u });
-    }
-  }
-
   buildSpeedTrapCameras() {
     const uPositions = [0.12, 0.55, 0.85];
     const camMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9 });
@@ -544,30 +512,6 @@ export class CityTrackManager {
       this.scene.add(g);
 
       this.speedCameras.push({ pos: pt, u: u, lastTriggerTime: 0 });
-    }
-  }
-
-  buildPoliceRoadblocks() {
-    const uPositions = [0.42, 0.78];
-    const cruiserMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3 });
-    const barMat = new THREE.MeshStandardMaterial({ color: 0xff5500 });
-
-    for (const u of uPositions) {
-      const pt = this.trackCurve.getPointAt(u);
-      const tangent = this.trackCurve.getTangentAt(u).normalize();
-
-      const g = new THREE.Group();
-      const cruiser1 = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1.2, 8.8), cruiserMat);
-      cruiser1.position.set(-11, 0.6, 0);
-      cruiser1.rotation.y = 0.5;
-
-      const barrier = new THREE.Mesh(new THREE.BoxGeometry(12, 1.2, 0.4), barMat);
-      barrier.position.set(-3, 0.6, 0);
-
-      g.add(cruiser1, barrier);
-      g.position.set(pt.x, 0.12, pt.z);
-      g.lookAt(pt.x + tangent.x, 0.12, pt.z + tangent.z);
-      this.scene.add(g);
     }
   }
 
@@ -694,7 +638,7 @@ export class CityTrackManager {
     }
   }
 
-  // 🏁 3 BALANCED FAIR AI RIVALS (Realistic Speeds ~150-190 km/h, Easy to Battle & Overtake)
+  // 🏁 3 BALANCED FAIR AI RIVALS
   buildAIRivals() {
     const rivalsData = [
       { name: "Akira [GT-R]", color: 0x0284c7, u: 0.008, lane: -5.5, baseSpeedU: 0.018 },
@@ -981,7 +925,6 @@ export class CityTrackManager {
     return this.isRaining ? "🌧️ ДОЖДЬ" : "☀️ ЯСНАЯ НОЧЬ";
   }
 
-  // 🧮 EXACT ROBUST CURVE PROJECTION (No endpoint wrap bug)
   getClosestU(pos) {
     let closestU = 0;
     let minDistSq = Infinity;
@@ -1055,17 +998,6 @@ export class CityTrackManager {
         car.totalScore += 100;
       }
     }
-
-    for (const ramp of this.stuntRamps) {
-      const dist = ramp.pos.distanceTo(car.position);
-      if (dist < 7.0 && car.speed > 120 && car.position.y <= 0.2) {
-        car.verticalVelocity = 14.0;
-        car.totalScore += 1000;
-        if (this.onNitroPickupCallback) {
-          this.onNitroPickupCallback("🚀 AIR TIME JUMP! +1000 PTS");
-        }
-      }
-    }
   }
 
   update(delta, playerCar, isRaceRunning = true) {
@@ -1093,7 +1025,7 @@ export class CityTrackManager {
       this.helicopter.position.z = THREE.MathUtils.lerp(this.helicopter.position.z, playerPos.z, delta * 2.0);
     }
 
-    // 3. BALANCED FAIR AI RIVALS (Packs comfortably with player, realistic overtakes)
+    // 3. BALANCED FAIR AI RIVALS
     for (let i = 0; i < this.aiRivals.length; i++) {
       const rival = this.aiRivals[i];
       if (isRaceRunning) {
@@ -1102,13 +1034,12 @@ export class CityTrackManager {
         if (diffU < -0.5) diffU += 1.0;
 
         let targetSpeedMultiplier = 1.0;
-        // Natural racing rubber-band (never too fast, never teleports)
         if (diffU > 0.05) {
-          targetSpeedMultiplier = 0.85; // Slow down slightly when ahead to allow exciting battles
+          targetSpeedMultiplier = 0.85;
         } else if (diffU < -0.05) {
-          targetSpeedMultiplier = 1.15; // Catch up reasonably from behind
+          targetSpeedMultiplier = 1.15;
         } else {
-          targetSpeedMultiplier = 0.95 + (i * 0.03); // Close wheel-to-wheel race!
+          targetSpeedMultiplier = 0.95 + (i * 0.03);
         }
 
         rival.currentSpeedU = THREE.MathUtils.lerp(rival.currentSpeedU, rival.baseSpeedU * targetSpeedMultiplier, delta * 1.5);
