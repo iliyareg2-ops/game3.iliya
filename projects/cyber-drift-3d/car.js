@@ -419,11 +419,6 @@ export class CyberCar {
     };
 
     this.bodyGroup.add(makeHeadlight(1.45), makeHeadlight(-1.45));
-
-    this._buildSpoiler(carbonMat);
-    this._buildWheelsWithBremboBrakes();
-
-    this.mesh.position.copy(this.position);
   }
 
   _buildCockpitInterior() {
