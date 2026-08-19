@@ -1,4 +1,4 @@
-// game.js - Cyber Drift 3D: Formula 1 Autodrome with Clean HUD (Drift, Radar, Speed, Nitro, Position) & Full Keymap
+// game.js - Cyber Drift 3D: Formula 1 Autodrome with Clean HUD, Exact Lap Progression & Fair Podium Finish
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { CyberCar } from "./car.js";
 import { CityTrackManager } from "./city.js";
@@ -23,9 +23,10 @@ export class CyberDriftGame {
     this.screenShake = 0;
 
     this.countdownTimer = 3.0;
-    this.currentLap = 1;
+    this.playerLapsCompleted = 0;
     this.maxLaps = 3;
     this.prevPlayerU = 0.002;
+    this.finalRacePosition = 4;
 
     this.keys = {
       forward: false,
@@ -184,6 +185,7 @@ export class CyberDriftGame {
     this.gearEl = document.getElementById("hud-gear");
     this.scoreEl = document.getElementById("hud-score");
     this.positionEl = document.getElementById("hud-position");
+    this.lapEl = document.getElementById("hud-lap");
     this.driftBoxEl = document.getElementById("hud-drift-box");
     this.driftPtsEl = document.getElementById("hud-drift-pts");
     this.driftMultEl = document.getElementById("hud-drift-mult");
@@ -228,6 +230,11 @@ export class CyberDriftGame {
     const restartBtn = document.getElementById("btn-restart-busted");
     if (restartBtn) {
       restartBtn.addEventListener("click", () => this.resetCar());
+    }
+
+    const finishRestartBtn = document.getElementById("btn-restart-finish");
+    if (finishRestartBtn) {
+      finishRestartBtn.addEventListener("click", () => this.resetCar());
     }
   }
 
@@ -332,11 +339,13 @@ export class CyberDriftGame {
   startCountdown() {
     this.gameState = "COUNTDOWN";
     this.countdownTimer = 3.2;
-    this.currentLap = 1;
+    this.playerLapsCompleted = 0;
     this.prevPlayerU = 0.002;
+    this.finalRacePosition = 4;
 
     document.getElementById("garage-screen").style.display = "none";
     document.getElementById("busted-screen").style.display = "none";
+    document.getElementById("finish-screen").style.display = "none";
     document.getElementById("hud").style.display = "flex";
 
     if (this.turntable) this.turntable.visible = false;
@@ -374,6 +383,37 @@ export class CyberDriftGame {
     cyberAudio.playCrash();
     document.getElementById("busted-score").textContent = this.car.totalScore;
     document.getElementById("busted-screen").style.display = "grid";
+  }
+
+  triggerFinish(finalPos) {
+    this.gameState = "FINISHED";
+    this.finalRacePosition = finalPos;
+
+    const titles = {
+      1: "🏆 ПОБЕДА! 1-Е МЕСТО (ЗОЛОТО)",
+      2: "🥈 2-Е МЕСТО (СЕРЕБРО)",
+      3: "🥉 3-Е МЕСТО (БРОНЗА)",
+      4: "🏁 4-Е МЕСТО (ФИНИШ)",
+    };
+
+    const titleEl = document.getElementById("finish-title");
+    if (titleEl) {
+      titleEl.textContent = titles[finalPos] || "🏁 ФИНИШ ГОНКИ!";
+      titleEl.style.color = finalPos === 1 ? "#22c55e" : (finalPos <= 3 ? "#38bdf8" : "#f59e0b");
+    }
+
+    const rankEl = document.getElementById("finish-rank");
+    if (rankEl) {
+      rankEl.textContent = `${finalPos} / 4`;
+      rankEl.style.color = finalPos === 1 ? "#22c55e" : (finalPos <= 3 ? "#38bdf8" : "#ef4444");
+    }
+
+    const scoreEl = document.getElementById("finish-score");
+    if (scoreEl) {
+      scoreEl.textContent = this.car.totalScore;
+    }
+
+    document.getElementById("finish-screen").style.display = "grid";
   }
 
   toggleCamera() {
@@ -494,7 +534,7 @@ export class CyberDriftGame {
     }
   }
 
-  // 🧮 UPDATE ONLY 5 CLEAN HUD ELEMENTS
+  // 🧮 EXACT POSITION & LAP PROGRESSION WITHOUT SUDDEN JUMPS
   updateHUD() {
     const spd = Math.round(Math.abs(this.car.speed));
     if (this.speedEl) this.speedEl.textContent = spd;
@@ -515,22 +555,33 @@ export class CyberDriftGame {
     if (this.trackManager) {
       let rawPlayerU = this.trackManager.getClosestU(this.car.position);
 
-      if (this.currentLap === 1 && rawPlayerU > 0.9 && this.car.position.z < 80) {
+      // Handle near-start zero clamp on Lap 1
+      if (this.playerLapsCompleted === 0 && rawPlayerU > 0.9 && this.car.position.z < 80) {
         rawPlayerU = 0.002;
       }
 
-      if (this.prevPlayerU > 0.85 && rawPlayerU < 0.15) {
-        this.currentLap++;
-        if (this.currentLap > this.maxLaps) {
-          this.showBanner("🏆 ПОБЕДА В ГОНКЕ! 1-Е МЕСТО! +5000 PTS", 5000);
-          this.car.totalScore += 5000;
+      // Check Lap Line Crossing (u goes from >0.85 -> <0.15)
+      if (this.prevPlayerU > 0.85 && rawPlayerU < 0.15 && this.gameState === "RACING") {
+        this.playerLapsCompleted++;
+
+        if (this.playerLapsCompleted >= this.maxLaps) {
+          // Compute Final Place
+          let finalPos = 1;
+          for (const rival of this.trackManager.aiRivals) {
+            const rivalTotal = rival.lapsCompleted + rival.u;
+            if (rivalTotal >= this.maxLaps) {
+              finalPos++;
+            }
+          }
+          this.triggerFinish(finalPos);
         } else {
-          this.showBanner(`🏁 КРУГ ${this.currentLap} / ${this.maxLaps}!`, 3000);
+          this.showBanner(`🏁 КРУГ ${this.playerLapsCompleted + 1} / ${this.maxLaps}!`, 3000);
         }
       }
       this.prevPlayerU = rawPlayerU;
 
-      const playerTotalProgress = (this.currentLap - 1) + rawPlayerU;
+      // Real Mathematical Progress: (lapsCompleted) + current_u
+      const playerTotalProgress = this.playerLapsCompleted + rawPlayerU;
 
       let position = 1;
       for (const rival of this.trackManager.aiRivals) {
@@ -545,6 +596,11 @@ export class CyberDriftGame {
         if (position === 1) this.positionEl.style.color = "#22c55e";
         else if (position <= 3) this.positionEl.style.color = "#38bdf8";
         else this.positionEl.style.color = "#ef4444";
+      }
+
+      if (this.lapEl) {
+        const displayLap = Math.min(this.playerLapsCompleted + 1, this.maxLaps);
+        this.lapEl.textContent = `${displayLap} / ${this.maxLaps}`;
       }
     }
 
@@ -590,6 +646,16 @@ export class CyberDriftGame {
 
       this.car.updatePhysics(delta, this.trackManager);
       this.trackManager.update(delta, this.car, true);
+
+      this.updateHUD();
+      this.renderMinimap();
+    } else if (this.gameState === "FINISHED") {
+      // Smoothly bring car to a stop on finish
+      this.car.throttleInput = 0;
+      this.car.steerInput = 0;
+      this.car.speed = Math.max(0, this.car.speed - delta * 60);
+      this.car.updatePhysics(delta, this.trackManager);
+      this.trackManager.update(delta, this.car, false);
 
       this.updateHUD();
       this.renderMinimap();

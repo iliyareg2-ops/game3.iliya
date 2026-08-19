@@ -43,7 +43,7 @@
       display: none;
     }
 
-    /* Clean HUD Overlay (Only Drift, Radar, Speed, Nitro, Position) */
+    /* Clean HUD Overlay (Only Drift, Radar, Speed, Nitro, Position, Lap) */
     #hud {
       position: absolute;
       inset: 0;
@@ -365,7 +365,6 @@
       color: #fff;
     }
 
-    /* Visual Keymap Guide Grid */
     .keymap-card {
       background: rgba(30, 41, 59, 0.85);
       border: 1px solid rgba(255, 255, 255, 0.15);
@@ -417,6 +416,17 @@
       filter: brightness(1.1);
     }
 
+    /* Finish / Results Screen */
+    .finish-card {
+      width: min(500px, 92vw);
+      background: #1e293b;
+      border: 2px solid #38bdf8;
+      border-radius: 20px;
+      padding: 28px 24px;
+      box-shadow: 0 0 45px rgba(56, 189, 248, 0.3);
+      text-align: center;
+    }
+
     /* Busted Screen */
     .screen-overlay {
       position: fixed;
@@ -450,16 +460,22 @@
     <span id="hud-drift-mult">x1.0</span>
   </div>
 
-  <!-- Real HUD Overlay (Only 5 Essential Elements) -->
+  <!-- Real HUD Overlay -->
   <div id="hud">
     <div class="hud-top">
-      <!-- 1. ПОЗИЦИЯ -->
+      <!-- ПОЗИЦИЯ -->
       <div class="hud-pill">
         <span class="hud-label">ПОЗИЦИЯ</span>
         <span class="hud-val" id="hud-position" style="color: #38bdf8;">4 / 4</span>
       </div>
 
-      <!-- 2. ОЧКИ ДРИФТА -->
+      <!-- КРУГ -->
+      <div class="hud-pill">
+        <span class="hud-label">КРУГ</span>
+        <span class="hud-val" id="hud-lap" style="color: #f59e0b; font-size: 22px;">1 / 3</span>
+      </div>
+
+      <!-- ОЧКИ ДРИФТА -->
       <div class="hud-pill">
         <span class="hud-label">ОЧКИ ДРИФТА</span>
         <span class="hud-val" id="hud-score" style="color: #38bdf8;">0</span>
@@ -475,13 +491,13 @@
     <div id="hud-banner">ДРИФТ = ПРОБЕЛ, НИТРО = SHIFT</div>
 
     <div class="hud-bottom">
-      <!-- 3. РАДАР (GPS MINIMAP) -->
+      <!-- РАДАР (GPS MINIMAP) -->
       <div class="minimap-box">
         <canvas id="hud-minimap-canvas" width="200" height="200"></canvas>
         <span class="hud-label" style="margin-top: 4px;">🗺️ РАДАР</span>
       </div>
 
-      <!-- 4. СКОРОСТЬ & 5. НИТРО -->
+      <!-- СКОРОСТЬ & НИТРО -->
       <div class="speedo-cluster">
         <div class="gear-box" id="hud-gear">1</div>
         <div class="speedo-box">
@@ -497,6 +513,18 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Finish Podium Screen -->
+  <div class="screen-overlay" id="finish-screen">
+    <div class="finish-card">
+      <h1 id="finish-title" style="font-size: 36px; color: #22c55e; margin-bottom: 12px;">🏁 ФИНИШ ГОНКИ!</h1>
+      <p style="color: #cbd5e1; font-size: 18px; margin-bottom: 16px;">
+        Ваше итоговое место: <b id="finish-rank" style="color: #38bdf8; font-size: 26px;">1 / 4</b><br>
+        Очки дрифта: <b id="finish-score" style="color: #f59e0b; font-size: 24px;">0</b> PTS
+      </p>
+      <button class="btn-main" id="btn-restart-finish">ЕЩЁ ЗАЕЗД (R)</button>
     </div>
   </div>
 
