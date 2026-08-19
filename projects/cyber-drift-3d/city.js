@@ -120,6 +120,8 @@ export class CityTrackManager {
       metalness: this.isRaining ? 0.6 : 0.1,
     });
 
+    this.sandTex = this._createHighResSandTexture();
+
     // High-Definition Modern Architectural Facade Textures
     this.facadeMats = [
       this._createArchitecturalMat("#1e293b", "#38bdf8", "#0f172a", 0.35),
@@ -128,6 +130,51 @@ export class CityTrackManager {
       this._createArchitecturalMat("#475569", "#bae6fd", "#1e293b", 0.3),
       this._createArchitecturalMat("#0f172a", "#cbd5e1", "#090d16", 0.6),
     ];
+  }
+
+  _createHighResSandTexture() {
+    const c = document.createElement("canvas");
+    c.width = 1024;
+    c.height = 1024;
+    const ctx = c.getContext("2d");
+
+    const grad = ctx.createLinearGradient(0, 0, 1024, 1024);
+    grad.addColorStop(0, "#e8c99b");
+    grad.addColorStop(0.5, "#dfbe8c");
+    grad.addColorStop(1, "#d4b07d");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 1024, 1024);
+
+    // Natural wind ripples
+    ctx.strokeStyle = "rgba(195, 155, 100, 0.4)";
+    ctx.lineWidth = 6;
+    for (let y = 0; y < 1024; y += 32) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      for (let x = 0; x < 1024; x += 64) {
+        const offset = Math.sin(x * 0.02 + y * 0.01) * 8;
+        ctx.lineTo(x, y + offset);
+      }
+      ctx.stroke();
+    }
+
+    // Micro sand grains
+    for (let i = 0; i < 90000; i++) {
+      const sx = Math.random() * 1024;
+      const sy = Math.random() * 1024;
+      const shade = Math.random();
+      if (shade > 0.7) ctx.fillStyle = "rgba(255, 245, 220, 0.45)";
+      else if (shade > 0.4) ctx.fillStyle = "rgba(175, 135, 80, 0.35)";
+      else ctx.fillStyle = "rgba(230, 195, 140, 0.3)";
+      ctx.fillRect(sx, sy, 2, 2);
+    }
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(40, 40);
+    tex.anisotropy = 8;
+    return tex;
   }
 
   _createArchitecturalMat(panelColor, windowColor, frameColor, roughnessVal) {
@@ -427,87 +474,87 @@ export class CityTrackManager {
   // 🏖️🌊 PURE TRANQUIL OPEN BEACH & OCEAN PARADISE (Zero Racing Clutter)
   buildOpenBeachWorld() {
     const coastPoints = [
-      new THREE.Vector3(0, 0.1, 0),
-      new THREE.Vector3(0, 0.1, 400),
-      new THREE.Vector3(120, 0.1, 700),
-      new THREE.Vector3(300, 0.1, 600),
-      new THREE.Vector3(350, 0.1, 200),
-      new THREE.Vector3(280, 0.1, -200),
-      new THREE.Vector3(180, 0.1, -500),
-      new THREE.Vector3(-50, 0.1, -600),
-      new THREE.Vector3(-250, 0.1, -300),
-      new THREE.Vector3(-200, 0.1, 200),
-      new THREE.Vector3(-50, 0.1, -100),
+      new THREE.Vector3(10, 0.1, 0),
+      new THREE.Vector3(20, 0.1, 300),
+      new THREE.Vector3(30, 0.1, 600),
+      new THREE.Vector3(-100, 0.1, 500),
+      new THREE.Vector3(-250, 0.1, 200),
+      new THREE.Vector3(-200, 0.1, -200),
+      new THREE.Vector3(-100, 0.1, -500),
+      new THREE.Vector3(20, 0.1, -400),
     ];
     this.trackCurve = new THREE.CatmullRomCurve3(coastPoints, true, "catmullrom", 0.4);
     this.trackSamplePoints = [];
-    for (let i = 0; i < 200; i++) this.trackSamplePoints.push(this.trackCurve.getPointAt(i / 200));
+    for (let i = 0; i < 150; i++) this.trackSamplePoints.push(this.trackCurve.getPointAt(i / 150));
 
-    // 1. Vast Golden Sand Beach & Dunes (4500x4500)
-    const sandGeom = new THREE.PlaneGeometry(4500, 4500, 48, 48);
+    // 1. Vast Textured Golden Sand Beach & Dunes (3500x3500)
+    const sandGeom = new THREE.PlaneGeometry(3500, 3500, 48, 48);
     sandGeom.rotateX(-Math.PI / 2);
     const sandMat = new THREE.MeshStandardMaterial({
-      color: 0xdfc28c,
-      roughness: 0.95,
+      map: this.sandTex,
+      roughness: 0.92,
       metalness: 0.05,
     });
     const sandMesh = new THREE.Mesh(sandGeom, sandMat);
-    sandMesh.position.y = 0.0;
+    sandMesh.position.set(-600, 0.0, 0);
     sandMesh.receiveShadow = true;
     this.trackWorldGroup.add(sandMesh);
 
-    // 2. Realistic 3D Deep Ocean Plane
-    const oceanGeom = new THREE.PlaneGeometry(5000, 5000, 64, 64);
-    oceanGeom.rotateX(-Math.PI / 2);
+    // 2. Realistic 3D Deep Ocean Plane with Dynamic Vertex Waves
+    this.oceanGeom = new THREE.PlaneGeometry(3000, 3000, 72, 72);
+    this.oceanGeom.rotateX(-Math.PI / 2);
+    this.oceanOrigPos = this.oceanGeom.attributes.position.clone();
     const oceanMat = new THREE.MeshPhysicalMaterial({
       color: 0x0077b6,
-      metalness: 0.88,
+      emissive: 0x001d3d,
+      emissiveIntensity: 0.15,
+      metalness: 0.85,
       roughness: 0.08,
-      transmission: 0.65,
+      transmission: 0.6,
       transparent: true,
-      opacity: 0.90,
+      opacity: 0.92,
       reflectivity: 0.98,
       clearcoat: 1.0,
-      clearcoatRoughness: 0.08,
+      clearcoatRoughness: 0.06,
     });
-    this.oceanMesh = new THREE.Mesh(oceanGeom, oceanMat);
-    this.oceanMesh.position.set(1200, -0.35, -200);
+    this.oceanMesh = new THREE.Mesh(this.oceanGeom, oceanMat);
+    this.oceanMesh.position.set(1200, -0.28, 0);
     this.oceanMesh.receiveShadow = true;
     this.trackWorldGroup.add(this.oceanMesh);
 
-    // 3. Crystal Clear Turquoise Shallow Lagoon
-    const lagoonGeom = new THREE.PlaneGeometry(350, 4200, 32, 32);
+    // 3. Crystal Clear Turquoise Shallow Lagoon along Shoreline (X = 45 to X = 180)
+    const lagoonGeom = new THREE.PlaneGeometry(160, 3000, 16, 32);
     lagoonGeom.rotateX(-Math.PI / 2);
     const lagoonMat = new THREE.MeshPhysicalMaterial({
       color: 0x48cae4,
       transparent: true,
-      opacity: 0.75,
+      opacity: 0.78,
       roughness: 0.1,
       metalness: 0.7,
       transmission: 0.7,
     });
     const lagoonMesh = new THREE.Mesh(lagoonGeom, lagoonMat);
-    lagoonMesh.position.set(320, -0.15, -200);
+    lagoonMesh.position.set(110, -0.14, 0);
     this.trackWorldGroup.add(lagoonMesh);
 
-    // 4. Dynamic Animated Shoreline Foam Wave Mesh
-    const foamGeom = new THREE.PlaneGeometry(28, 4200, 1, 64);
+    // 4. Dynamic Animated Shoreline Foam Wave Mesh right on the beach (X = 45)
+    const foamGeom = new THREE.PlaneGeometry(24, 3000, 1, 64);
     foamGeom.rotateX(-Math.PI / 2);
     const foamMat = new THREE.MeshBasicMaterial({
       color: 0xffffff,
       transparent: true,
-      opacity: 0.7,
+      opacity: 0.75,
       depthWrite: false,
     });
     this.shorelineFoamMesh = new THREE.Mesh(foamGeom, foamMat);
-    this.shorelineFoamMesh.position.set(160, 0.06, -200);
+    this.shorelineFoamMesh.position.set(45, 0.06, 0);
     this.trackWorldGroup.add(this.shorelineFoamMesh);
 
-    // 5. 🪵 Driveable Wooden Ocean Pier / Jetty (260m long into the sea)
+    // 5. 🪵 Driveable Wooden Ocean Pier / Jetty (Extending from Beach X=35 straight into Ocean X=280)
     const pierGroup = new THREE.Group();
     const woodPlankMat = new THREE.MeshStandardMaterial({ color: 0x854d0e, roughness: 0.85 });
     const woodPillarMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.95 });
-    const lanternMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, emissive: 0xfef08a, emissiveIntensity: 0.8 });
+    const lanternMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, emissive: 0xfef08a, emissiveIntensity: 0.9 });
 
     const deckLength = 260;
     const deckWidth = 18;
@@ -538,10 +585,10 @@ export class CityTrackManager {
     terminalPlatform.position.set(deckLength + 18, 0.35, 0);
     pierGroup.add(terminalPlatform);
 
-    pierGroup.position.set(130, 0, 100);
+    pierGroup.position.set(35, 0, 50);
     this.trackWorldGroup.add(pierGroup);
 
-    // 6. 🌴 Tropical Palm Trees
+    // 6. 🌴 Tropical Palm Trees framing the Beach
     const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3e2723, roughness: 0.9 });
     const leavesPalm = new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.7 });
 
@@ -562,14 +609,15 @@ export class CityTrackManager {
       return g;
     };
 
-    for (let p = 0; p < 70; p++) {
-      const px = -250 + Math.random() * 380;
-      const pz = -800 + Math.random() * 1600;
-      if (px > 80 && px < 160 && Math.abs(pz - 100) < 30) continue;
+    // Close palms near car spawn & beach line
+    for (let p = 0; p < 50; p++) {
+      const px = -80 + Math.random() * 110;
+      const pz = -450 + p * 18 + Math.random() * 8;
+      if (px > 20 && px < 50 && Math.abs(pz - 50) < 25) continue; // Keep pier entrance clear
       this.trackWorldGroup.add(makePalm(px, pz));
     }
 
-    // 7. 🍹 Tiki Beach Bars
+    // 7. 🍹 Tiki Beach Bar right near Spawn
     const thatchMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.95 });
     const bambooMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.8 });
 
@@ -597,30 +645,29 @@ export class CityTrackManager {
       return tg;
     };
 
-    this.trackWorldGroup.add(makeTikiBar(100, 30, -0.3));
-    this.trackWorldGroup.add(makeTikiBar(80, -320, 0.4));
-    this.trackWorldGroup.add(makeTikiBar(110, 480, -0.2));
+    this.trackWorldGroup.add(makeTikiBar(15, -35, 0.2));
+    this.trackWorldGroup.add(makeTikiBar(10, 160, -0.4));
 
-    // 8. 🏄 Surfboards in Sand
+    // 8. 🏄 Colorful Surfboards planted in the sand right in view
     const surfColors = [0xef4444, 0x38bdf8, 0xf59e0b, 0x10b981, 0xec4899];
-    for (let s = 0; s < 24; s++) {
+    for (let s = 0; s < 16; s++) {
       const color = surfColors[s % surfColors.length];
       const surfMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.25, metalness: 0.2 });
       const surfboard = new THREE.Mesh(new THREE.BoxGeometry(1.0, 3.8, 0.16), surfMat);
-      surfboard.position.set(130 + (s % 4) * 6 + Math.random() * 5, 1.8, -600 + s * 50);
+      surfboard.position.set(36 + (s % 3) * 3, 1.8, -120 + s * 18);
       surfboard.rotation.z = (Math.random() - 0.5) * 0.3;
-      surfboard.rotation.y = Math.random() * Math.PI;
+      surfboard.rotation.y = Math.PI / 2 + (Math.random() - 0.5) * 0.4;
       this.trackWorldGroup.add(surfboard);
     }
 
-    // 9. 🏖️ Striped Beach Parasols & Loungers
+    // 9. 🏖️ Striped Beach Parasols & Loungers along the shore
     const umbrellaMat1 = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.6 });
     const umbrellaMat2 = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.6 });
     const umbrellaMat3 = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.6 });
     const poleMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.8 });
     const loungerMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.5 });
 
-    for (let b = 0; b < 45; b++) {
+    for (let b = 0; b < 25; b++) {
       const g = new THREE.Group();
       const uPole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3.4, 8), poleMat);
       uPole.position.y = 1.7;
@@ -632,11 +679,11 @@ export class CityTrackManager {
       lounger.position.set(1.2, 0.18, 0);
 
       g.add(uPole, uCone, lounger);
-      g.position.set(120 + Math.random() * 120, 0.10, -750 + b * 34 + Math.random() * 10);
+      g.position.set(22 + Math.random() * 12, 0.10, -220 + b * 20);
       this.trackWorldGroup.add(g);
     }
 
-    // 10. ⚓ Luxury Ocean Yachts Bobbing on Waves
+    // 10. ⚓ Luxury Ocean Yachts Bobbing on Waves right in the Bay
     const hullMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.15 });
     const deckMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.4 });
     const glassBlue = new THREE.MeshPhysicalMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.6 });
@@ -657,11 +704,10 @@ export class CityTrackManager {
       return g;
     };
 
-    this.trackWorldGroup.add(makeYacht(650, 200, 0.4));
-    this.trackWorldGroup.add(makeYacht(820, -150, -0.6));
-    this.trackWorldGroup.add(makeYacht(1200, 400, 1.2));
-    this.trackWorldGroup.add(makeYacht(950, -450, 2.1));
-    this.trackWorldGroup.add(makeYacht(520, -320, 0.8));
+    this.trackWorldGroup.add(makeYacht(220, 0, 0.4));
+    this.trackWorldGroup.add(makeYacht(380, -160, -0.6));
+    this.trackWorldGroup.add(makeYacht(450, 220, 1.2));
+    this.trackWorldGroup.add(makeYacht(620, -320, 2.1));
   }
 
   // ⚡ REALISTIC 3D NOS / N2O NITROUS OXIDE CYLINDERS
@@ -1852,13 +1898,25 @@ export class CityTrackManager {
       }
     }
 
-    // 3. Realistic Multi-Layer Ocean Waves & Shoreline Foam Animation
-    if (this.oceanMesh) {
-      this.oceanMesh.position.y = -0.35 + Math.sin(now * 0.0018) * 0.14;
+    // 3. Dynamic 3D Ocean Waves & Animated Shoreline Foam
+    if (this.oceanMesh && this.oceanGeom && this.oceanOrigPos) {
+      const posAttr = this.oceanGeom.attributes.position;
+      const count = posAttr.count;
+      const t = now * 0.002;
+      for (let i = 0; i < count; i++) {
+        const ox = this.oceanOrigPos.getX(i);
+        const oy = this.oceanOrigPos.getY(i);
+        const wave = Math.sin(ox * 0.035 + t * 1.6) * 0.55 +
+                     Math.cos(oy * 0.028 + t * 1.3) * 0.45 +
+                     Math.sin((ox + oy) * 0.02 + t * 2.1) * 0.25;
+        posAttr.setZ(i, this.oceanOrigPos.getZ(i) + wave);
+      }
+      posAttr.needsUpdate = true;
+      this.oceanGeom.computeVertexNormals();
     }
     if (this.shorelineFoamMesh) {
-      this.shorelineFoamMesh.position.x = 160 + Math.sin(now * 0.0022) * 12.0;
-      this.shorelineFoamMesh.material.opacity = 0.45 + Math.cos(now * 0.0022) * 0.35;
+      this.shorelineFoamMesh.position.x = 45 + Math.sin(now * 0.0022) * 8.0;
+      this.shorelineFoamMesh.material.opacity = 0.55 + Math.cos(now * 0.0022) * 0.35;
     }
 
     // 4. Speed Trap Cameras

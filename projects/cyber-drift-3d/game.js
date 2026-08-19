@@ -461,32 +461,38 @@ export class CyberDriftGame {
     if (this.studioSpotL) this.studioSpotL.intensity = 0;
     if (this.studioSpotR) this.studioSpotR.intensity = 0;
 
-    this.car.position.set(5.5, 0.15, 8);
-    this.car.speed = 0;
-    this.car.heading = 0;
-    this.car.mesh.position.copy(this.car.position);
-    this.car.mesh.rotation.set(0, 0, 0);
-
-    if (this.trackManager.aiRivals.length >= 3) {
-      this.trackManager.aiRivals[0].u = 0.008;
-      this.trackManager.aiRivals[1].u = 0.008;
-      this.trackManager.aiRivals[2].u = 0.0025;
-      this.trackManager.aiRivals.forEach((r) => {
-        r.lapsCompleted = 0;
-        r.currentSpeedU = 0.0;
-        const pt = this.trackManager.trackCurve.getPointAt(r.u);
-        r.mesh.position.set(pt.x + r.laneOffset, 0.15, pt.z);
-        r.mesh.lookAt(pt.x + r.laneOffset, 0.15, pt.z + 10);
-      });
-    }
-
     if (this.gameMode === "BEACH") {
+      this.car.position.set(10, 0.15, 0);
+      this.car.speed = 0;
+      this.car.heading = Math.PI / 2; // Facing straight at the ocean!
+      this.car.mesh.position.copy(this.car.position);
+      this.car.mesh.rotation.set(0, this.car.heading, 0);
+
       this.gameState = "RACING";
       if (this.countdownEl) this.countdownEl.style.display = "none";
       this.showBanner("🏖️ ПЛЯЖ & ОКЕАН: СВОБОДА И ШУМ ВОЛН!", 4000);
       cyberAudio.setOceanAmbience(true);
       cyberAudio.playGoSound();
     } else {
+      this.car.position.set(5.5, 0.15, 8);
+      this.car.speed = 0;
+      this.car.heading = 0;
+      this.car.mesh.position.copy(this.car.position);
+      this.car.mesh.rotation.set(0, 0, 0);
+
+      if (this.trackManager.aiRivals.length >= 3) {
+        this.trackManager.aiRivals[0].u = 0.008;
+        this.trackManager.aiRivals[1].u = 0.008;
+        this.trackManager.aiRivals[2].u = 0.0025;
+        this.trackManager.aiRivals.forEach((r) => {
+          r.lapsCompleted = 0;
+          r.currentSpeedU = 0.0;
+          const pt = this.trackManager.trackCurve.getPointAt(r.u);
+          r.mesh.position.set(pt.x + r.laneOffset, 0.15, pt.z);
+          r.mesh.lookAt(pt.x + r.laneOffset, 0.15, pt.z + 10);
+        });
+      }
+
       cyberAudio.setOceanAmbience(false);
       this.gameState = "COUNTDOWN";
       this.countdownTimer = 3.2;
