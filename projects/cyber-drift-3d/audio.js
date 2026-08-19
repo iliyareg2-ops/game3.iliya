@@ -80,6 +80,7 @@ class CyberAudioEngine {
       this._setupRainAcoustics();
       this._setupRewindAudio();
       this._setupKerbRumbleAudio();
+      this._setupOceanWaveAmbience();
 
       this.isInitialized = true;
     } catch (e) {
@@ -538,6 +539,43 @@ class CyberAudioEngine {
     gain.connect(this.masterGain);
     noise.start(t);
     noise.stop(t + 0.08);
+  }
+
+  _setupOceanWaveAmbience() {
+    this.oceanWaveGain = this.ctx.createGain();
+    this.oceanWaveGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
+
+    const oceanNoise = this.ctx.createBufferSource();
+    oceanNoise.buffer = this._createNoiseBuffer(5);
+    oceanNoise.loop = true;
+
+    const oceanFilter = this.ctx.createBiquadFilter();
+    oceanFilter.type = "lowpass";
+    oceanFilter.frequency.setValueAtTime(260, this.ctx.currentTime);
+    oceanFilter.Q.setValueAtTime(1.2, this.ctx.currentTime);
+
+    const waveLFO = this.ctx.createOscillator();
+    waveLFO.type = "sine";
+    waveLFO.frequency.setValueAtTime(0.22, this.ctx.currentTime);
+
+    const lfoGain = this.ctx.createGain();
+    lfoGain.gain.setValueAtTime(140, this.ctx.currentTime);
+    waveLFO.connect(lfoGain);
+    lfoGain.connect(oceanFilter.frequency);
+
+    oceanNoise.connect(oceanFilter);
+    oceanFilter.connect(this.oceanWaveGain);
+    this.oceanWaveGain.connect(this.masterGain);
+
+    oceanNoise.start();
+    waveLFO.start();
+  }
+
+  setOceanAmbience(enabled) {
+    if (!this.isInitialized || !this.oceanWaveGain) return;
+    const t = this.ctx.currentTime;
+    this.oceanWaveGain.gain.cancelScheduledValues(t);
+    this.oceanWaveGain.gain.linearRampToValueAtTime(enabled ? 0.4 : 0.0, t + 1.2);
   }
 
   toggleMute() {

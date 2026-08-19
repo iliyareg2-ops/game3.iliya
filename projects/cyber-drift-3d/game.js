@@ -28,6 +28,7 @@ export class CyberDriftGame {
     this.maxLaps = 3;
     this.prevPlayerU = 0.002;
     this.finalRacePosition = 4;
+    this.gameMode = "RACE"; // "RACE" or "BEACH"
 
     // Skill Chain tracking
     this.lastNearMissTime = 0;
@@ -213,6 +214,18 @@ export class CyberDriftGame {
     this.shiftFlashEl = document.getElementById("hud-shift-flash");
     this.speedVignetteEl = document.getElementById("speed-vignette");
     this.deltaEl = document.getElementById("hud-delta");
+
+    // 🎮 0. Game Mode Switch (Race vs Open Beach)
+    document.querySelectorAll("[data-gamemode]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("[data-gamemode]").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        this.gameMode = btn.dataset.gamemode;
+        const trackRow = document.getElementById("row-track-select");
+        if (trackRow) trackRow.style.display = (this.gameMode === "BEACH") ? "none" : "block";
+        if (this.trackManager) this.trackManager.setMode(this.gameMode);
+      });
+    });
 
     // 🗺️ 1. Track Location Switch
     document.querySelectorAll("[data-track]").forEach((btn) => {
@@ -435,8 +448,6 @@ export class CyberDriftGame {
   }
 
   startCountdown() {
-    this.gameState = "COUNTDOWN";
-    this.countdownTimer = 3.2;
     this.playerLapsCompleted = 0;
     this.prevPlayerU = 0.002;
     this.finalRacePosition = 4;
@@ -469,9 +480,20 @@ export class CyberDriftGame {
       });
     }
 
-    if (this.countdownEl) {
-      this.countdownEl.style.display = "block";
-      this.countdownEl.textContent = "3";
+    if (this.gameMode === "BEACH") {
+      this.gameState = "RACING";
+      if (this.countdownEl) this.countdownEl.style.display = "none";
+      this.showBanner("🏖️ ПЛЯЖ & ОКЕАН: СВОБОДА И ШУМ ВОЛН!", 4000);
+      cyberAudio.setOceanAmbience(true);
+      cyberAudio.playGoSound();
+    } else {
+      cyberAudio.setOceanAmbience(false);
+      this.gameState = "COUNTDOWN";
+      this.countdownTimer = 3.2;
+      if (this.countdownEl) {
+        this.countdownEl.style.display = "block";
+        this.countdownEl.textContent = "3";
+      }
     }
   }
 
@@ -686,10 +708,10 @@ export class CyberDriftGame {
     }
     if (this.rpmValEl) this.rpmValEl.textContent = `${rpm} RPM`;
 
-    // Nitro Gauge: stroke dasharray 424: 284 (empty) -> 140 (full)
+    // Nitro Gauge: stroke dasharray 424: 424 (empty) -> 140 (full)
     const nitroRatio = Math.max(0, Math.min(1, this.car.nitroFuel / 100));
     if (this.svgNitroArc) {
-      const targetNitroOffset = 284 - (nitroRatio * 144);
+      const targetNitroOffset = 424 - (nitroRatio * 284);
       this.svgNitroArc.style.strokeDashoffset = targetNitroOffset;
     }
 
@@ -707,59 +729,71 @@ export class CyberDriftGame {
     }
 
     if (this.trackManager) {
-      let rawPlayerU = this.trackManager.getClosestU(this.car.position);
+      if (this.gameMode === "BEACH") {
+        if (this.positionEl) this.positionEl.textContent = "ZEN";
+        if (this.lapEl) this.lapEl.textContent = "СВОБОДА";
+        if (this.deltaEl) {
+          this.deltaEl.textContent = "BEACH COAST";
+          this.deltaEl.style.color = "#38bdf8";
+        }
+        if (this.hudPosBadge) {
+          this.hudPosBadge.style.background = "linear-gradient(135deg, #0284c7, #06b6d4)";
+        }
+      } else {
+        let rawPlayerU = this.trackManager.getClosestU(this.car.position);
 
-      if (this.playerLapsCompleted === 0 && rawPlayerU > 0.9 && this.car.position.z < 80) {
-        rawPlayerU = 0.002;
-      }
+        if (this.playerLapsCompleted === 0 && rawPlayerU > 0.9 && this.car.position.z < 80) {
+          rawPlayerU = 0.002;
+        }
 
-      if (this.prevPlayerU > 0.85 && rawPlayerU < 0.15 && this.gameState === "RACING") {
-        this.playerLapsCompleted++;
+        if (this.prevPlayerU > 0.85 && rawPlayerU < 0.15 && this.gameState === "RACING") {
+          this.playerLapsCompleted++;
 
-        if (this.playerLapsCompleted >= this.maxLaps) {
-          let finalPos = 1;
-          for (const rival of this.trackManager.aiRivals) {
-            const rivalTotal = rival.lapsCompleted + rival.u;
-            if (rivalTotal >= this.maxLaps) {
-              finalPos++;
+          if (this.playerLapsCompleted >= this.maxLaps) {
+            let finalPos = 1;
+            for (const rival of this.trackManager.aiRivals) {
+              const rivalTotal = rival.lapsCompleted + rival.u;
+              if (rivalTotal >= this.maxLaps) {
+                finalPos++;
+              }
             }
+            this.triggerFinish(finalPos);
+          } else {
+            this.showBanner(`🏁 КРУГ ${this.playerLapsCompleted + 1} / ${this.maxLaps}!`, 3000);
           }
-          this.triggerFinish(finalPos);
-        } else {
-          this.showBanner(`🏁 КРУГ ${this.playerLapsCompleted + 1} / ${this.maxLaps}!`, 3000);
         }
-      }
-      this.prevPlayerU = rawPlayerU;
+        this.prevPlayerU = rawPlayerU;
 
-      const playerTotalProgress = this.playerLapsCompleted + rawPlayerU;
+        const playerTotalProgress = this.playerLapsCompleted + rawPlayerU;
 
-      let position = 1;
-      for (const rival of this.trackManager.aiRivals) {
-        const rivalTotalProgress = rival.lapsCompleted + rival.u;
-        if (rivalTotalProgress > playerTotalProgress) {
-          position++;
+        let position = 1;
+        for (const rival of this.trackManager.aiRivals) {
+          const rivalTotalProgress = rival.lapsCompleted + rival.u;
+          if (rivalTotalProgress > playerTotalProgress) {
+            position++;
+          }
         }
-      }
 
-      if (this.positionEl) {
-        this.positionEl.textContent = `P${position}`;
-      }
+        if (this.positionEl) {
+          this.positionEl.textContent = `P${position}`;
+        }
 
-      if (this.hudPosBadge) {
-        if (position === 1) this.hudPosBadge.style.background = "linear-gradient(135deg, #eab308, #ca8a04)";
-        else if (position <= 3) this.hudPosBadge.style.background = "linear-gradient(135deg, #0284c7, #2563eb)";
-        else this.hudPosBadge.style.background = "linear-gradient(135deg, #475569, #334155)";
-      }
+        if (this.hudPosBadge) {
+          if (position === 1) this.hudPosBadge.style.background = "linear-gradient(135deg, #eab308, #ca8a04)";
+          else if (position <= 3) this.hudPosBadge.style.background = "linear-gradient(135deg, #0284c7, #2563eb)";
+          else this.hudPosBadge.style.background = "linear-gradient(135deg, #475569, #334155)";
+        }
 
-      if (this.lapEl) {
-        const displayLap = Math.min(this.playerLapsCompleted + 1, this.maxLaps);
-        this.lapEl.textContent = `${displayLap} / ${this.maxLaps}`;
-      }
+        if (this.lapEl) {
+          const displayLap = Math.min(this.playerLapsCompleted + 1, this.maxLaps);
+          this.lapEl.textContent = `${displayLap} / ${this.maxLaps}`;
+        }
 
-      if (this.deltaEl) {
-        const deltaSec = ((1 - rawPlayerU) * 1.4 - 0.7).toFixed(2);
-        this.deltaEl.textContent = `${deltaSec > 0 ? '+' : ''}${deltaSec}s`;
-        this.deltaEl.style.color = deltaSec <= 0 ? "#22c55e" : "#ef4444";
+        if (this.deltaEl) {
+          const deltaSec = ((1 - rawPlayerU) * 1.4 - 0.7).toFixed(2);
+          this.deltaEl.textContent = `${deltaSec > 0 ? '+' : ''}${deltaSec}s`;
+          this.deltaEl.style.color = deltaSec <= 0 ? "#22c55e" : "#ef4444";
+        }
       }
     }
 

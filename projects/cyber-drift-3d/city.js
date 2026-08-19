@@ -27,6 +27,9 @@ export class CityTrackManager {
     this.rainParticles = null;
     this.rainGeom = null;
     this.nitroPickups = [];
+    this.gameMode = "RACE"; // "RACE" or "BEACH"
+    this.oceanMesh = null;
+    this.shorelineFoamMesh = null;
     this.onNitroPickupCallback = null;
     this.onSpeedTrapCallback = null;
     this.lastKerbRumbleTime = 0;
@@ -37,6 +40,11 @@ export class CityTrackManager {
     this.buildTrackEnvironment();
     this.buildMinimalistStudioGarage();
     this.buildRainSystem();
+  }
+
+  setMode(mode) {
+    this.gameMode = mode;
+    this.buildTrackEnvironment();
   }
 
   // 🎨 ULTRA-HD 2048x2048 PBR TEXTURE GENERATOR
@@ -245,6 +253,12 @@ export class CityTrackManager {
     this.speedCameras = [];
     this.destructibleProps = [];
     this.aiRivals = [];
+    this.nitroPickups = [];
+
+    if (this.gameMode === "BEACH") {
+      this.buildOpenBeachWorld();
+      return;
+    }
 
     let trackPoints = [];
     if (this.trackIndex === 1) {
@@ -408,6 +422,246 @@ export class CityTrackManager {
     this.buildAIRivals();
     this.buildRichCityTrafficFleet();
     this.buildNitroPickups();
+  }
+
+  // 🏖️🌊 PURE TRANQUIL OPEN BEACH & OCEAN PARADISE (Zero Racing Clutter)
+  buildOpenBeachWorld() {
+    const coastPoints = [
+      new THREE.Vector3(0, 0.1, 0),
+      new THREE.Vector3(0, 0.1, 400),
+      new THREE.Vector3(120, 0.1, 700),
+      new THREE.Vector3(300, 0.1, 600),
+      new THREE.Vector3(350, 0.1, 200),
+      new THREE.Vector3(280, 0.1, -200),
+      new THREE.Vector3(180, 0.1, -500),
+      new THREE.Vector3(-50, 0.1, -600),
+      new THREE.Vector3(-250, 0.1, -300),
+      new THREE.Vector3(-200, 0.1, 200),
+      new THREE.Vector3(-50, 0.1, -100),
+    ];
+    this.trackCurve = new THREE.CatmullRomCurve3(coastPoints, true, "catmullrom", 0.4);
+    this.trackSamplePoints = [];
+    for (let i = 0; i < 200; i++) this.trackSamplePoints.push(this.trackCurve.getPointAt(i / 200));
+
+    // 1. Vast Golden Sand Beach & Dunes (4500x4500)
+    const sandGeom = new THREE.PlaneGeometry(4500, 4500, 48, 48);
+    sandGeom.rotateX(-Math.PI / 2);
+    const sandMat = new THREE.MeshStandardMaterial({
+      color: 0xdfc28c,
+      roughness: 0.95,
+      metalness: 0.05,
+    });
+    const sandMesh = new THREE.Mesh(sandGeom, sandMat);
+    sandMesh.position.y = 0.0;
+    sandMesh.receiveShadow = true;
+    this.trackWorldGroup.add(sandMesh);
+
+    // 2. Realistic 3D Deep Ocean Plane
+    const oceanGeom = new THREE.PlaneGeometry(5000, 5000, 64, 64);
+    oceanGeom.rotateX(-Math.PI / 2);
+    const oceanMat = new THREE.MeshPhysicalMaterial({
+      color: 0x0077b6,
+      metalness: 0.88,
+      roughness: 0.08,
+      transmission: 0.65,
+      transparent: true,
+      opacity: 0.90,
+      reflectivity: 0.98,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.08,
+    });
+    this.oceanMesh = new THREE.Mesh(oceanGeom, oceanMat);
+    this.oceanMesh.position.set(1200, -0.35, -200);
+    this.oceanMesh.receiveShadow = true;
+    this.trackWorldGroup.add(this.oceanMesh);
+
+    // 3. Crystal Clear Turquoise Shallow Lagoon
+    const lagoonGeom = new THREE.PlaneGeometry(350, 4200, 32, 32);
+    lagoonGeom.rotateX(-Math.PI / 2);
+    const lagoonMat = new THREE.MeshPhysicalMaterial({
+      color: 0x48cae4,
+      transparent: true,
+      opacity: 0.75,
+      roughness: 0.1,
+      metalness: 0.7,
+      transmission: 0.7,
+    });
+    const lagoonMesh = new THREE.Mesh(lagoonGeom, lagoonMat);
+    lagoonMesh.position.set(320, -0.15, -200);
+    this.trackWorldGroup.add(lagoonMesh);
+
+    // 4. Dynamic Animated Shoreline Foam Wave Mesh
+    const foamGeom = new THREE.PlaneGeometry(28, 4200, 1, 64);
+    foamGeom.rotateX(-Math.PI / 2);
+    const foamMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.7,
+      depthWrite: false,
+    });
+    this.shorelineFoamMesh = new THREE.Mesh(foamGeom, foamMat);
+    this.shorelineFoamMesh.position.set(160, 0.06, -200);
+    this.trackWorldGroup.add(this.shorelineFoamMesh);
+
+    // 5. 🪵 Driveable Wooden Ocean Pier / Jetty (260m long into the sea)
+    const pierGroup = new THREE.Group();
+    const woodPlankMat = new THREE.MeshStandardMaterial({ color: 0x854d0e, roughness: 0.85 });
+    const woodPillarMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.95 });
+    const lanternMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, emissive: 0xfef08a, emissiveIntensity: 0.8 });
+
+    const deckLength = 260;
+    const deckWidth = 18;
+    const pierDeck = new THREE.Mesh(new THREE.BoxGeometry(deckLength, 0.5, deckWidth), woodPlankMat);
+    pierDeck.position.set(deckLength / 2, 0.35, 0);
+    pierDeck.receiveShadow = true;
+    pierGroup.add(pierDeck);
+
+    for (let px = 10; px <= deckLength; px += 20) {
+      const pilL = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 6, 8), woodPillarMat);
+      pilL.position.set(px, -2.5, -deckWidth / 2 + 0.6);
+      const pilR = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 6, 8), woodPillarMat);
+      pilR.position.set(px, -2.5, deckWidth / 2 - 0.6);
+      pierGroup.add(pilL, pilR);
+
+      const postL = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.4, 6), woodPillarMat);
+      postL.position.set(px, 1.2, -deckWidth / 2 + 0.5);
+      const postR = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.4, 6), woodPillarMat);
+      postR.position.set(px, 1.2, deckWidth / 2 - 0.5);
+      const lanternL = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.4), lanternMat);
+      lanternL.position.set(px, 2.0, -deckWidth / 2 + 0.5);
+      const lanternR = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.4), lanternMat);
+      lanternR.position.set(px, 2.0, deckWidth / 2 - 0.5);
+      pierGroup.add(postL, postR, lanternL, lanternR);
+    }
+
+    const terminalPlatform = new THREE.Mesh(new THREE.BoxGeometry(36, 0.5, 40), woodPlankMat);
+    terminalPlatform.position.set(deckLength + 18, 0.35, 0);
+    pierGroup.add(terminalPlatform);
+
+    pierGroup.position.set(130, 0, 100);
+    this.trackWorldGroup.add(pierGroup);
+
+    // 6. 🌴 Tropical Palm Trees
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3e2723, roughness: 0.9 });
+    const leavesPalm = new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.7 });
+
+    const makePalm = (x, z) => {
+      const g = new THREE.Group();
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 12, 8), trunkMat);
+      trunk.position.y = 6;
+      trunk.rotation.z = (Math.random() - 0.5) * 0.15;
+      for (let i = 0; i < 6; i++) {
+        const frond = new THREE.Mesh(new THREE.ConeGeometry(1.4, 6.5, 5), leavesPalm);
+        frond.position.set(0, 11.5, 0);
+        frond.rotation.z = 1.1;
+        frond.rotation.y = (i / 6) * Math.PI * 2;
+        g.add(frond);
+      }
+      g.add(trunk);
+      g.position.set(x, 0.10, z);
+      return g;
+    };
+
+    for (let p = 0; p < 70; p++) {
+      const px = -250 + Math.random() * 380;
+      const pz = -800 + Math.random() * 1600;
+      if (px > 80 && px < 160 && Math.abs(pz - 100) < 30) continue;
+      this.trackWorldGroup.add(makePalm(px, pz));
+    }
+
+    // 7. 🍹 Tiki Beach Bars
+    const thatchMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.95 });
+    const bambooMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.8 });
+
+    const makeTikiBar = (bx, bz, brot) => {
+      const tg = new THREE.Group();
+      const counter = new THREE.Mesh(new THREE.BoxGeometry(10, 2.2, 4.5), bambooMat);
+      counter.position.y = 1.1;
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(8.5, 3.5, 8), thatchMat);
+      roof.position.y = 4.8;
+      roof.rotation.y = Math.PI / 4;
+
+      const p1 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 3.8, 6), bambooMat);
+      p1.position.set(-4.5, 2.0, -2.0);
+      const p2 = p1.clone(); p2.position.set(4.5, 2.0, -2.0);
+      const p3 = p1.clone(); p3.position.set(-4.5, 2.0, 2.0);
+      const p4 = p1.clone(); p4.position.set(4.5, 2.0, 2.0);
+
+      const surfMenu = new THREE.Mesh(new THREE.BoxGeometry(1.6, 4.2, 0.2), new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3 }));
+      surfMenu.position.set(-5.5, 2.0, 0);
+      surfMenu.rotation.z = 0.2;
+
+      tg.add(counter, roof, p1, p2, p3, p4, surfMenu);
+      tg.position.set(bx, 0.10, bz);
+      tg.rotation.y = brot;
+      return tg;
+    };
+
+    this.trackWorldGroup.add(makeTikiBar(100, 30, -0.3));
+    this.trackWorldGroup.add(makeTikiBar(80, -320, 0.4));
+    this.trackWorldGroup.add(makeTikiBar(110, 480, -0.2));
+
+    // 8. 🏄 Surfboards in Sand
+    const surfColors = [0xef4444, 0x38bdf8, 0xf59e0b, 0x10b981, 0xec4899];
+    for (let s = 0; s < 24; s++) {
+      const color = surfColors[s % surfColors.length];
+      const surfMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.25, metalness: 0.2 });
+      const surfboard = new THREE.Mesh(new THREE.BoxGeometry(1.0, 3.8, 0.16), surfMat);
+      surfboard.position.set(130 + (s % 4) * 6 + Math.random() * 5, 1.8, -600 + s * 50);
+      surfboard.rotation.z = (Math.random() - 0.5) * 0.3;
+      surfboard.rotation.y = Math.random() * Math.PI;
+      this.trackWorldGroup.add(surfboard);
+    }
+
+    // 9. 🏖️ Striped Beach Parasols & Loungers
+    const umbrellaMat1 = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.6 });
+    const umbrellaMat2 = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.6 });
+    const umbrellaMat3 = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.6 });
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.8 });
+    const loungerMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.5 });
+
+    for (let b = 0; b < 45; b++) {
+      const g = new THREE.Group();
+      const uPole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3.4, 8), poleMat);
+      uPole.position.y = 1.7;
+      const uMat = b % 3 === 0 ? umbrellaMat1 : (b % 3 === 1 ? umbrellaMat2 : umbrellaMat3);
+      const uCone = new THREE.Mesh(new THREE.ConeGeometry(2.8, 0.9, 14), uMat);
+      uCone.position.y = 3.4;
+
+      const lounger = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.35, 3.2), loungerMat);
+      lounger.position.set(1.2, 0.18, 0);
+
+      g.add(uPole, uCone, lounger);
+      g.position.set(120 + Math.random() * 120, 0.10, -750 + b * 34 + Math.random() * 10);
+      this.trackWorldGroup.add(g);
+    }
+
+    // 10. ⚓ Luxury Ocean Yachts Bobbing on Waves
+    const hullMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.15 });
+    const deckMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.4 });
+    const glassBlue = new THREE.MeshPhysicalMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.6 });
+
+    const makeYacht = (x, z, rot) => {
+      const g = new THREE.Group();
+      const hull = new THREE.Mesh(new THREE.BoxGeometry(16, 4.5, 44), hullMat);
+      hull.position.y = 1.4;
+      const cabin = new THREE.Mesh(new THREE.BoxGeometry(12, 5.5, 24), deckMat);
+      cabin.position.set(0, 5.2, -3);
+      const bridge = new THREE.Mesh(new THREE.BoxGeometry(9, 3.5, 12), glassBlue);
+      bridge.position.set(0, 8.8, 0);
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 18, 8), hullMat);
+      mast.position.set(0, 14, -6);
+      g.add(hull, cabin, bridge, mast);
+      g.position.set(x, 0.0, z);
+      g.rotation.y = rot;
+      return g;
+    };
+
+    this.trackWorldGroup.add(makeYacht(650, 200, 0.4));
+    this.trackWorldGroup.add(makeYacht(820, -150, -0.6));
+    this.trackWorldGroup.add(makeYacht(1200, 400, 1.2));
+    this.trackWorldGroup.add(makeYacht(950, -450, 2.1));
+    this.trackWorldGroup.add(makeYacht(520, -320, 0.8));
   }
 
   // ⚡ REALISTIC 3D NOS / N2O NITROUS OXIDE CYLINDERS
@@ -1596,6 +1850,15 @@ export class CityTrackManager {
       if (rival.namePlate) {
         rival.namePlate.lookAt(playerPos.x, 3.4, playerPos.z);
       }
+    }
+
+    // 3. Realistic Multi-Layer Ocean Waves & Shoreline Foam Animation
+    if (this.oceanMesh) {
+      this.oceanMesh.position.y = -0.35 + Math.sin(now * 0.0018) * 0.14;
+    }
+    if (this.shorelineFoamMesh) {
+      this.shorelineFoamMesh.position.x = 160 + Math.sin(now * 0.0022) * 12.0;
+      this.shorelineFoamMesh.material.opacity = 0.45 + Math.cos(now * 0.0022) * 0.35;
     }
 
     // 4. Speed Trap Cameras

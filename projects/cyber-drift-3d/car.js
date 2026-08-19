@@ -821,7 +821,8 @@ export class CyberCar {
       }
     }
 
-    if (trackManager && trackManager.isRaining && this.speed > 75) {
+    const isWaterShallows = trackManager && trackManager.gameMode === "BEACH" && this.position.x > 140;
+    if (trackManager && (trackManager.isRaining || isWaterShallows) && Math.abs(this.speed) > 40) {
       this.emitWaterSpray();
     }
 
