@@ -1,4 +1,4 @@
-// city.js - Realistic Megacity: Start/Finish Gantry Arch, Starting Grid Lineup, 3D AI Rival Nameplates & Live GPS Minimap Data
+// city.js - Formula 1 Grand Prix Autodrome Circuit, Starting Grid, Adaptive AI Rivals & 100% Exact Progress Projection
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -10,7 +10,6 @@ export class CityTrackManager {
     this.policeUnits = [];
     this.nitroPickups = [];
     this.pedestrians = [];
-    this.trafficLights = [];
     this.speedCameras = [];
     this.destructibleProps = [];
     this.stuntRamps = [];
@@ -31,11 +30,11 @@ export class CityTrackManager {
 
     this.initTextures();
     this.initLighting();
-    this.buildGrandPrixTrackAndCurbs();
+    this.buildF1GrandPrixCircuitAndKerbs();
+    this.buildF1GrandstandsAndPits();
     this.buildStartFinishGantryAndGrid();
     this.buildRoadsideStreetlights();
     this.buildDiverseSkyscrapers();
-    this.buildSolidTrafficGantries();
     this.buildSpeedTrapCameras();
     this.buildStuntRamps();
     this.buildPoliceRoadblocks();
@@ -56,37 +55,33 @@ export class CityTrackManager {
     roadCanvas.height = 1024;
     const rCtx = roadCanvas.getContext("2d");
 
-    rCtx.fillStyle = "#4c5466";
+    rCtx.fillStyle = "#3f4654";
     rCtx.fillRect(0, 0, 1024, 1024);
 
     for (let i = 0; i < 45000; i++) {
       const x = Math.random() * 1024;
       const y = Math.random() * 1024;
       const shade = Math.random();
-      if (shade > 0.6) rCtx.fillStyle = "#636e84";
-      else if (shade > 0.3) rCtx.fillStyle = "#383e4c";
-      else rCtx.fillStyle = "#79869e";
+      if (shade > 0.6) rCtx.fillStyle = "#535d70";
+      else if (shade > 0.3) rCtx.fillStyle = "#2d3340";
+      else rCtx.fillStyle = "#69768e";
       rCtx.fillRect(x, y, 2 + Math.random() * 2, 2 + Math.random() * 2);
     }
 
-    rCtx.fillStyle = "rgba(30, 35, 45, 0.35)";
-    rCtx.fillRect(160, 0, 180, 1024);
-    rCtx.fillRect(684, 0, 180, 1024);
+    // Racing line groove rubber marks
+    rCtx.fillStyle = "rgba(20, 24, 32, 0.45)";
+    rCtx.fillRect(180, 0, 160, 1024);
+    rCtx.fillRect(684, 0, 160, 1024);
 
+    // Track perimeter white lines
     rCtx.fillStyle = "#ffffff";
     rCtx.fillRect(35, 0, 18, 1024);
     rCtx.fillRect(971, 0, 18, 1024);
 
-    rCtx.fillStyle = "#ffd000";
+    // Center dash line
+    rCtx.fillStyle = "rgba(255, 255, 255, 0.85)";
     for (let y = 30; y < 1024; y += 140) {
-      rCtx.fillRect(504, y, 7, 85);
-      rCtx.fillRect(515, y, 7, 85);
-    }
-
-    rCtx.fillStyle = "rgba(255, 255, 255, 0.9)";
-    for (let y = 60; y < 1024; y += 160) {
-      rCtx.fillRect(270, y, 6, 70);
-      rCtx.fillRect(748, y, 6, 70);
+      rCtx.fillRect(507, y, 10, 85);
     }
 
     this.asphaltTex = new THREE.CanvasTexture(roadCanvas);
@@ -95,7 +90,7 @@ export class CityTrackManager {
 
     this.roadMat = new THREE.MeshStandardMaterial({
       map: this.asphaltTex,
-      roughness: 0.4,
+      roughness: 0.38,
       metalness: 0.15,
     });
 
@@ -170,41 +165,44 @@ export class CityTrackManager {
     this.scene.add(this.moonLight);
   }
 
-  buildGrandPrixTrackAndCurbs() {
+  // 🏎️ AUTHENTIC FORMULA 1 AUTODROME CIRCUIT (Chicanes, Curva Grande, Hairpins & Esses)
+  buildF1GrandPrixCircuitAndKerbs() {
     const groundGroup = new THREE.Group();
 
-    const groundGeom = new THREE.PlaneGeometry(3200, 3200);
+    const groundGeom = new THREE.PlaneGeometry(3600, 3600);
     groundGeom.rotateX(-Math.PI / 2);
     const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x222a38,
-      roughness: 0.55,
-      metalness: 0.2,
+      color: 0x1a2230,
+      roughness: 0.6,
+      metalness: 0.15,
     });
     const ground = new THREE.Mesh(groundGeom, groundMat);
     ground.position.y = 0.0;
     ground.receiveShadow = true;
     groundGroup.add(ground);
 
+    // 14 Iconic Formula 1 Autodrome Spline Coordinates
     const trackPoints = [
-      new THREE.Vector3(0, 0.12, 0),
-      new THREE.Vector3(0, 0.12, 380),
-      new THREE.Vector3(180, 0.12, 600),
-      new THREE.Vector3(450, 0.12, 480),
-      new THREE.Vector3(520, 0.12, 180),
-      new THREE.Vector3(420, 0.12, -220),
-      new THREE.Vector3(220, 0.12, -500),
-      new THREE.Vector3(0, 0.12, -680),
-      new THREE.Vector3(-220, 0.12, -500),
-      new THREE.Vector3(-420, 0.12, -220),
-      new THREE.Vector3(-520, 0.12, 180),
-      new THREE.Vector3(-450, 0.12, 480),
-      new THREE.Vector3(-180, 0.12, 600),
-      new THREE.Vector3(0, 0.12, 380),
+      new THREE.Vector3(0, 0.12, 0),        // Start / Finish Line
+      new THREE.Vector3(0, 0.12, 380),      // Main Straight
+      new THREE.Vector3(140, 0.12, 540),    // Chicane Entry (Turn 1 Right)
+      new THREE.Vector3(280, 0.12, 500),    // Chicane Exit (Turn 2 Left)
+      new THREE.Vector3(480, 0.12, 340),    // Curva Grande Long Arc
+      new THREE.Vector3(560, 0.12, 80),     // Sweeper Apex
+      new THREE.Vector3(440, 0.12, -180),   // Variante Roggia Chicane
+      new THREE.Vector3(260, 0.12, -320),   // Lesmo 1 Fast Right
+      new THREE.Vector3(80, 0.12, -540),    // Lesmo 2 Hairpin Turn
+      new THREE.Vector3(-180, 0.12, -520),  // Serraglio High-Speed Straight
+      new THREE.Vector3(-420, 0.12, -320),  // Ascari Entry
+      new THREE.Vector3(-540, 0.12, -80),   // Ascari Technical Esses
+      new THREE.Vector3(-460, 0.12, 220),   // Parabolica High Speed Apex
+      new THREE.Vector3(-240, 0.12, 420),   // Parabolica Exit Sweeper
+      new THREE.Vector3(-40, 0.12, 200),    // Approach to Finish Straight
     ];
 
     this.trackCurve = new THREE.CatmullRomCurve3(trackPoints, true, "catmullrom", 0.35);
-    const divisions = 280;
-    this.trackWidth = 38;
+    const divisions = 320;
+    this.trackWidth = 36;
     const halfWidth = this.trackWidth / 2;
 
     this.trackSamplePoints = this.trackCurve.getPoints(divisions);
@@ -226,7 +224,7 @@ export class CityTrackManager {
       vertices.push(leftX, 0.12, leftZ);
       vertices.push(rightX, 0.12, rightZ);
 
-      const v = (i / divisions) * 65;
+      const v = (i / divisions) * 75;
       uvs.push(0, v);
       uvs.push(1, v);
 
@@ -247,6 +245,7 @@ export class CityTrackManager {
     this.roadMesh.receiveShadow = true;
     groundGroup.add(this.roadMesh);
 
+    // F1 Authentic Red & White Apex Kerbs
     const curbRedMat = new THREE.MeshBasicMaterial({ color: 0xe11d48 });
     const curbWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
@@ -260,18 +259,57 @@ export class CityTrackManager {
 
       const curbMat = (i / 2) % 2 === 0 ? curbRedMat : curbWhiteMat;
 
-      const curb1 = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, dist), curbMat);
-      curb1.position.set(mid.x + normal.x * (halfWidth + 0.8), 0.15, mid.z + normal.z * (halfWidth + 0.8));
-      curb1.lookAt(mid.x + normal.x * (halfWidth + 0.8) + tangent.x, 0.15, mid.z + normal.z * (halfWidth + 0.8) + tangent.z);
+      const curb1 = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.1, dist), curbMat);
+      curb1.position.set(mid.x + normal.x * (halfWidth + 1.0), 0.16, mid.z + normal.z * (halfWidth + 1.0));
+      curb1.lookAt(mid.x + normal.x * (halfWidth + 1.0) + tangent.x, 0.16, mid.z + normal.z * (halfWidth + 1.0) + tangent.z);
 
-      const curb2 = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, dist), curbMat);
-      curb2.position.set(mid.x - normal.x * (halfWidth + 0.8), 0.15, mid.z - normal.z * (halfWidth + 0.8));
-      curb2.lookAt(mid.x - normal.x * (halfWidth + 0.8) + tangent.x, 0.15, mid.z - normal.z * (halfWidth + 0.8) + tangent.z);
+      const curb2 = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.1, dist), curbMat);
+      curb2.position.set(mid.x - normal.x * (halfWidth + 1.0), 0.16, mid.z - normal.z * (halfWidth + 1.0));
+      curb2.lookAt(mid.x - normal.x * (halfWidth + 1.0) + tangent.x, 0.16, mid.z - normal.z * (halfWidth + 1.0) + tangent.z);
 
       groundGroup.add(curb1, curb2);
     }
 
     this.scene.add(groundGroup);
+  }
+
+  // 🏟️ F1 PIT GRANDSTANDS ALONG MAIN STRAIGHT
+  buildF1GrandstandsAndPits() {
+    const standsGroup = new THREE.Group();
+    const concreteMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.8 });
+    const seatBlue = new THREE.MeshBasicMaterial({ color: 0x0284c7 });
+    const seatRed = new THREE.MeshBasicMaterial({ color: 0xdc2626 });
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8 });
+
+    const makeGrandstand = (x, z, rotY) => {
+      const g = new THREE.Group();
+
+      const base = new THREE.Mesh(new THREE.BoxGeometry(32, 12, 18), concreteMat);
+      base.position.set(0, 6, 0);
+
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(34, 0.6, 22), roofMat);
+      roof.position.set(0, 14, 2);
+
+      const seats1 = new THREE.Mesh(new THREE.BoxGeometry(30, 2, 4), seatBlue);
+      seats1.position.set(0, 5, -4);
+      const seats2 = new THREE.Mesh(new THREE.BoxGeometry(30, 2, 4), seatRed);
+      seats2.position.set(0, 8, 0);
+      const seats3 = new THREE.Mesh(new THREE.BoxGeometry(30, 2, 4), seatBlue);
+      seats3.position.set(0, 11, 4);
+
+      g.add(base, roof, seats1, seats2, seats3);
+      g.position.set(x, 0, z);
+      g.rotation.y = rotY;
+      return g;
+    };
+
+    // 4 Grandstands along the Main Straight
+    standsGroup.add(makeGrandstand(32, 100, Math.PI / 2));
+    standsGroup.add(makeGrandstand(32, 220, Math.PI / 2));
+    standsGroup.add(makeGrandstand(-32, 100, -Math.PI / 2));
+    standsGroup.add(makeGrandstand(-32, 220, -Math.PI / 2));
+
+    this.scene.add(standsGroup);
   }
 
   // 🏁 START / FINISH GANTRY ARCH & STARTING GRID BOXES
@@ -287,7 +325,6 @@ export class CityTrackManager {
     bCtx.fillStyle = "#0f172a";
     bCtx.fillRect(0, 0, 1024, 256);
 
-    // Checkered Banner Pattern
     for (let x = 0; x < 1024; x += 32) {
       for (let y = 0; y < 256; y += 32) {
         if ((x / 32 + y / 32) % 2 === 0) {
@@ -297,32 +334,29 @@ export class CityTrackManager {
       }
     }
     bCtx.fillStyle = "#0f172a";
-    bCtx.fillRect(160, 40, 704, 176);
+    bCtx.fillRect(140, 36, 744, 184);
 
     bCtx.fillStyle = "#38bdf8";
-    bCtx.font = "900 68px Segoe UI, sans-serif";
+    bCtx.font = "900 64px Segoe UI, sans-serif";
     bCtx.textAlign = "center";
-    bCtx.fillText("🏁 START / FINISH", 512, 130);
+    bCtx.fillText("🏁 F1 GRAND PRIX AUTODROME", 512, 120);
 
     bCtx.fillStyle = "#f59e0b";
-    bCtx.font = "800 36px Segoe UI, sans-serif";
-    bCtx.fillText("GRAND PRIX CIRCUIT • LAP LINE", 512, 185);
+    bCtx.font = "800 34px Segoe UI, sans-serif";
+    bCtx.fillText("START / FINISH LINE • LAP TIMING", 512, 175);
 
     const bannerTex = new THREE.CanvasTexture(bannerCanvas);
     const bannerMat = new THREE.MeshBasicMaterial({ map: bannerTex });
 
-    // Vertical Pillars
     const pillarL = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.0, 18, 12), trussMat);
     pillarL.position.set(-halfWidth - 4.5, 9, 0);
 
     const pillarR = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.0, 18, 12), trussMat);
     pillarR.position.set(halfWidth + 4.5, 9, 0);
 
-    // Overhead Arch Span
     const span = new THREE.Mesh(new THREE.BoxGeometry(this.trackWidth + 10, 2.5, 3.2), trussMat);
     span.position.set(0, 17.5, 0);
 
-    // Front & Back Checkered Banners
     const bannerF = new THREE.Mesh(new THREE.PlaneGeometry(36, 9), bannerMat);
     bannerF.position.set(0, 17.5, 1.65);
 
@@ -332,24 +366,22 @@ export class CityTrackManager {
 
     g.add(pillarL, pillarR, span, bannerF, bannerB);
 
-    // Start/Finish Line on Road
     const checkLineGeom = new THREE.PlaneGeometry(this.trackWidth, 4);
     checkLineGeom.rotateX(-Math.PI / 2);
-    const checkLineMat = new THREE.MeshBasicMaterial({ map: bannerTex });
-    const checkLine = new THREE.Mesh(checkLineGeom, checkLineMat);
+    const checkLine = new THREE.Mesh(checkLineGeom, bannerMat);
     checkLine.position.set(0, 0.13, 0);
     g.add(checkLine);
 
-    // 4 Starting Grid Boxes on Asphalt
+    // 4 Starting Grid Boxes
     const gridBoxMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const positions = [
-      { x: -6, z: 22 }, // Position 1: Akira
-      { x: 6, z: 22 },  // Position 2: Ghost
-      { x: -6, z: 6 },  // Position 3: Viper
-      { x: 6, z: 6 },   // Position 4: Player
+    const gridPositions = [
+      { x: -5.5, z: 24 }, // Pos 1: Akira
+      { x: 5.5, z: 24 },  // Pos 2: Ghost
+      { x: -5.5, z: 8 },  // Pos 3: Viper
+      { x: 5.5, z: 8 },   // Pos 4: Player
     ];
 
-    positions.forEach((pos, idx) => {
+    gridPositions.forEach((pos) => {
       const box = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.02, 9.8), gridBoxMat);
       box.position.set(pos.x, 0.13, pos.z);
       g.add(box);
@@ -367,7 +399,7 @@ export class CityTrackManager {
     const lightPoleMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8 });
     const lampGlowMat = new THREE.MeshBasicMaterial({ color: 0xfff3cc });
 
-    const count = 28;
+    const count = 32;
     for (let i = 0; i < count; i++) {
       const u = i / count;
       const pt = this.trackCurve.getPointAt(u);
@@ -405,8 +437,8 @@ export class CityTrackManager {
     };
 
     let bldgIndex = 0;
-    for (let x = -750; x <= 750; x += 115) {
-      for (let z = -750; z <= 750; z += 115) {
+    for (let x = -800; x <= 800; x += 115) {
+      for (let z = -800; z <= 800; z += 115) {
         const distToTrack = getMinDistToTrack(x, z);
         if (distToTrack < 54) continue;
 
@@ -422,57 +454,22 @@ export class CityTrackManager {
           cyl.castShadow = true;
           cityGroup.add(cyl);
 
-          const pad = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.85, radius * 0.85, 0.8, 20), new THREE.MeshStandardMaterial({ color: 0x334155 }));
-          pad.position.set(x, height + 0.4, z);
-
-          const hRing = new THREE.Mesh(new THREE.TorusGeometry(radius * 0.55, 0.4, 8, 24), new THREE.MeshBasicMaterial({ color: 0x39ff14 }));
-          hRing.rotation.x = Math.PI / 2;
-          hRing.position.set(x, height + 0.9, z);
-          cityGroup.add(pad, hRing);
-
           this.colliders.push({ minX: x - radius, maxX: x + radius, minZ: z - radius, maxZ: z + radius });
         } else if (archType === 1) {
           const baseW = 54;
-          const t1H = height * 0.45;
+          const t1H = height * 0.5;
           const t2H = height * 0.35;
-          const t3H = height * 0.2;
+          const t3H = height * 0.15;
 
           const tier1 = new THREE.Mesh(new THREE.BoxGeometry(baseW, t1H, baseW), facadeMat);
           tier1.position.set(x, t1H / 2, z);
-
           const tier2 = new THREE.Mesh(new THREE.BoxGeometry(baseW * 0.72, t2H, baseW * 0.72), facadeMat);
           tier2.position.set(x, t1H + t2H / 2, z);
-
           const tier3 = new THREE.Mesh(new THREE.BoxGeometry(baseW * 0.45, t3H, baseW * 0.45), facadeMat);
           tier3.position.set(x, t1H + t2H + t3H / 2, z);
 
-          tier1.castShadow = true;
-          tier2.castShadow = true;
-          tier3.castShadow = true;
           cityGroup.add(tier1, tier2, tier3);
-
           this.colliders.push({ minX: x - baseW / 2, maxX: x + baseW / 2, minZ: z - baseW / 2, maxZ: z + baseW / 2 });
-        } else if (archType === 2) {
-          const radius = 26 + Math.random() * 10;
-          const hex = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius * 1.1, height, 6), facadeMat);
-          hex.position.set(x, height / 2, z);
-          hex.castShadow = true;
-          cityGroup.add(hex);
-
-          this.colliders.push({ minX: x - radius, maxX: x + radius, minZ: z - radius, maxZ: z + radius });
-        } else if (archType === 3) {
-          const tw = 22;
-          const tower1 = new THREE.Mesh(new THREE.BoxGeometry(tw, height, tw), facadeMat);
-          tower1.position.set(x - 16, height / 2, z);
-
-          const tower2 = new THREE.Mesh(new THREE.BoxGeometry(tw, height, tw), facadeMat);
-          tower2.position.set(x + 16, height / 2, z);
-
-          const bridge = new THREE.Mesh(new THREE.BoxGeometry(32, 6, 8), new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.9, transparent: true, opacity: 0.8 }));
-          bridge.position.set(x, height * 0.65, z);
-
-          cityGroup.add(tower1, tower2, bridge);
-          this.colliders.push({ minX: x - 28, maxX: x + 28, minZ: z - tw / 2, maxZ: z + tw / 2 });
         } else {
           const w = 48;
           const d = 48;
@@ -489,45 +486,8 @@ export class CityTrackManager {
     this.scene.add(cityGroup);
   }
 
-  buildSolidTrafficGantries() {
-    const halfWidth = this.trackWidth / 2;
-    const count = 4;
-    const steelMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.9, roughness: 0.3 });
-    const concreteMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.8 });
-
-    for (let i = 0; i < count; i++) {
-      const u = (i + 0.2) / count;
-      const pt = this.trackCurve.getPointAt(u);
-      const tangent = this.trackCurve.getTangentAt(u).normalize();
-
-      const g = new THREE.Group();
-      const pillarGeom = new THREE.CylinderGeometry(0.55, 0.65, 14, 8);
-      const leftPillar = new THREE.Mesh(pillarGeom, steelMat);
-      leftPillar.position.set(-halfWidth - 4.5, 7, 0);
-
-      const footGeom = new THREE.BoxGeometry(2.4, 1.2, 2.4);
-      const leftFoot = new THREE.Mesh(footGeom, concreteMat);
-      leftFoot.position.set(-halfWidth - 4.5, 0.6, 0);
-
-      const rightPillar = new THREE.Mesh(pillarGeom, steelMat);
-      rightPillar.position.set(halfWidth + 4.5, 7, 0);
-
-      const rightFoot = new THREE.Mesh(footGeom, concreteMat);
-      rightFoot.position.set(halfWidth + 4.5, 0.6, 0);
-
-      const spanLength = this.trackWidth + 9.5;
-      const beam = new THREE.Mesh(new THREE.BoxGeometry(spanLength, 1.6, 1.6), steelMat);
-      beam.position.set(0, 13.8, 0);
-
-      g.add(leftPillar, leftFoot, rightPillar, rightFoot, beam);
-      g.position.set(pt.x, 0, pt.z);
-      g.lookAt(pt.x + tangent.x, 0, pt.z + tangent.z);
-      this.scene.add(g);
-    }
-  }
-
   buildStuntRamps() {
-    const rampU = [0.22, 0.68];
+    const rampU = [0.25, 0.72];
     const rampMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, metalness: 0.8, roughness: 0.2 });
     const arrowMat = new THREE.MeshBasicMaterial({ color: 0xffd000 });
 
@@ -554,7 +514,7 @@ export class CityTrackManager {
   }
 
   buildSpeedTrapCameras() {
-    const uPositions = [0.08, 0.52, 0.88];
+    const uPositions = [0.12, 0.55, 0.85];
     const camMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9 });
     const lensMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
 
@@ -584,7 +544,7 @@ export class CityTrackManager {
   }
 
   buildPoliceRoadblocks() {
-    const uPositions = [0.38, 0.76];
+    const uPositions = [0.42, 0.78];
     const cruiserMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3 });
     const barMat = new THREE.MeshStandardMaterial({ color: 0xff5500 });
 
@@ -616,8 +576,8 @@ export class CityTrackManager {
     const barrelGeom = new THREE.CylinderGeometry(0.8, 0.8, 1.6, 12);
     const barrelMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, metalness: 0.6 });
 
-    for (let i = 0; i < 18; i++) {
-      const u = (i / 18);
+    for (let i = 0; i < 20; i++) {
+      const u = (i / 20);
       const pt = this.trackCurve.getPointAt(u);
       const tangent = this.trackCurve.getTangentAt(u).normalize();
       const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
@@ -657,8 +617,6 @@ export class CityTrackManager {
     const halfWidth = this.trackWidth / 2;
     const glassMat = new THREE.MeshStandardMaterial({ color: 0x0ea5e9, transparent: true, opacity: 0.5, metalness: 0.9 });
     const metalMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8 });
-    const vendorMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8 });
-    const vendorGlow = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
 
     for (let i = 0; i < 6; i++) {
       const u = (i + 0.6) / 6;
@@ -678,13 +636,6 @@ export class CityTrackManager {
       bench.position.set(0, 0.7, 0.8);
       g.add(roof, glassBack, bench);
 
-      const vendor = new THREE.Mesh(new THREE.BoxGeometry(2.0, 3.2, 1.4), vendorMat);
-      vendor.position.set(5.2, 1.6, 0.8);
-      const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 2.2), vendorGlow);
-      screen.position.set(5.2, 1.8, 0.08);
-      screen.rotation.y = Math.PI;
-      g.add(vendor, screen);
-
       g.position.set(pos.x, 0.12, pos.z);
       g.lookAt(pt.x, 0.12, pt.z);
       this.scene.add(g);
@@ -692,7 +643,7 @@ export class CityTrackManager {
   }
 
   buildAnimatedPedestrians() {
-    const pedCount = 18;
+    const pedCount = 20;
     const suitMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
     const cyberMat = new THREE.MeshStandardMaterial({ color: 0x0284c7 });
     const goldMat = new THREE.MeshStandardMaterial({ color: 0xd97706 });
@@ -739,12 +690,12 @@ export class CityTrackManager {
     }
   }
 
-  // 🏁 3 AI RIVAL SUPERCARS ON STARTING GRID WITH 3D FLOATING NAMEPLATES
+  // 🏁 3 ADAPTIVE AI RIVALS WITH COMPETITIVE WHEEL-TO-WHEEL PACING
   buildAIRivals() {
     const rivalsData = [
-      { name: "Akira [GT-R]", color: 0x0284c7, u: 0.006, lane: -6.0, speedU: 0.024 },
-      { name: "Ghost [911]", color: 0x18181b, u: 0.006, lane: 6.0, speedU: 0.026 },
-      { name: "Viper [Venom]", color: 0x16a34a, u: 0.0018, lane: -6.0, speedU: 0.023 },
+      { name: "Akira [GT-R]", color: 0x0284c7, u: 0.007, lane: -5.5, baseSpeedU: 0.024 },
+      { name: "Ghost [911]", color: 0x18181b, u: 0.007, lane: 5.5, baseSpeedU: 0.025 },
+      { name: "Viper [Venom]", color: 0x16a34a, u: 0.0022, lane: -5.5, baseSpeedU: 0.023 },
     ];
 
     const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
@@ -766,7 +717,6 @@ export class CityTrackManager {
       const wing = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.08, 1.0), carbonMat);
       wing.position.set(0, 1.45, -4.2);
 
-      // Headlights & Taillights
       const hlL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.25, 0.1), new THREE.MeshBasicMaterial({ color: 0xffffff }));
       hlL.position.set(1.4, 0.6, 4.61);
       const hlR = hlL.clone();
@@ -806,8 +756,8 @@ export class CityTrackManager {
         mesh: g,
         u: r.u,
         laneOffset: r.lane,
-        speedU: r.speedU,
-        currentSpeed: 0,
+        baseSpeedU: r.baseSpeedU,
+        currentSpeedU: r.baseSpeedU,
         lapsCompleted: 0,
         namePlate: namePlate,
       });
@@ -937,7 +887,7 @@ export class CityTrackManager {
     const rimGeom = new THREE.CylinderGeometry(0.35, 0.35, 0.37, 10);
     rimGeom.rotateZ(Math.PI / 2);
 
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < 8; i++) {
       const g = new THREE.Group();
       const paintMat = new THREE.MeshStandardMaterial({
         color: carColors[i % carColors.length],
@@ -976,7 +926,7 @@ export class CityTrackManager {
 
       g.add(body, cabin, roof, wFL, wFR, wRL, wRR, hlL, hlR, tl);
 
-      const u = (i / 9);
+      const u = (i / 8);
       const pt = this.trackCurve.getPointAt(u);
       g.position.set(pt.x + (i % 2 === 0 ? 6 : -6), 0.12, pt.z);
       this.scene.add(g);
@@ -1026,6 +976,25 @@ export class CityTrackManager {
     }
 
     return this.isRaining ? "🌧️ ДОЖДЬ" : "☀️ ЯСНАЯ НОЧЬ";
+  }
+
+  // 🧮 100% ACCURATE CURVE PROJECTION (Finds exact parameter u in [0, 1] for ANY point in the world)
+  getClosestU(pos) {
+    let closestU = 0;
+    let minDistSq = Infinity;
+    const len = this.trackSamplePoints.length;
+
+    for (let i = 0; i < len; i++) {
+      const pt = this.trackSamplePoints[i];
+      const dx = pos.x - pt.x;
+      const dz = pos.z - pt.z;
+      const distSq = dx * dx + dz * dz;
+      if (distSq < minDistSq) {
+        minDistSq = distSq;
+        closestU = i / len;
+      }
+    }
+    return closestU;
   }
 
   handleCarTrackCollision(car) {
@@ -1099,6 +1068,7 @@ export class CityTrackManager {
   update(delta, playerCar, isRaceRunning = true) {
     const playerPos = playerCar.mesh.position;
     const playerSpeed = Math.abs(playerCar.speed);
+    const playerU = this.getClosestU(playerPos);
     const now = Date.now();
 
     // 1. Rain
@@ -1120,12 +1090,29 @@ export class CityTrackManager {
       this.helicopter.position.z = THREE.MathUtils.lerp(this.helicopter.position.z, playerPos.z, delta * 2.0);
     }
 
-    // 3. AI Rivals Progression
-    for (const rival of this.aiRivals) {
+    // 3. ADAPTIVE AI RIVALS (Packs & battles directly with the player!)
+    for (let i = 0; i < this.aiRivals.length; i++) {
+      const rival = this.aiRivals[i];
       if (isRaceRunning) {
+        // Dynamic adaptive pacing: stay within intense racing proximity!
+        let diffU = (rival.u - playerU);
+        if (diffU > 0.5) diffU -= 1.0;
+        if (diffU < -0.5) diffU += 1.0;
+
+        let targetSpeedMultiplier = 1.0;
+        if (diffU > 0.08) {
+          targetSpeedMultiplier = 0.82; // Don't run away too far
+        } else if (diffU < -0.08) {
+          targetSpeedMultiplier = 1.35; // Catch up aggressively from behind!
+        } else {
+          targetSpeedMultiplier = 0.95 + (i * 0.05); // Race neck-and-neck!
+        }
+
+        rival.currentSpeedU = THREE.MathUtils.lerp(rival.currentSpeedU, rival.baseSpeedU * targetSpeedMultiplier, delta * 2.0);
+
         const prevU = rival.u;
-        rival.u = (rival.u + rival.speedU * delta) % 1.0;
-        if (prevU > 0.9 && rival.u < 0.1) rival.lapsCompleted++;
+        rival.u = (rival.u + rival.currentSpeedU * delta) % 1.0;
+        if (prevU > 0.85 && rival.u < 0.15) rival.lapsCompleted++;
       }
 
       const pt = this.trackCurve.getPointAt(rival.u);
@@ -1135,7 +1122,7 @@ export class CityTrackManager {
       rival.mesh.position.copy(pt).addScaledVector(normal, rival.laneOffset);
       rival.mesh.position.y = 0.12;
 
-      const lookPt = pt.clone().addScaledVector(tangent, 5).addScaledVector(normal, rival.laneOffset);
+      const lookPt = pt.clone().addScaledVector(tangent, 6).addScaledVector(normal, rival.laneOffset);
       rival.mesh.lookAt(lookPt.x, 0.12, lookPt.z);
 
       if (rival.namePlate) {

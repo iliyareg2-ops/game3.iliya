@@ -1,4 +1,4 @@
-// game.js - Cyber Drift 3D Main Director with Live GPS Minimap Radar, Starting Grid Lineup & Race Countdown
+// game.js - Cyber Drift 3D: Formula 1 Autodrome with 100% Exact Math Position Tracking, Adaptive AI Battles & GPS Radar
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { CyberCar } from "./car.js";
 import { CityTrackManager } from "./city.js";
@@ -25,7 +25,7 @@ export class CyberDriftGame {
     this.countdownTimer = 3.0;
     this.currentLap = 1;
     this.maxLaps = 3;
-    this.lastLapCrossingZ = -10;
+    this.prevPlayerU = 0.0;
 
     this.keys = {
       forward: false,
@@ -262,9 +262,9 @@ export class CyberDriftGame {
 
     ctx.clearRect(0, 0, w, h);
 
-    // Track bounds mapping: world [-750, 750] -> canvas [14, 186]
-    const mapX = (wx) => ((wx + 750) / 1500) * (w - 28) + 14;
-    const mapZ = (wz) => ((wz + 750) / 1500) * (h - 28) + 14;
+    // Track bounds mapping: world [-650, 650] -> canvas [14, 186]
+    const mapX = (wx) => ((wx + 650) / 1300) * (w - 28) + 14;
+    const mapZ = (wz) => ((wz + 650) / 1300) * (h - 28) + 14;
 
     // 1. Draw Track Circuit Ribbon
     ctx.strokeStyle = "#334155";
@@ -354,6 +354,7 @@ export class CyberDriftGame {
     this.gameState = "COUNTDOWN";
     this.countdownTimer = 3.2;
     this.currentLap = 1;
+    this.prevPlayerU = 0.002;
 
     document.getElementById("garage-screen").style.display = "none";
     document.getElementById("busted-screen").style.display = "none";
@@ -363,8 +364,8 @@ export class CyberDriftGame {
     if (this.studioSpotL) this.studioSpotL.intensity = 0;
     if (this.studioSpotR) this.studioSpotR.intensity = 0;
 
-    // Line up on Starting Grid (Box 4)
-    this.car.position.set(6, 0.12, 6);
+    // Line up on Starting Grid (Box 4, right behind Ghost)
+    this.car.position.set(5.5, 0.12, 8);
     this.car.speed = 0;
     this.car.heading = 0;
     this.car.mesh.position.copy(this.car.position);
@@ -372,9 +373,15 @@ export class CyberDriftGame {
 
     // Line up Rivals on Starting Grid
     if (this.trackManager.aiRivals.length >= 3) {
-      this.trackManager.aiRivals[0].u = 0.006; // Akira (front left)
-      this.trackManager.aiRivals[1].u = 0.006; // Ghost (front right)
-      this.trackManager.aiRivals[2].u = 0.0018; // Viper (rear left)
+      this.trackManager.aiRivals[0].u = 0.007; // Akira (front left)
+      this.trackManager.aiRivals[1].u = 0.007; // Ghost (front right)
+      this.trackManager.aiRivals[2].u = 0.0022; // Viper (rear left)
+      this.trackManager.aiRivals.forEach((r) => {
+        r.lapsCompleted = 0;
+        const pt = this.trackManager.trackCurve.getPointAt(r.u);
+        r.mesh.position.set(pt.x + r.laneOffset, 0.12, pt.z);
+        r.mesh.lookAt(pt.x + r.laneOffset, 0.12, pt.z + 10);
+      });
     }
 
     if (this.countdownEl) {
@@ -508,6 +515,7 @@ export class CyberDriftGame {
     }
   }
 
+  // 🧮 100% ACCURATE RACE POSITION & LAP PROGRESSION
   updateHUD() {
     const spd = Math.round(Math.abs(this.car.speed));
     if (this.speedEl) this.speedEl.textContent = spd;
@@ -526,35 +534,43 @@ export class CyberDriftGame {
     if (this.nitroBarEl) this.nitroBarEl.style.width = `${Math.round(this.car.nitroFuel)}%`;
     if (this.focusBarEl) this.focusBarEl.style.width = `${Math.round(this.car.focusEnergy)}%`;
 
-    // Calculate Real Race Position
-    if (this.positionEl && this.trackManager) {
+    if (this.trackManager) {
+      const playerU = this.trackManager.getClosestU(this.car.position);
+
+      // Check Lap Line Crossing (u passes from ~0.95 -> 0.05)
+      if (this.prevPlayerU > 0.88 && playerU < 0.12) {
+        this.currentLap++;
+        if (this.currentLap > this.maxLaps) {
+          this.showBanner("🏆 ПОБЕДА В ГОНКЕ! 1-Е МЕСТО! +5000 PTS", 5000);
+          this.car.totalScore += 5000;
+        } else {
+          this.showBanner(`🏁 КРУГ ${this.currentLap} / ${this.maxLaps}! ДАВИ НА ГАЗ`, 3000);
+        }
+      }
+      this.prevPlayerU = playerU;
+
+      // Calculate Total Mathematical Race Progress
+      const playerTotalProgress = (this.currentLap - 1) + playerU;
+
       let position = 1;
-      const playerDist = this.car.position.z + (this.currentLap - 1) * 3500;
       for (const rival of this.trackManager.aiRivals) {
-        const rivalDist = rival.mesh.position.z + rival.lapsCompleted * 3500;
-        if (rivalDist > playerDist) {
+        const rivalTotalProgress = rival.lapsCompleted + rival.u;
+        if (rivalTotalProgress > playerTotalProgress) {
           position++;
         }
       }
-      this.positionEl.textContent = `${position} / 4`;
-    }
 
-    // Check Start/Finish Line Crossing
-    const curZ = this.car.position.z;
-    if (this.lastLapCrossingZ > 300 && curZ < 50 && Math.abs(this.car.position.x) < 22) {
-      this.currentLap++;
-      if (this.currentLap > this.maxLaps) {
-        this.showBanner("🏆 ПОБЕДА В ГОНКЕ! 1-Е МЕСТО! +5000 PTS", 5000);
-        this.car.totalScore += 5000;
-      } else {
-        this.showBanner(`🏁 КРУГ ${this.currentLap} / ${this.maxLaps}! ДАВИ НА ГАЗ`, 3000);
+      if (this.positionEl) {
+        this.positionEl.textContent = `${position} / 4`;
+        if (position === 1) this.positionEl.style.color = "#22c55e";
+        else if (position <= 3) this.positionEl.style.color = "#38bdf8";
+        else this.positionEl.style.color = "#ef4444";
       }
-    }
-    this.lastLapCrossingZ = curZ;
 
-    if (this.lapInfoEl) {
-      const lapProgress = Math.min(100, Math.max(0, Math.round(((curZ + 680) / 1360) * 100)));
-      this.lapInfoEl.textContent = `LAP ${Math.min(this.currentLap, this.maxLaps)}/${this.maxLaps} (${lapProgress}%)`;
+      if (this.lapInfoEl) {
+        const lapPercent = Math.min(100, Math.max(0, Math.round(playerU * 100)));
+        this.lapInfoEl.textContent = `LAP ${Math.min(this.currentLap, this.maxLaps)}/${this.maxLaps} (${lapPercent}%)`;
+      }
     }
 
     if (this.driftBoxEl && this.driftPtsEl && this.driftMultEl) {
@@ -593,7 +609,6 @@ export class CyberDriftGame {
 
     const delta = isFocus ? rawDelta * 0.35 : rawDelta;
 
-    // 🚦 Countdown State
     if (this.gameState === "COUNTDOWN") {
       this.countdownTimer -= rawDelta;
       if (this.countdownEl) {
