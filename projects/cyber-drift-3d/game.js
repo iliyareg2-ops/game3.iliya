@@ -1,4 +1,4 @@
-// game.js - Cyber Drift 3D: Formula 1 Autodrome with Los Santos Customs 3D Garage, Underglow Neon, Window Tint & Rims
+// game.js - Cyber Drift 3D: Formula 1 Autodrome with Forza Horizon Festival 3D Studio Showroom, Underglow Neon, Window Tint & Custom Rims
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { CyberCar } from "./car.js";
 import { CityTrackManager } from "./city.js";
@@ -17,7 +17,7 @@ export class CyberDriftGame {
     this.clock = new THREE.Clock();
     this.cameraMode = "CHASE";
     this.gameState = "GARAGE"; // "GARAGE", "COUNTDOWN", "RACING", "BUSTED", "FINISHED"
-    this.garageOrbitAngle = 0.6;
+    this.garageOrbitAngle = 0.5;
     this.isDraggingGarage = false;
     this.prevMouseX = 0;
     this.screenShake = 0;
@@ -50,16 +50,16 @@ export class CyberDriftGame {
 
   initThree() {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0f172a);
+    this.scene.background = new THREE.Color(0x0a0f1d);
 
-    this.camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.2, 5000);
+    this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.2, 5000);
     this.camera.position.set(7, 2.5, 9);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.35;
+    this.renderer.toneMappingExposure = 1.45;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -74,24 +74,24 @@ export class CyberDriftGame {
     this.car.mesh.position.copy(this.car.position);
 
     // Showroom Studio Turntable Pod
-    const turntableGeom = new THREE.CylinderGeometry(7.5, 8.0, 0.2, 32);
+    const turntableGeom = new THREE.CylinderGeometry(7.5, 8.0, 0.1, 32);
     const turntableMat = new THREE.MeshStandardMaterial({
-      color: 0x1e293b,
-      metalness: 0.9,
-      roughness: 0.2,
+      color: 0x111827,
+      metalness: 0.95,
+      roughness: 0.15,
     });
     this.turntable = new THREE.Mesh(turntableGeom, turntableMat);
-    this.turntable.position.set(0, 0.08, 0);
+    this.turntable.position.set(0, 0.06, 0);
     this.turntable.receiveShadow = true;
     this.scene.add(this.turntable);
 
     // Showroom Spotlights
-    this.studioSpotL = new THREE.SpotLight(0xffffff, 4.0, 40, Math.PI / 4, 0.4);
+    this.studioSpotL = new THREE.SpotLight(0xffffff, 4.5, 40, Math.PI / 4, 0.4);
     this.studioSpotL.position.set(6, 12, 6);
     this.studioSpotL.target = this.car.mesh;
     this.scene.add(this.studioSpotL);
 
-    this.studioSpotR = new THREE.SpotLight(0x38bdf8, 3.0, 40, Math.PI / 4, 0.4);
+    this.studioSpotR = new THREE.SpotLight(0x38bdf8, 3.5, 40, Math.PI / 4, 0.4);
     this.studioSpotR.position.set(-6, 10, -6);
     this.studioSpotR.target = this.car.mesh;
     this.scene.add(this.studioSpotR);
@@ -147,7 +147,7 @@ export class CyberDriftGame {
 
     // Mouse Drag to Spin Car in Garage Showroom
     window.addEventListener("mousedown", (e) => {
-      if (this.gameState === "GARAGE" && e.clientX > 420) {
+      if (this.gameState === "GARAGE" && e.clientX > 440) {
         this.isDraggingGarage = true;
         this.prevMouseX = e.clientX;
       }
@@ -277,7 +277,6 @@ export class CyberDriftGame {
     }
   }
 
-  // 🗺️ GPS MINIMAP RADAR
   renderMinimap() {
     if (!this.minimapCtx || !this.trackManager) return;
     const ctx = this.minimapCtx;
@@ -289,7 +288,6 @@ export class CyberDriftGame {
     const mapX = (wx) => ((wx + 650) / 1300) * (w - 28) + 14;
     const mapZ = (wz) => ((wz + 650) / 1300) * (h - 28) + 14;
 
-    // 1. Circuit Ribbon
     ctx.strokeStyle = "#334155";
     ctx.lineWidth = 10;
     ctx.lineCap = "round";
@@ -311,13 +309,11 @@ export class CyberDriftGame {
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // 2. Start Line
     const startX = mapX(0);
     const startZ = mapZ(0);
     ctx.fillStyle = "#f59e0b";
     ctx.fillRect(startX - 5, startZ - 5, 10, 10);
 
-    // 3. AI Rivals Dots
     const rivalColors = ["#38bdf8", "#a855f7", "#22c55e"];
     this.trackManager.aiRivals.forEach((rival, idx) => {
       const rx = mapX(rival.mesh.position.x);
@@ -328,7 +324,6 @@ export class CyberDriftGame {
       ctx.fill();
     });
 
-    // 4. Police Cruisers (Flashing dots)
     const isRedFlash = Math.sin(Date.now() * 0.015) > 0;
     this.trackManager.policeUnits.forEach((cop) => {
       const px = mapX(cop.group.position.x);
@@ -339,7 +334,6 @@ export class CyberDriftGame {
       ctx.fill();
     });
 
-    // 5. Player Supercar (Bright Yellow Arrow)
     const px = mapX(this.car.position.x);
     const pz = mapZ(this.car.position.z);
     ctx.save();
@@ -486,15 +480,15 @@ export class CyberDriftGame {
   updateCamera(delta) {
     if (this.gameState === "GARAGE") {
       if (!this.isDraggingGarage) {
-        this.garageOrbitAngle += delta * 0.35;
+        this.garageOrbitAngle += delta * 0.3;
       }
 
-      const radius = 10.5;
-      const targetLookAt = new THREE.Vector3(-2.2, 0.9, 0);
+      const radius = 10.8;
+      const targetLookAt = new THREE.Vector3(0, 0.9, 0);
 
       const camX = targetLookAt.x + Math.sin(this.garageOrbitAngle) * radius;
       const camZ = targetLookAt.z + Math.cos(this.garageOrbitAngle) * radius;
-      const camY = 2.4;
+      const camY = 2.6;
 
       this.camera.position.set(camX, camY, camZ);
       this.camera.lookAt(targetLookAt);
@@ -658,7 +652,7 @@ export class CyberDriftGame {
             if (this.countdownEl) this.countdownEl.style.display = "none";
           }, 600);
           this.gameState = "RACING";
-          this.showBanner("🔥 СТАРТ! ОБГОНИ AKIRA, GHOST И VIPER");
+          this.showBanner("🔥 СТАРТ! ОБГОНИ AKIRA, GHOST И RAZOR");
         }
       }
 

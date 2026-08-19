@@ -1,4 +1,4 @@
-// city.js - Pure Formula 1 Grand Prix Circuit with Enclosed 3D Los Santos Customs Garage Workshop, Roadside Palm Trees & Real GTA Atmosphere
+// city.js - Pure Formula 1 Grand Prix Circuit with Forza Horizon Festival 3D Studio Garage & Realistic City Details
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -30,7 +30,7 @@ export class CityTrackManager {
     this.initTextures();
     this.initLighting();
     this.buildSmoothF1CircuitAndKerbs();
-    this.buildEnclosed3DGarageWorkshop();
+    this.buildForzaHorizonStudioGarage();
     this.buildGTAPalmTrees();
     this.buildGTANeonBillboards();
     this.buildF1GrandstandsAndPits();
@@ -165,152 +165,148 @@ export class CityTrackManager {
     this.scene.add(this.moonLight);
   }
 
-  // 🏬 ENCLOSED 3D LOS SANTOS CUSTOMS GARAGE SHOWROOM
-  buildEnclosed3DGarageWorkshop() {
+  // 🏎️ FORZA HORIZON 5 / MOTORSPORT STYLE MODERN 3D STUDIO SHOWROOM
+  buildForzaHorizonStudioGarage() {
     this.garageGroup = new THREE.Group();
 
-    // 1. Garage Epoxy Floor with Yellow Hazard Stripes
+    // 1. Ultra-Glossy Mirror Epoxy Studio Floor with Concentric LED Halo Rings
     const floorCanvas = document.createElement("canvas");
     floorCanvas.width = 1024;
     floorCanvas.height = 1024;
     const fCtx = floorCanvas.getContext("2d");
 
-    fCtx.fillStyle = "#1e293b";
+    // Deep high-contrast obsidian gradient
+    const grad = fCtx.createRadialGradient(512, 512, 50, 512, 512, 500);
+    grad.addColorStop(0, "#1e293b");
+    grad.addColorStop(0.5, "#0f172a");
+    grad.addColorStop(1, "#020617");
+    fCtx.fillStyle = grad;
     fCtx.fillRect(0, 0, 1024, 1024);
 
-    // Tiles grid
-    fCtx.strokeStyle = "#334155";
-    fCtx.lineWidth = 4;
-    for (let x = 0; x <= 1024; x += 128) {
+    // Glowing Forza Hexagon Grid on floor
+    fCtx.strokeStyle = "rgba(56, 189, 248, 0.45)";
+    fCtx.lineWidth = 3;
+    const drawHex = (x, y, r) => {
       fCtx.beginPath();
-      fCtx.moveTo(x, 0);
-      fCtx.lineTo(x, 1024);
+      for (let a = 0; a < 6; a++) {
+        const angle = (a * Math.PI) / 3;
+        const hx = x + r * Math.cos(angle);
+        const hy = y + r * Math.sin(angle);
+        if (a === 0) fCtx.moveTo(hx, hy);
+        else fCtx.lineTo(hx, hy);
+      }
+      fCtx.closePath();
       fCtx.stroke();
-    }
-    for (let y = 0; y <= 1024; y += 128) {
-      fCtx.beginPath();
-      fCtx.moveTo(0, y);
-      fCtx.lineTo(1024, y);
-      fCtx.stroke();
+    };
+
+    for (let x = 64; x < 1024; x += 128) {
+      for (let y = 64; y < 1024; y += 110) {
+        drawHex(x, y, 48);
+      }
     }
 
-    // Yellow Caution Border
-    fCtx.fillStyle = "#f59e0b";
-    for (let i = 0; i < 1024; i += 64) {
-      fCtx.fillRect(i, 0, 32, 40);
-      fCtx.fillRect(i, 984, 32, 40);
-      fCtx.fillRect(0, i, 40, 32);
-      fCtx.fillRect(984, i, 40, 32);
-    }
+    // Outer Podium Glowing Ring
+    fCtx.strokeStyle = "#38bdf8";
+    fCtx.lineWidth = 10;
+    fCtx.beginPath();
+    fCtx.arc(512, 512, 380, 0, Math.PI * 2);
+    fCtx.stroke();
 
     const floorTex = new THREE.CanvasTexture(floorCanvas);
-    const floorMat = new THREE.MeshStandardMaterial({
+    const floorMat = new THREE.MeshPhysicalMaterial({
       map: floorTex,
-      metalness: 0.7,
-      roughness: 0.25,
+      metalness: 0.95,
+      roughness: 0.08,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.05,
     });
-    const garageFloor = new THREE.Mesh(new THREE.PlaneGeometry(36, 36), floorMat);
+
+    const garageFloor = new THREE.Mesh(new THREE.PlaneGeometry(42, 42), floorMat);
     garageFloor.rotateX(-Math.PI / 2);
-    garageFloor.position.set(-2, 0.05, 0);
+    garageFloor.position.set(0, 0.04, 0);
     garageFloor.receiveShadow = true;
     this.garageGroup.add(garageFloor);
 
-    // 2. Concrete & Dark Metal Walls
-    const wallMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6, metalness: 0.3 });
+    // 2. Modern Studio Back Wall with Forza Horizon Neon Sign & Glass Vista
+    const backWallMat = new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.3, metalness: 0.8 });
+    const backWall = new THREE.Mesh(new THREE.BoxGeometry(42, 18, 0.8), backWallMat);
+    backWall.position.set(0, 9, -18);
 
-    // Back Wall
-    const backWall = new THREE.Mesh(new THREE.BoxGeometry(36, 16, 0.8), wallMat);
-    backWall.position.set(-2, 8, -16);
+    // Glass Vista Panels
+    const glassMat = new THREE.MeshPhysicalMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.3,
+      metalness: 0.9,
+      roughness: 0.1,
+    });
+    const glassWallL = new THREE.Mesh(new THREE.BoxGeometry(0.6, 18, 42), glassMat);
+    glassWallL.position.set(-20, 9, 0);
+    const glassWallR = glassWallL.clone();
+    glassWallR.position.x = 20;
 
-    // Left Wall
-    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.8, 16, 36), wallMat);
-    leftWall.position.set(-18, 8, 0);
+    this.garageGroup.add(backWall, glassWallL, glassWallR);
 
-    // Right Wall (Roll-up Shutter Door)
-    const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.8, 16, 36), wallMat);
-    rightWall.position.set(16, 8, 0);
-
-    // Ceiling with Overhead Industrial Beams
-    const ceilingMat = new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.9 });
-    const ceiling = new THREE.Mesh(new THREE.BoxGeometry(36, 0.6, 36), ceilingMat);
-    ceiling.position.set(-2, 16, 0);
-
-    this.garageGroup.add(backWall, leftWall, rightWall, ceiling);
-
-    // 3. Huge Glowing Neon Sign "LOS SANTOS CUSTOMS"
+    // 3. Huge Illuminated "FORZA HORIZON CUSTOMS" Sign
     const signCanvas = document.createElement("canvas");
     signCanvas.width = 1024;
     signCanvas.height = 256;
     const sCtx = signCanvas.getContext("2d");
-
-    sCtx.fillStyle = "#090d16";
+    sCtx.fillStyle = "rgba(15, 23, 42, 0.9)";
     sCtx.fillRect(0, 0, 1024, 256);
 
     sCtx.strokeStyle = "#38bdf8";
-    sCtx.lineWidth = 8;
+    sCtx.lineWidth = 10;
     sCtx.strokeRect(12, 12, 1000, 232);
 
-    sCtx.fillStyle = "#38bdf8";
-    sCtx.font = "900 72px Segoe UI, sans-serif";
+    sCtx.fillStyle = "#ffffff";
+    sCtx.font = "900 68px Segoe UI, sans-serif";
     sCtx.textAlign = "center";
-    sCtx.fillText("LOS SANTOS CUSTOMS", 512, 120);
+    sCtx.fillText("FORZA HORIZON 5", 512, 110);
 
-    sCtx.fillStyle = "#f59e0b";
-    sCtx.font = "800 36px Segoe UI, sans-serif";
-    sCtx.fillText("PREMIUM MOTORSPORT TUNING & DYNO", 512, 185);
+    sCtx.fillStyle = "#38bdf8";
+    sCtx.font = "800 42px Segoe UI, sans-serif";
+    sCtx.fillText("DRIFT FESTIVAL SHOWROOM", 512, 180);
 
     const signTex = new THREE.CanvasTexture(signCanvas);
-    const neonSign = new THREE.Mesh(new THREE.PlaneGeometry(24, 6), new THREE.MeshBasicMaterial({ map: signTex }));
-    neonSign.position.set(-2, 10.5, -15.4);
+    const neonSign = new THREE.Mesh(new THREE.PlaneGeometry(28, 7), new THREE.MeshBasicMaterial({ map: signTex }));
+    neonSign.position.set(0, 11.5, -17.4);
     this.garageGroup.add(neonSign);
 
-    // 4. Overhead Industrial White LED Light Bars
-    const ledGlowMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    for (let z = -10; z <= 10; z += 10) {
-      const ledBar = new THREE.Mesh(new THREE.BoxGeometry(26, 0.2, 0.6), ledGlowMat);
-      ledBar.position.set(-2, 15.6, z);
-      const barLight = new THREE.PointLight(0xffffff, 2.8, 25);
-      barLight.position.set(-2, 14.8, z);
-      this.garageGroup.add(ledBar, barLight);
-    }
+    // 4. Iconic Forza Hexagon Ceiling LED Canopy Array
+    const hexGlowMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const ceilingGroup = new THREE.Group();
 
-    // 5. Hydraulic Car Lift Posts
-    const steelMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.9, roughness: 0.2 });
-    const liftPostL = new THREE.Mesh(new THREE.BoxGeometry(0.7, 12, 0.7), steelMat);
-    liftPostL.position.set(-9, 6, -6);
-    const liftPostR = liftPostL.clone();
-    liftPostR.position.x = 5;
-
-    const liftArmMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.3 });
-    const armL = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.3, 0.4), liftArmMat);
-    armL.position.set(-7.5, 2.5, -6);
-    const armR = armL.clone();
-    armR.position.x = 3.5;
-
-    this.garageGroup.add(liftPostL, liftPostR, armL, armR);
-
-    // 6. Red Tool Chests & Tire Racks
-    const toolMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, metalness: 0.6, roughness: 0.3 });
-    const toolChest = new THREE.Mesh(new THREE.BoxGeometry(5.5, 3.4, 2.0), toolMat);
-    toolChest.position.set(-14, 1.7, -12);
-
-    const tireMat = new THREE.MeshStandardMaterial({ color: 0x111215, roughness: 0.9 });
-    const makeTireStack = (x, z) => {
-      const g = new THREE.Group();
-      for (let k = 0; k < 4; k++) {
-        const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.5, 14), tireMat);
-        tire.position.y = 0.25 + k * 0.5;
-        g.add(tire);
+    for (let x = -14; x <= 14; x += 7) {
+      for (let z = -14; z <= 14; z += 7) {
+        const hexGeom = new THREE.CylinderGeometry(2.8, 2.8, 0.1, 6);
+        const hexMesh = new THREE.Mesh(hexGeom, hexGlowMat);
+        hexMesh.position.set(x, 15.5, z);
+        ceilingGroup.add(hexMesh);
       }
-      g.position.set(x, 0, z);
-      return g;
-    };
+    }
+    this.garageGroup.add(ceilingGroup);
 
-    const tireStack1 = makeTireStack(-14.5, -5);
-    const tireStack2 = makeTireStack(-13.0, -5);
-    const tireStack3 = makeTireStack(12.5, -12);
+    // 5. Studio Softbox Spotlights (Pure automotive studio lighting)
+    const keySpot = new THREE.SpotLight(0xffffff, 5.5, 35, Math.PI / 3, 0.3);
+    keySpot.position.set(0, 14, 0);
+    this.garageGroup.add(keySpot);
 
-    this.garageGroup.add(toolChest, tireStack1, tireStack2, tireStack3);
+    const rimSpotL = new THREE.SpotLight(0x38bdf8, 4.0, 30, Math.PI / 4, 0.5);
+    rimSpotL.position.set(12, 10, -12);
+    const rimSpotR = new THREE.SpotLight(0xf59e0b, 4.0, 30, Math.PI / 4, 0.5);
+    rimSpotR.position.set(-12, 10, -12);
+    this.garageGroup.add(rimSpotL, rimSpotR);
+
+    // 6. Glowing Floor Perimeter Accent Bars
+    const barMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+    const barL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.15, 32), barMat);
+    barL.position.set(-15, 0.08, 0);
+    const barR = barL.clone();
+    barR.position.x = 15;
+    const barB = new THREE.Mesh(new THREE.BoxGeometry(30, 0.15, 0.3), barMat);
+    barB.position.set(0, 0.08, -16);
+    this.garageGroup.add(barL, barR, barB);
 
     this.scene.add(this.garageGroup);
   }
@@ -851,7 +847,6 @@ export class CityTrackManager {
     }
   }
 
-  // 🏁 3 BALANCED FAIR AI RIVALS (Akira, Ghost, ⚡ Razor [M3 GTR])
   buildAIRivals() {
     const rivalsData = [
       { name: "Akira [GT-R]", color: 0x0284c7, u: 0.008, lane: -5.5, baseSpeedU: 0.018 },
@@ -1228,7 +1223,7 @@ export class CityTrackManager {
     const playerU = this.getClosestU(playerPos);
     const now = Date.now();
 
-    // Hide garage building during live racing
+    // Hide Forza garage showroom during live racing
     if (this.garageGroup) {
       this.garageGroup.visible = !isRaceRunning;
     }
