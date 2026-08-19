@@ -462,9 +462,9 @@ export class CyberDriftGame {
     if (this.studioSpotR) this.studioSpotR.intensity = 0;
 
     if (this.gameMode === "BEACH") {
-      this.car.position.set(10, 0.15, 0);
+      this.car.position.set(-25, 0.15, 0);
       this.car.speed = 0;
-      this.car.heading = Math.PI / 2; // Facing straight at the ocean!
+      this.car.heading = Math.PI / 2; // Facing East, straight towards the blue ocean at X=0!
       this.car.mesh.position.copy(this.car.position);
       this.car.mesh.rotation.set(0, this.car.heading, 0);
 
