@@ -28,6 +28,28 @@
       z-index: 1;
     }
 
+    /* Start Race Countdown */
+    #countdown-overlay {
+      position: fixed;
+      top: 35%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 40;
+      font-size: 84px;
+      font-weight: 900;
+      color: #38bdf8;
+      text-shadow: 0 4px 30px rgba(56, 189, 248, 0.8), 0 0 10px #000;
+      pointer-events: none;
+      display: none;
+      animation: popCountdown 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes popCountdown {
+      0% { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
+      50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1.0); opacity: 1; }
+    }
+
     /* Clean HUD Overlay */
     #hud {
       position: absolute;
@@ -137,6 +159,26 @@
       justify-content: space-between;
       align-items: flex-end;
       gap: 16px;
+    }
+
+    /* GPS Minimap Radar Widget */
+    .minimap-box {
+      background: rgba(15, 23, 42, 0.9);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 16px;
+      padding: 6px;
+      backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+    }
+
+    #hud-minimap-canvas {
+      width: 140px;
+      height: 140px;
+      border-radius: 10px;
+      background: #090d16;
     }
 
     .speedo-cluster {
@@ -385,6 +427,7 @@
 </head>
 <body>
   <div id="canvas-container"></div>
+  <div id="countdown-overlay">3</div>
 
   <!-- Drift Floating Score -->
   <div id="hud-drift-box">
@@ -401,11 +444,15 @@
           <span class="hud-val" id="hud-position" style="color: #38bdf8;">1 / 4</span>
         </div>
         <div class="hud-pill">
-          <span class="hud-label">ОЧКИ (SPACE = ДРИФТ)</span>
+          <span class="hud-label">КРУГ & ДИСТАНЦИЯ</span>
+          <span class="hud-val" id="hud-lap-info" style="font-size: 18px; color: #f59e0b;">LAP 1/3 (0%)</span>
+        </div>
+        <div class="hud-pill">
+          <span class="hud-label">ОЧКИ ДРИФТА</span>
           <span class="hud-val" id="hud-score">0</span>
         </div>
         <div class="hud-pill">
-          <span class="hud-label">РОЗЫСК ПОЛИЦИИ</span>
+          <span class="hud-label">РОЗЫСК</span>
           <span class="wanted-stars" id="hud-wanted">☆☆☆☆☆</span>
         </div>
       </div>
@@ -422,6 +469,12 @@
     <div id="hud-banner">ДРИФТ = ПРОБЕЛ, НИТРО = SHIFT, ФОКУС = F</div>
 
     <div class="hud-bottom">
+      <!-- Live GPS Track Mini-Map Radar -->
+      <div class="minimap-box">
+        <canvas id="hud-minimap-canvas" width="200" height="200"></canvas>
+        <span class="hud-label" style="margin-top: 4px;">🗺️ GPS РАДАР ТРАССЫ</span>
+      </div>
+
       <div class="speedo-cluster">
         <div class="gear-box" id="hud-gear">1</div>
         <div class="speedo-box">
@@ -482,7 +535,7 @@
         </div>
       </div>
 
-      <button class="btn-main" id="btn-start-race">ВЫЕХАТЬ НА ТРАССУ (ENTER)</button>
+      <button class="btn-main" id="btn-start-race">ВЫЕХАТЬ НА СТАРТ (ENTER)</button>
     </div>
   </div>
 

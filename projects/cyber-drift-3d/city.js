@@ -1,4 +1,4 @@
-// city.js - Realistic Megacity: Active Highway Police Interceptor Pursuits, Spatial Sirens, AI Rivals & Weather
+// city.js - Realistic Megacity: Start/Finish Gantry Arch, Starting Grid Lineup, 3D AI Rival Nameplates & Live GPS Minimap Data
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -32,6 +32,7 @@ export class CityTrackManager {
     this.initTextures();
     this.initLighting();
     this.buildGrandPrixTrackAndCurbs();
+    this.buildStartFinishGantryAndGrid();
     this.buildRoadsideStreetlights();
     this.buildDiverseSkyscrapers();
     this.buildSolidTrafficGantries();
@@ -273,6 +274,91 @@ export class CityTrackManager {
     this.scene.add(groundGroup);
   }
 
+  // 🏁 START / FINISH GANTRY ARCH & STARTING GRID BOXES
+  buildStartFinishGantryAndGrid() {
+    const halfWidth = this.trackWidth / 2;
+    const g = new THREE.Group();
+
+    const trussMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9, roughness: 0.2 });
+    const bannerCanvas = document.createElement("canvas");
+    bannerCanvas.width = 1024;
+    bannerCanvas.height = 256;
+    const bCtx = bannerCanvas.getContext("2d");
+    bCtx.fillStyle = "#0f172a";
+    bCtx.fillRect(0, 0, 1024, 256);
+
+    // Checkered Banner Pattern
+    for (let x = 0; x < 1024; x += 32) {
+      for (let y = 0; y < 256; y += 32) {
+        if ((x / 32 + y / 32) % 2 === 0) {
+          bCtx.fillStyle = "#ffffff";
+          bCtx.fillRect(x, y, 32, 32);
+        }
+      }
+    }
+    bCtx.fillStyle = "#0f172a";
+    bCtx.fillRect(160, 40, 704, 176);
+
+    bCtx.fillStyle = "#38bdf8";
+    bCtx.font = "900 68px Segoe UI, sans-serif";
+    bCtx.textAlign = "center";
+    bCtx.fillText("🏁 START / FINISH", 512, 130);
+
+    bCtx.fillStyle = "#f59e0b";
+    bCtx.font = "800 36px Segoe UI, sans-serif";
+    bCtx.fillText("GRAND PRIX CIRCUIT • LAP LINE", 512, 185);
+
+    const bannerTex = new THREE.CanvasTexture(bannerCanvas);
+    const bannerMat = new THREE.MeshBasicMaterial({ map: bannerTex });
+
+    // Vertical Pillars
+    const pillarL = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.0, 18, 12), trussMat);
+    pillarL.position.set(-halfWidth - 4.5, 9, 0);
+
+    const pillarR = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.0, 18, 12), trussMat);
+    pillarR.position.set(halfWidth + 4.5, 9, 0);
+
+    // Overhead Arch Span
+    const span = new THREE.Mesh(new THREE.BoxGeometry(this.trackWidth + 10, 2.5, 3.2), trussMat);
+    span.position.set(0, 17.5, 0);
+
+    // Front & Back Checkered Banners
+    const bannerF = new THREE.Mesh(new THREE.PlaneGeometry(36, 9), bannerMat);
+    bannerF.position.set(0, 17.5, 1.65);
+
+    const bannerB = bannerF.clone();
+    bannerB.position.z = -1.65;
+    bannerB.rotation.y = Math.PI;
+
+    g.add(pillarL, pillarR, span, bannerF, bannerB);
+
+    // Start/Finish Line on Road
+    const checkLineGeom = new THREE.PlaneGeometry(this.trackWidth, 4);
+    checkLineGeom.rotateX(-Math.PI / 2);
+    const checkLineMat = new THREE.MeshBasicMaterial({ map: bannerTex });
+    const checkLine = new THREE.Mesh(checkLineGeom, checkLineMat);
+    checkLine.position.set(0, 0.13, 0);
+    g.add(checkLine);
+
+    // 4 Starting Grid Boxes on Asphalt
+    const gridBoxMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const positions = [
+      { x: -6, z: 22 }, // Position 1: Akira
+      { x: 6, z: 22 },  // Position 2: Ghost
+      { x: -6, z: 6 },  // Position 3: Viper
+      { x: 6, z: 6 },   // Position 4: Player
+    ];
+
+    positions.forEach((pos, idx) => {
+      const box = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.02, 9.8), gridBoxMat);
+      box.position.set(pos.x, 0.13, pos.z);
+      g.add(box);
+    });
+
+    g.position.set(0, 0, 0);
+    this.scene.add(g);
+  }
+
   buildRoadsideStreetlights() {
     const railGroup = new THREE.Group();
     const halfWidth = this.trackWidth / 2;
@@ -415,7 +501,6 @@ export class CityTrackManager {
       const tangent = this.trackCurve.getTangentAt(u).normalize();
 
       const g = new THREE.Group();
-
       const pillarGeom = new THREE.CylinderGeometry(0.55, 0.65, 14, 8);
       const leftPillar = new THREE.Mesh(pillarGeom, steelMat);
       leftPillar.position.set(-halfWidth - 4.5, 7, 0);
@@ -435,29 +520,9 @@ export class CityTrackManager {
       beam.position.set(0, 13.8, 0);
 
       g.add(leftPillar, leftFoot, rightPillar, rightFoot, beam);
-
-      const sigGeom = new THREE.BoxGeometry(1.6, 3.8, 1.2);
-      const sigMat = new THREE.MeshStandardMaterial({ color: 0x111827 });
-
-      const sig1 = new THREE.Mesh(sigGeom, sigMat);
-      sig1.position.set(-8, 11.2, 0.6);
-      const sig2 = new THREE.Mesh(sigGeom, sigMat);
-      sig2.position.set(8, 11.2, 0.6);
-
-      const redLight = new THREE.Mesh(new THREE.SphereGeometry(0.45, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff0022 }));
-      redLight.position.set(-8, 12.2, 1.25);
-      const yelLight = new THREE.Mesh(new THREE.SphereGeometry(0.45, 8, 8), new THREE.MeshBasicMaterial({ color: 0x332200 }));
-      yelLight.position.set(-8, 11.2, 1.25);
-      const grnLight = new THREE.Mesh(new THREE.SphereGeometry(0.45, 8, 8), new THREE.MeshBasicMaterial({ color: 0x00ff44 }));
-      grnLight.position.set(-8, 10.2, 1.25);
-
-      g.add(sig1, sig2, redLight, yelLight, grnLight);
-
       g.position.set(pt.x, 0, pt.z);
       g.lookAt(pt.x + tangent.x, 0, pt.z + tangent.z);
       this.scene.add(g);
-
-      this.trafficLights.push({ redLight, yelLight, grnLight, time: i * 3.5 });
     }
   }
 
@@ -674,11 +739,12 @@ export class CityTrackManager {
     }
   }
 
+  // 🏁 3 AI RIVAL SUPERCARS ON STARTING GRID WITH 3D FLOATING NAMEPLATES
   buildAIRivals() {
     const rivalsData = [
-      { name: "Akira", color: 0x0284c7, u: 0.06, lane: -5.5, speedU: 0.024 },
-      { name: "Ghost", color: 0x18181b, u: 0.03, lane: 0.0, speedU: 0.026 },
-      { name: "Viper", color: 0x16a34a, u: 0.01, lane: 5.5, speedU: 0.023 },
+      { name: "Akira [GT-R]", color: 0x0284c7, u: 0.006, lane: -6.0, speedU: 0.024 },
+      { name: "Ghost [911]", color: 0x18181b, u: 0.006, lane: 6.0, speedU: 0.026 },
+      { name: "Viper [Venom]", color: 0x16a34a, u: 0.0018, lane: -6.0, speedU: 0.023 },
     ];
 
     const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
@@ -688,7 +754,7 @@ export class CityTrackManager {
       const g = new THREE.Group();
       const paintMat = new THREE.MeshPhysicalMaterial({
         color: r.color,
-        metalness: 0.8,
+        metalness: 0.85,
         roughness: 0.15,
         clearcoat: 1.0,
       });
@@ -700,7 +766,36 @@ export class CityTrackManager {
       const wing = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.08, 1.0), carbonMat);
       wing.position.set(0, 1.45, -4.2);
 
-      g.add(body, cabin, wing);
+      // Headlights & Taillights
+      const hlL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.25, 0.1), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      hlL.position.set(1.4, 0.6, 4.61);
+      const hlR = hlL.clone();
+      hlR.position.x = -1.4;
+      const tl = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.18, 0.1), new THREE.MeshBasicMaterial({ color: 0xff0022 }));
+      tl.position.set(0, 0.6, -4.61);
+
+      g.add(body, cabin, wing, hlL, hlR, tl);
+
+      // 3D Floating Nameplate Badge
+      const nameCanvas = document.createElement("canvas");
+      nameCanvas.width = 256;
+      nameCanvas.height = 64;
+      const nCtx = nameCanvas.getContext("2d");
+      nCtx.fillStyle = "rgba(15, 23, 42, 0.85)";
+      nCtx.roundRect(0, 0, 256, 64, 16);
+      nCtx.fill();
+      nCtx.strokeStyle = "#38bdf8";
+      nCtx.lineWidth = 4;
+      nCtx.stroke();
+      nCtx.fillStyle = "#ffffff";
+      nCtx.font = "900 24px Segoe UI, sans-serif";
+      nCtx.textAlign = "center";
+      nCtx.fillText(r.name, 128, 40);
+
+      const nameTex = new THREE.CanvasTexture(nameCanvas);
+      const namePlate = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshBasicMaterial({ map: nameTex, transparent: true, side: THREE.DoubleSide }));
+      namePlate.position.set(0, 3.2, 0);
+      g.add(namePlate);
 
       const pt = this.trackCurve.getPointAt(r.u);
       g.position.set(pt.x, 0.12, pt.z);
@@ -712,7 +807,9 @@ export class CityTrackManager {
         u: r.u,
         laneOffset: r.lane,
         speedU: r.speedU,
+        currentSpeed: 0,
         lapsCompleted: 0,
+        namePlate: namePlate,
       });
     }
   }
@@ -760,7 +857,6 @@ export class CityTrackManager {
     }
   }
 
-  // 🚓 POLICE FLEET (Spawns near player for immediate action & sirens)
   buildPoliceFleet() {
     const policeCount = 4;
     const bodyMat = new THREE.MeshStandardMaterial({ color: 0x08090c, roughness: 0.2, metalness: 0.85 });
@@ -780,8 +876,7 @@ export class CityTrackManager {
       redLight.position.set(-0.7, 1.55, -0.4);
       g.add(chassis, doors, blueLight, redLight);
 
-      // Distribute along circuit
-      const u = (i * 0.22 + 0.04) % 1.0;
+      const u = (i * 0.22 + 0.08) % 1.0;
       const pt = this.trackCurve.getPointAt(u);
       g.position.set(pt.x, 0.12, pt.z);
       this.scene.add(g);
@@ -1001,7 +1096,7 @@ export class CityTrackManager {
     }
   }
 
-  update(delta, playerCar) {
+  update(delta, playerCar, isRaceRunning = true) {
     const playerPos = playerCar.mesh.position;
     const playerSpeed = Math.abs(playerCar.speed);
     const now = Date.now();
@@ -1025,11 +1120,13 @@ export class CityTrackManager {
       this.helicopter.position.z = THREE.MathUtils.lerp(this.helicopter.position.z, playerPos.z, delta * 2.0);
     }
 
-    // 3. AI Rivals
+    // 3. AI Rivals Progression
     for (const rival of this.aiRivals) {
-      const prevU = rival.u;
-      rival.u = (rival.u + rival.speedU * delta) % 1.0;
-      if (prevU > 0.9 && rival.u < 0.1) rival.lapsCompleted++;
+      if (isRaceRunning) {
+        const prevU = rival.u;
+        rival.u = (rival.u + rival.speedU * delta) % 1.0;
+        if (prevU > 0.9 && rival.u < 0.1) rival.lapsCompleted++;
+      }
 
       const pt = this.trackCurve.getPointAt(rival.u);
       const tangent = this.trackCurve.getTangentAt(rival.u).normalize();
@@ -1040,6 +1137,10 @@ export class CityTrackManager {
 
       const lookPt = pt.clone().addScaledVector(tangent, 5).addScaledVector(normal, rival.laneOffset);
       rival.mesh.lookAt(lookPt.x, 0.12, lookPt.z);
+
+      if (rival.namePlate) {
+        rival.namePlate.lookAt(playerPos.x, 3.2, playerPos.z);
+      }
     }
 
     // 4. Speed Trap Cameras
@@ -1115,7 +1216,7 @@ export class CityTrackManager {
       }
     }
 
-    // 7. POLICE ACTIVE PURSUIT & SIREN SPATIAL POSITION
+    // 7. Police Pursuits
     let nearestPoliceDist = 999999;
     const isBlink = Math.sin(now * 0.025) > 0;
 
@@ -1134,9 +1235,8 @@ export class CityTrackManager {
       police.blueLight.material.color.setHex(isBlink ? 0x00f0ff : 0x001144);
       police.redLight.material.color.setHex(!isBlink ? 0xff0022 : 0x330008);
 
-      // Patrol speed
       let speedMultiplier = 1.0;
-      if (playerSpeed > 30) speedMultiplier = 1.35; // Accelerate during pursuit
+      if (playerSpeed > 30) speedMultiplier = 1.35;
 
       police.u = (police.u + police.speedU * speedMultiplier * delta) % 1.0;
       const pt = this.trackCurve.getPointAt(police.u);

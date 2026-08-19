@@ -1,4 +1,4 @@
-// game.js - Cyber Drift 3D Main Director with 3D Showroom Turntable & Interactive Orbit
+// game.js - Cyber Drift 3D Main Director with Live GPS Minimap Radar, Starting Grid Lineup & Race Countdown
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { CyberCar } from "./car.js";
 import { CityTrackManager } from "./city.js";
@@ -16,11 +16,16 @@ export class CyberDriftGame {
 
     this.clock = new THREE.Clock();
     this.cameraMode = "CHASE";
-    this.gameState = "GARAGE";
+    this.gameState = "GARAGE"; // "GARAGE", "COUNTDOWN", "RACING", "BUSTED", "FINISHED"
     this.garageOrbitAngle = 0.6;
     this.isDraggingGarage = false;
     this.prevMouseX = 0;
     this.screenShake = 0;
+
+    this.countdownTimer = 3.0;
+    this.currentLap = 1;
+    this.maxLaps = 3;
+    this.lastLapCrossingZ = -10;
 
     this.keys = {
       forward: false,
@@ -36,6 +41,7 @@ export class CyberDriftGame {
     this.initWorld();
     this.initInputs();
     this.initUI();
+    this.initMinimapCanvas();
 
     window.addEventListener("resize", () => this.onWindowResize());
     this.animate = this.animate.bind(this);
@@ -63,6 +69,10 @@ export class CyberDriftGame {
   initWorld() {
     this.trackManager = new CityTrackManager(this.scene);
     this.car = new CyberCar(this.scene, 0);
+
+    // Initial Showroom Position
+    this.car.position.set(0, 0.12, 0);
+    this.car.mesh.position.copy(this.car.position);
 
     // Showroom Studio Turntable Pod
     const turntableGeom = new THREE.CylinderGeometry(7.5, 8.0, 0.2, 32);
@@ -124,7 +134,7 @@ export class CyberDriftGame {
       if (e.code === "KeyM") this.nextRadioStation();
 
       if (this.gameState === "GARAGE" && (e.code === "Enter" || e.code === "Space")) {
-        this.startRace();
+        this.startCountdown();
       }
     });
 
@@ -181,6 +191,7 @@ export class CyberDriftGame {
     this.gearEl = document.getElementById("hud-gear");
     this.scoreEl = document.getElementById("hud-score");
     this.positionEl = document.getElementById("hud-position");
+    this.lapInfoEl = document.getElementById("hud-lap-info");
     this.driftBoxEl = document.getElementById("hud-drift-box");
     this.driftPtsEl = document.getElementById("hud-drift-pts");
     this.driftMultEl = document.getElementById("hud-drift-mult");
@@ -189,6 +200,7 @@ export class CyberDriftGame {
     this.wantedEl = document.getElementById("hud-wanted");
     this.camModeEl = document.getElementById("hud-cam-mode");
     this.bannerEl = document.getElementById("hud-banner");
+    this.countdownEl = document.getElementById("countdown-overlay");
 
     document.querySelectorAll(".color-swatch").forEach((swatch) => {
       swatch.addEventListener("click", () => {
@@ -219,7 +231,7 @@ export class CyberDriftGame {
     if (startBtn) {
       startBtn.addEventListener("click", () => {
         cyberAudio.init();
-        this.startRace();
+        this.startCountdown();
       });
     }
 
@@ -232,6 +244,94 @@ export class CyberDriftGame {
     if (resetBtn) {
       resetBtn.addEventListener("click", () => this.resetCar());
     }
+  }
+
+  initMinimapCanvas() {
+    this.minimapCanvas = document.getElementById("hud-minimap-canvas");
+    if (this.minimapCanvas) {
+      this.minimapCtx = this.minimapCanvas.getContext("2d");
+    }
+  }
+
+  // 🗺️ RENDER REAL-TIME GPS VECTOR MINIMAP RADAR
+  renderMinimap() {
+    if (!this.minimapCtx || !this.trackManager) return;
+    const ctx = this.minimapCtx;
+    const w = this.minimapCanvas.width;
+    const h = this.minimapCanvas.height;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Track bounds mapping: world [-750, 750] -> canvas [14, 186]
+    const mapX = (wx) => ((wx + 750) / 1500) * (w - 28) + 14;
+    const mapZ = (wz) => ((wz + 750) / 1500) * (h - 28) + 14;
+
+    // 1. Draw Track Circuit Ribbon
+    ctx.strokeStyle = "#334155";
+    ctx.lineWidth = 10;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+
+    const samplePts = this.trackManager.trackSamplePoints;
+    for (let i = 0; i < samplePts.length; i++) {
+      const p = samplePts[i];
+      const cx = mapX(p.x);
+      const cz = mapZ(p.z);
+      if (i === 0) ctx.moveTo(cx, cz);
+      else ctx.lineTo(cx, cz);
+    }
+    ctx.closePath();
+    ctx.stroke();
+
+    ctx.strokeStyle = "#0284c7";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // 2. Start/Finish Line Indicator
+    const startX = mapX(0);
+    const startZ = mapZ(0);
+    ctx.fillStyle = "#f59e0b";
+    ctx.fillRect(startX - 5, startZ - 5, 10, 10);
+
+    // 3. AI Rivals Dots
+    const rivalColors = ["#38bdf8", "#a855f7", "#22c55e"];
+    this.trackManager.aiRivals.forEach((rival, idx) => {
+      const rx = mapX(rival.mesh.position.x);
+      const rz = mapZ(rival.mesh.position.z);
+      ctx.fillStyle = rivalColors[idx % rivalColors.length];
+      ctx.beginPath();
+      ctx.arc(rx, rz, 5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // 4. Police Cruisers (Flashing dots)
+    const isRedFlash = Math.sin(Date.now() * 0.015) > 0;
+    this.trackManager.policeUnits.forEach((cop) => {
+      const px = mapX(cop.group.position.x);
+      const pz = mapZ(cop.group.position.z);
+      ctx.fillStyle = isRedFlash ? "#ef4444" : "#3b82f6";
+      ctx.beginPath();
+      ctx.arc(px, pz, 4, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // 5. Player Supercar (Bright Yellow Pointer with Heading)
+    const px = mapX(this.car.position.x);
+    const pz = mapZ(this.car.position.z);
+    ctx.save();
+    ctx.translate(px, pz);
+    ctx.rotate(-this.car.heading + Math.PI);
+
+    ctx.fillStyle = "#fbbf24";
+    ctx.beginPath();
+    ctx.moveTo(0, -8);
+    ctx.lineTo(6, 6);
+    ctx.lineTo(0, 3);
+    ctx.lineTo(-6, 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
   }
 
   toggleWeather() {
@@ -249,15 +349,38 @@ export class CyberDriftGame {
     this.showBanner(`РАДИО: ${stationName}`, 2000);
   }
 
-  startRace() {
-    this.gameState = "RACING";
+  // 🚦 START COUNTDOWN (3... 2... 1... GO!)
+  startCountdown() {
+    this.gameState = "COUNTDOWN";
+    this.countdownTimer = 3.2;
+    this.currentLap = 1;
+
     document.getElementById("garage-screen").style.display = "none";
     document.getElementById("busted-screen").style.display = "none";
     document.getElementById("hud").style.display = "flex";
+
     if (this.turntable) this.turntable.visible = false;
     if (this.studioSpotL) this.studioSpotL.intensity = 0;
     if (this.studioSpotR) this.studioSpotR.intensity = 0;
-    this.showBanner("🔥 СТАРТ ГОНКИ! ПОБЕДИ 3 СОПЕРНИКОВ");
+
+    // Line up on Starting Grid (Box 4)
+    this.car.position.set(6, 0.12, 6);
+    this.car.speed = 0;
+    this.car.heading = 0;
+    this.car.mesh.position.copy(this.car.position);
+    this.car.mesh.rotation.set(0, 0, 0);
+
+    // Line up Rivals on Starting Grid
+    if (this.trackManager.aiRivals.length >= 3) {
+      this.trackManager.aiRivals[0].u = 0.006; // Akira (front left)
+      this.trackManager.aiRivals[1].u = 0.006; // Ghost (front right)
+      this.trackManager.aiRivals[2].u = 0.0018; // Viper (rear left)
+    }
+
+    if (this.countdownEl) {
+      this.countdownEl.style.display = "block";
+      this.countdownEl.textContent = "3";
+    }
   }
 
   triggerBusted() {
@@ -281,12 +404,9 @@ export class CyberDriftGame {
 
   resetCar() {
     this.car.reset();
-    this.gameState = "RACING";
+    this.startCountdown();
     this.trackManager.bustedTimer = 0;
-    document.getElementById("busted-screen").style.display = "none";
-    document.getElementById("garage-screen").style.display = "none";
-    document.getElementById("hud").style.display = "flex";
-    this.showBanner("🔄 РЕСТАРТ! ДАВИ НА ГАЗ");
+    this.showBanner("🔄 РЕСТАРТ ГОНКИ! НА СТАРТ");
   }
 
   showBanner(text, duration = 2800) {
@@ -305,7 +425,6 @@ export class CyberDriftGame {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
-  // 🏎️ CINEMATIC SHOWROOM POSITIONING (Car sits framed on the RIGHT side!)
   updateCamera(delta) {
     if (this.gameState === "GARAGE") {
       if (!this.isDraggingGarage) {
@@ -313,7 +432,6 @@ export class CyberDriftGame {
       }
 
       const radius = 10.5;
-      // Offset center to the left so car is framed on the right 60% of viewport!
       const targetLookAt = new THREE.Vector3(-2.2, 0.9, 0);
 
       const camX = targetLookAt.x + Math.sin(this.garageOrbitAngle) * radius;
@@ -408,15 +526,35 @@ export class CyberDriftGame {
     if (this.nitroBarEl) this.nitroBarEl.style.width = `${Math.round(this.car.nitroFuel)}%`;
     if (this.focusBarEl) this.focusBarEl.style.width = `${Math.round(this.car.focusEnergy)}%`;
 
+    // Calculate Real Race Position
     if (this.positionEl && this.trackManager) {
       let position = 1;
-      const playerPos = this.car.position;
+      const playerDist = this.car.position.z + (this.currentLap - 1) * 3500;
       for (const rival of this.trackManager.aiRivals) {
-        if (rival.mesh.position.z > playerPos.z) {
+        const rivalDist = rival.mesh.position.z + rival.lapsCompleted * 3500;
+        if (rivalDist > playerDist) {
           position++;
         }
       }
       this.positionEl.textContent = `${position} / 4`;
+    }
+
+    // Check Start/Finish Line Crossing
+    const curZ = this.car.position.z;
+    if (this.lastLapCrossingZ > 300 && curZ < 50 && Math.abs(this.car.position.x) < 22) {
+      this.currentLap++;
+      if (this.currentLap > this.maxLaps) {
+        this.showBanner("🏆 ПОБЕДА В ГОНКЕ! 1-Е МЕСТО! +5000 PTS", 5000);
+        this.car.totalScore += 5000;
+      } else {
+        this.showBanner(`🏁 КРУГ ${this.currentLap} / ${this.maxLaps}! ДАВИ НА ГАЗ`, 3000);
+      }
+    }
+    this.lastLapCrossingZ = curZ;
+
+    if (this.lapInfoEl) {
+      const lapProgress = Math.min(100, Math.max(0, Math.round(((curZ + 680) / 1360) * 100)));
+      this.lapInfoEl.textContent = `LAP ${Math.min(this.currentLap, this.maxLaps)}/${this.maxLaps} (${lapProgress}%)`;
     }
 
     if (this.driftBoxEl && this.driftPtsEl && this.driftMultEl) {
@@ -455,16 +593,37 @@ export class CyberDriftGame {
 
     const delta = isFocus ? rawDelta * 0.35 : rawDelta;
 
-    if (this.gameState === "RACING") {
+    // 🚦 Countdown State
+    if (this.gameState === "COUNTDOWN") {
+      this.countdownTimer -= rawDelta;
+      if (this.countdownEl) {
+        if (this.countdownTimer > 2.0) this.countdownEl.textContent = "3";
+        else if (this.countdownTimer > 1.0) this.countdownEl.textContent = "2";
+        else if (this.countdownTimer > 0.0) this.countdownEl.textContent = "1";
+        else {
+          this.countdownEl.textContent = "GO!";
+          setTimeout(() => {
+            if (this.countdownEl) this.countdownEl.style.display = "none";
+          }, 600);
+          this.gameState = "RACING";
+          this.showBanner("🔥 СТАРТ! ОБГОНИ AKIRA, GHOST И VIPER");
+        }
+      }
+
+      this.trackManager.update(delta, this.car, false);
+      this.updateHUD();
+      this.renderMinimap();
+    } else if (this.gameState === "RACING") {
       this.car.throttleInput = (this.keys.forward ? 1 : 0) - (this.keys.backward ? 1 : 0);
       this.car.steerInput = (this.keys.right ? 1 : 0) - (this.keys.left ? 1 : 0);
       this.car.driftActive = this.keys.drift;
       this.car.nitroActive = this.keys.nitro;
 
       this.car.updatePhysics(delta, this.trackManager);
-      this.trackManager.update(delta, this.car);
+      this.trackManager.update(delta, this.car, true);
 
       this.updateHUD();
+      this.renderMinimap();
     }
 
     this.updateCamera(delta);
