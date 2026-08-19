@@ -1,4 +1,4 @@
-// city.js - Highway Police Interceptors, Speed Trap Flash Cameras, Roadblocks & Dynamic Urban World
+// city.js - Diverse Skyscraper Architecture (Cylinders, Stepped Towers, Hexagons, Skybridges, Helipads & 5 Color Palettes)
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -26,7 +26,7 @@ export class CityTrackManager {
     this.initLighting();
     this.buildGrandPrixTrackAndCurbs();
     this.buildRoadsideStreetlights();
-    this.buildSkyscrapersWithBillboards();
+    this.buildDiverseSkyscrapers();
     this.buildSolidTrafficGantries();
     this.buildSpeedTrapCameras();
     this.buildPoliceRoadblocks();
@@ -40,6 +40,7 @@ export class CityTrackManager {
   }
 
   initTextures() {
+    // 1. High-Res Bright Asphalt Texture
     const roadCanvas = document.createElement("canvas");
     roadCanvas.width = 1024;
     roadCanvas.height = 1024;
@@ -89,12 +90,59 @@ export class CityTrackManager {
       metalness: 0.15,
     });
 
+    // 2. 5 Distinct Building Facade Color Palettes
+    this.facadeMats = [
+      this._createFacadeMat("#142238", "#00f0ff", "#38bdf8", 0x003d66), // Sapphire Cyan
+      this._createFacadeMat("#241c10", "#f59e0b", "#ffd000", 0x4a3205), // Solar Amber Gold
+      this._createFacadeMat("#0f261c", "#10b981", "#34d399", 0x033820), // Emerald Jade
+      this._createFacadeMat("#280f1d", "#f43f5e", "#ff007f", 0x470826), // Ruby Magenta
+      this._createFacadeMat("#181920", "#f1f5f9", "#cbd5e1", 0x222630), // Obsidian Halogen White
+    ];
+
+    // 3. High-Resolution Realistic Cyberpunk Neon Billboards
     this.billboardTextures = [
       this._createBillboardCyberDrift(),
       this._createBillboardNitroBoost(),
       this._createBillboardTokyoRamen(),
       this._createBillboardHyperion(),
     ];
+  }
+
+  _createFacadeMat(bgColor, winColor1, winColor2, emissiveHex) {
+    const c = document.createElement("canvas");
+    c.width = 512;
+    c.height = 1024;
+    const ctx = c.getContext("2d");
+
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, 512, 1024);
+
+    for (let y = 14; y < 1024; y += 28) {
+      ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+      ctx.fillRect(0, y, 512, 4);
+      for (let x = 12; x < 512; x += 26) {
+        const isLit = Math.random() > 0.35;
+        if (isLit) {
+          ctx.fillStyle = Math.random() > 0.4 ? winColor1 : winColor2;
+          ctx.fillRect(x, y + 5, 18, 18);
+        } else {
+          ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+          ctx.fillRect(x, y + 5, 18, 18);
+        }
+      }
+    }
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+
+    return new THREE.MeshStandardMaterial({
+      map: tex,
+      metalness: 0.8,
+      roughness: 0.18,
+      emissive: emissiveHex,
+      emissiveIntensity: 0.75,
+    });
   }
 
   _createBillboardCyberDrift() {
@@ -356,9 +404,7 @@ export class CityTrackManager {
 
     for (let i = 5; i < this.trackSamplePoints.length; i += 20) {
       const pt = this.trackSamplePoints[i];
-      const tangent = this.trackCurve.getTangentAt(i / divisions).normalize();
-      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-
+      const normal = new THREE.Vector3(-1, 0, 0);
       const manhole = new THREE.Mesh(manholeGeom, manholeMat);
       manhole.position.copy(pt).addScaledVector(normal, 8.0);
       manhole.position.y = 0.13;
@@ -400,36 +446,9 @@ export class CityTrackManager {
     this.scene.add(railGroup);
   }
 
-  buildSkyscrapersWithBillboards() {
+  // 🏙️ DIVERSE SKYSCRAPER ARCHITECTURE (Cylinders, Stepped Towers, Hexagons, Skybridges & Helipads)
+  buildDiverseSkyscrapers() {
     const cityGroup = new THREE.Group();
-
-    const blueCanvas = document.createElement("canvas");
-    blueCanvas.width = 512;
-    blueCanvas.height = 1024;
-    const bCtx = blueCanvas.getContext("2d");
-    bCtx.fillStyle = "#16243a";
-    bCtx.fillRect(0, 0, 512, 1024);
-
-    for (let y = 14; y < 1024; y += 28) {
-      bCtx.fillStyle = "#2a3d58";
-      bCtx.fillRect(0, y, 512, 4);
-      for (let x = 12; x < 512; x += 26) {
-        const isLit = Math.random() > 0.3;
-        bCtx.fillStyle = isLit ? (Math.random() > 0.5 ? "#ffe066" : "#00f0ff") : "#0c1726";
-        bCtx.fillRect(x, y + 5, 18, 18);
-      }
-    }
-    const blueTex = new THREE.CanvasTexture(blueCanvas);
-    blueTex.wrapS = THREE.RepeatWrapping;
-    blueTex.wrapT = THREE.RepeatWrapping;
-
-    const bldgMat = new THREE.MeshStandardMaterial({
-      map: blueTex,
-      metalness: 0.8,
-      roughness: 0.15,
-      emissive: 0x003d66,
-      emissiveIntensity: 0.8,
-    });
 
     const getMinDistToTrack = (x, z) => {
       let minD = 999999;
@@ -442,47 +461,110 @@ export class CityTrackManager {
     };
 
     let bldgIndex = 0;
-    for (let x = -750; x <= 750; x += 110) {
-      for (let z = -750; z <= 750; z += 110) {
+    for (let x = -750; x <= 750; x += 115) {
+      for (let z = -750; z <= 750; z += 115) {
         const distToTrack = getMinDistToTrack(x, z);
         if (distToTrack < 54) continue;
 
         bldgIndex++;
-        const width = 45 + Math.random() * 30;
-        const depth = 45 + Math.random() * 30;
-        const height = 100 + Math.random() * 280;
+        const facadeMat = this.facadeMats[bldgIndex % this.facadeMats.length];
+        const archType = bldgIndex % 5; // 5 distinct architectural styles!
+        const height = 120 + Math.random() * 260;
 
-        const bldgGeom = new THREE.BoxGeometry(width, height, depth);
-        const bldg = new THREE.Mesh(bldgGeom, bldgMat);
-        bldg.position.set(x, height / 2, z);
-        bldg.castShadow = true;
-        bldg.receiveShadow = true;
-        cityGroup.add(bldg);
+        if (archType === 0) {
+          // 1. CYLINDRICAL GLASS TOWER with Helipad
+          const radius = 22 + Math.random() * 12;
+          const cylGeom = new THREE.CylinderGeometry(radius, radius, height, 24);
+          const cyl = new THREE.Mesh(cylGeom, facadeMat);
+          cyl.position.set(x, height / 2, z);
+          cyl.castShadow = true;
+          cityGroup.add(cyl);
 
-        this.colliders.push({
-          minX: x - width / 2,
-          maxX: x + width / 2,
-          minZ: z - depth / 2,
-          maxZ: z + depth / 2,
-        });
+          // Helipad on top
+          const padGeom = new THREE.CylinderGeometry(radius * 0.85, radius * 0.85, 0.8, 20);
+          const padMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6 });
+          const pad = new THREE.Mesh(padGeom, padMat);
+          pad.position.set(x, height + 0.4, z);
 
-        if (height > 180) {
-          const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 2.0, 40, 8), new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.9 }));
-          spire.position.set(x, height + 20, z);
+          const hRing = new THREE.Mesh(new THREE.TorusGeometry(radius * 0.55, 0.4, 8, 24), new THREE.MeshBasicMaterial({ color: 0x39ff14 }));
+          hRing.rotation.x = Math.PI / 2;
+          hRing.position.set(x, height + 0.9, z);
+          cityGroup.add(pad, hRing);
+
+          this.colliders.push({ minX: x - radius, maxX: x + radius, minZ: z - radius, maxZ: z + radius });
+        } else if (archType === 1) {
+          // 2. TIERED STEPPED SKYSCRAPER (Cyber Zigzag)
+          const baseW = 54;
+          const t1H = height * 0.45;
+          const t2H = height * 0.35;
+          const t3H = height * 0.2;
+
+          const tier1 = new THREE.Mesh(new THREE.BoxGeometry(baseW, t1H, baseW), facadeMat);
+          tier1.position.set(x, t1H / 2, z);
+
+          const tier2 = new THREE.Mesh(new THREE.BoxGeometry(baseW * 0.72, t2H, baseW * 0.72), facadeMat);
+          tier2.position.set(x, t1H + t2H / 2, z);
+
+          const tier3 = new THREE.Mesh(new THREE.BoxGeometry(baseW * 0.45, t3H, baseW * 0.45), facadeMat);
+          tier3.position.set(x, t1H + t2H + t3H / 2, z);
+
+          tier1.castShadow = true;
+          tier2.castShadow = true;
+          tier3.castShadow = true;
+          cityGroup.add(tier1, tier2, tier3);
+
+          const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 1.8, 35, 8), new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.9 }));
+          spire.position.set(x, height + 17, z);
           cityGroup.add(spire);
 
-          const beacon = new THREE.Mesh(new THREE.SphereGeometry(1.6, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff0033 }));
-          beacon.position.set(x, height + 40, z);
-          cityGroup.add(beacon);
-        }
+          this.colliders.push({ minX: x - baseW / 2, maxX: x + baseW / 2, minZ: z - baseW / 2, maxZ: z + baseW / 2 });
+        } else if (archType === 2) {
+          // 3. HEXAGONAL HIGH-TECH PRISM
+          const radius = 26 + Math.random() * 10;
+          const hexGeom = new THREE.CylinderGeometry(radius, radius * 1.1, height, 6);
+          const hex = new THREE.Mesh(hexGeom, facadeMat);
+          hex.position.set(x, height / 2, z);
+          hex.castShadow = true;
+          cityGroup.add(hex);
 
-        if (bldgIndex % 2 === 0) {
-          const boardGeom = new THREE.PlaneGeometry(42, 21);
+          this.colliders.push({ minX: x - radius, maxX: x + radius, minZ: z - radius, maxZ: z + radius });
+        } else if (archType === 3) {
+          // 4. TWIN TOWERS CONNECTED BY SKYBRIDGE
+          const tw = 22;
+          const tower1 = new THREE.Mesh(new THREE.BoxGeometry(tw, height, tw), facadeMat);
+          tower1.position.set(x - 16, height / 2, z);
+
+          const tower2 = new THREE.Mesh(new THREE.BoxGeometry(tw, height, tw), facadeMat);
+          tower2.position.set(x + 16, height / 2, z);
+
+          const bridgeGeom = new THREE.BoxGeometry(32, 6, 8);
+          const bridgeMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.9, transparent: true, opacity: 0.8 });
+          const bridge = new THREE.Mesh(bridgeGeom, bridgeMat);
+          bridge.position.set(x, height * 0.65, z);
+
+          tower1.castShadow = true;
+          tower2.castShadow = true;
+          cityGroup.add(tower1, tower2, bridge);
+
+          this.colliders.push({ minX: x - 28, maxX: x + 28, minZ: z - tw / 2, maxZ: z + tw / 2 });
+        } else {
+          // 5. SLANTED ROOF HEADQUARTERS WITH NEON BILLBOARDS
+          const w = 48;
+          const d = 48;
+          const bldg = new THREE.Mesh(new THREE.BoxGeometry(w, height, d), facadeMat);
+          bldg.position.set(x, height / 2, z);
+          bldg.castShadow = true;
+          cityGroup.add(bldg);
+
+          // Billboard
+          const boardGeom = new THREE.PlaneGeometry(38, 19);
           const boardTex = this.billboardTextures[bldgIndex % this.billboardTextures.length];
           const boardMat = new THREE.MeshBasicMaterial({ map: boardTex });
           const board = new THREE.Mesh(boardGeom, boardMat);
-          board.position.set(x, height * 0.55, z + depth / 2 + 0.4);
+          board.position.set(x, height * 0.55, z + d / 2 + 0.4);
           cityGroup.add(board);
+
+          this.colliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 });
         }
       }
     }
@@ -559,7 +641,6 @@ export class CityTrackManager {
     }
   }
 
-  // 📸 SPEED TRAP FLASH CAMERAS
   buildSpeedTrapCameras() {
     const uPositions = [0.08, 0.52, 0.88];
     const camMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9 });
@@ -595,7 +676,6 @@ export class CityTrackManager {
     }
   }
 
-  // 🚧 POLICE ROADBLOCKS ON HIGHWAY
   buildPoliceRoadblocks() {
     const uPositions = [0.38, 0.76];
     const cruiserMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3 });
@@ -805,7 +885,6 @@ export class CityTrackManager {
     }
   }
 
-  // 🚓 HIGHWAY-PATROLLING AGGRESSIVE POLICE INTERCEPTORS
   buildPoliceFleet() {
     const policeCount = 4;
     const bodyMat = new THREE.MeshStandardMaterial({ color: 0x08090c, roughness: 0.2, metalness: 0.85 });
@@ -1023,7 +1102,7 @@ export class CityTrackManager {
       this.helicopter.position.z = THREE.MathUtils.lerp(this.helicopter.position.z, playerPos.z, delta * 2.0);
     }
 
-    // 2. Speed Trap Flash Cameras
+    // 2. Speed Trap Cameras (NO FLASH SCREEN, just clean score & audio)
     for (const cam of this.speedCameras) {
       const dist = cam.pos.distanceTo(playerPos);
       if (dist < 12.0 && playerSpeed > 175) {
@@ -1133,7 +1212,7 @@ export class CityTrackManager {
       ped.legR.rotation.x = -legSwing;
     }
 
-    // 7. HIGHWAY-PATROLLING AGGRESSIVE POLICE INTERCEPTORS
+    // 7. Police Patrol
     let nearestPoliceDist = 999999;
     const isBlink = Math.sin(now * 0.025) > 0;
 
@@ -1151,7 +1230,6 @@ export class CityTrackManager {
       police.blueLight.material.color.setHex(isBlink ? 0x00f0ff : 0x001144);
       police.redLight.material.color.setHex(!isBlink ? 0xff0022 : 0x330008);
 
-      // Patrol along highway track
       police.u = (police.u + police.speedU * delta) % 1.0;
       const pt = this.trackCurve.getPointAt(police.u);
       const tangent = this.trackCurve.getTangentAt(police.u).normalize();
@@ -1166,7 +1244,6 @@ export class CityTrackManager {
       const dist = police.group.position.distanceTo(playerPos);
       if (dist < nearestPoliceDist) nearestPoliceDist = dist;
 
-      // Aggressive Collision & Takedowns
       if (dist < 4.8) {
         if (playerSpeed > 68) {
           police.isDestroyed = true;

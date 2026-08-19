@@ -1,4 +1,4 @@
-// game.js - Cyber Drift 3D Main Director, Highway Police Pursuits, Speed Cameras & Synthwave Radio
+// game.js - Cyber Drift 3D Main Director, Diverse Skyscrapers, Clean Screen & Synthwave Radio
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { CyberCar } from "./car.js";
 import { CityTrackManager } from "./city.js";
@@ -74,13 +74,8 @@ export class CyberDriftGame {
       this.showBanner(bannerText, 2200);
     };
 
-    // 📸 Speed Trap Flash & Banner
+    // Clean Speed Trap Notification (No White Flash)
     this.trackManager.onSpeedTrapCallback = (speedKmH, pts) => {
-      const flashEl = document.getElementById("camera-flash");
-      if (flashEl) {
-        flashEl.style.opacity = "0.95";
-        setTimeout(() => { flashEl.style.opacity = "0"; }, 140);
-      }
       this.showBanner(`📸 РАДАР СКОРОСТИ: ${speedKmH} КМ/Ч! +${pts} PTS`, 2800);
     };
   }
@@ -146,7 +141,6 @@ export class CyberDriftGame {
     this.wantedEl = document.getElementById("hud-wanted");
     this.camModeEl = document.getElementById("hud-cam-mode");
     this.bannerEl = document.getElementById("hud-banner");
-    this.pursuitAlertEl = document.getElementById("hud-pursuit-alert");
 
     document.querySelectorAll(".car-select-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -346,10 +340,6 @@ export class CyberDriftGame {
       } else {
         this.driftBoxEl.style.display = "none";
       }
-    }
-
-    if (this.pursuitAlertEl) {
-      this.pursuitAlertEl.style.display = this.trackManager.isPoliceNearby ? "block" : "none";
     }
 
     if (this.wantedEl) {
