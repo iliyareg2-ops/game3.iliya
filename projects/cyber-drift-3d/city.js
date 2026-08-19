@@ -1,4 +1,4 @@
-// city.js - Pure Formula 1 Grand Prix Circuit with Los Santos 3D Garage Workshop, Roadside Palm Trees, GTA Neon Billboards & Yellow Cabs
+// city.js - Pure Formula 1 Grand Prix Circuit with Enclosed 3D Los Santos Customs Garage Workshop, Roadside Palm Trees & Real GTA Atmosphere
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -30,7 +30,7 @@ export class CityTrackManager {
     this.initTextures();
     this.initLighting();
     this.buildSmoothF1CircuitAndKerbs();
-    this.build3DGarageShowroom();
+    this.buildEnclosed3DGarageWorkshop();
     this.buildGTAPalmTrees();
     this.buildGTANeonBillboards();
     this.buildF1GrandstandsAndPits();
@@ -165,48 +165,134 @@ export class CityTrackManager {
     this.scene.add(this.moonLight);
   }
 
-  // 🏬 3D LOS SANTOS CUSTOMS WORKSHOP ENVIRONMENT (Showroom background)
-  build3DGarageShowroom() {
+  // 🏬 ENCLOSED 3D LOS SANTOS CUSTOMS GARAGE SHOWROOM
+  buildEnclosed3DGarageWorkshop() {
     this.garageGroup = new THREE.Group();
 
-    // Workshop Brick & Concrete Walls
-    const wallMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
-    const backWall = new THREE.Mesh(new THREE.BoxGeometry(34, 14, 0.8), wallMat);
-    backWall.position.set(-2, 7, -12);
+    // 1. Garage Epoxy Floor with Yellow Hazard Stripes
+    const floorCanvas = document.createElement("canvas");
+    floorCanvas.width = 1024;
+    floorCanvas.height = 1024;
+    const fCtx = floorCanvas.getContext("2d");
 
-    const sideWallL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 14, 26), wallMat);
-    sideWallL.position.set(-18, 7, 0);
+    fCtx.fillStyle = "#1e293b";
+    fCtx.fillRect(0, 0, 1024, 1024);
 
-    // Neon Signs
-    const neonCanvas = document.createElement("canvas");
-    neonCanvas.width = 512;
-    neonCanvas.height = 128;
-    const nCtx = neonCanvas.getContext("2d");
-    nCtx.fillStyle = "#090d16";
-    nCtx.fillRect(0, 0, 512, 128);
-    nCtx.strokeStyle = "#38bdf8";
-    nCtx.lineWidth = 6;
-    nCtx.strokeRect(8, 8, 496, 112);
-    nCtx.fillStyle = "#38bdf8";
-    nCtx.font = "900 42px Segoe UI, sans-serif";
-    nCtx.textAlign = "center";
-    nCtx.fillText("LOS SANTOS CUSTOMS", 256, 75);
+    // Tiles grid
+    fCtx.strokeStyle = "#334155";
+    fCtx.lineWidth = 4;
+    for (let x = 0; x <= 1024; x += 128) {
+      fCtx.beginPath();
+      fCtx.moveTo(x, 0);
+      fCtx.lineTo(x, 1024);
+      fCtx.stroke();
+    }
+    for (let y = 0; y <= 1024; y += 128) {
+      fCtx.beginPath();
+      fCtx.moveTo(0, y);
+      fCtx.lineTo(1024, y);
+      fCtx.stroke();
+    }
 
-    const neonTex = new THREE.CanvasTexture(neonCanvas);
-    const neonSign = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), new THREE.MeshBasicMaterial({ map: neonTex }));
-    neonSign.position.set(-2, 10.5, -11.5);
+    // Yellow Caution Border
+    fCtx.fillStyle = "#f59e0b";
+    for (let i = 0; i < 1024; i += 64) {
+      fCtx.fillRect(i, 0, 32, 40);
+      fCtx.fillRect(i, 984, 32, 40);
+      fCtx.fillRect(0, i, 40, 32);
+      fCtx.fillRect(984, i, 40, 32);
+    }
 
-    // Workshop Car Hydraulic Lift Posts
+    const floorTex = new THREE.CanvasTexture(floorCanvas);
+    const floorMat = new THREE.MeshStandardMaterial({
+      map: floorTex,
+      metalness: 0.7,
+      roughness: 0.25,
+    });
+    const garageFloor = new THREE.Mesh(new THREE.PlaneGeometry(36, 36), floorMat);
+    garageFloor.rotateX(-Math.PI / 2);
+    garageFloor.position.set(-2, 0.05, 0);
+    garageFloor.receiveShadow = true;
+    this.garageGroup.add(garageFloor);
+
+    // 2. Concrete & Dark Metal Walls
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6, metalness: 0.3 });
+
+    // Back Wall
+    const backWall = new THREE.Mesh(new THREE.BoxGeometry(36, 16, 0.8), wallMat);
+    backWall.position.set(-2, 8, -16);
+
+    // Left Wall
+    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.8, 16, 36), wallMat);
+    leftWall.position.set(-18, 8, 0);
+
+    // Right Wall (Roll-up Shutter Door)
+    const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.8, 16, 36), wallMat);
+    rightWall.position.set(16, 8, 0);
+
+    // Ceiling with Overhead Industrial Beams
+    const ceilingMat = new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.9 });
+    const ceiling = new THREE.Mesh(new THREE.BoxGeometry(36, 0.6, 36), ceilingMat);
+    ceiling.position.set(-2, 16, 0);
+
+    this.garageGroup.add(backWall, leftWall, rightWall, ceiling);
+
+    // 3. Huge Glowing Neon Sign "LOS SANTOS CUSTOMS"
+    const signCanvas = document.createElement("canvas");
+    signCanvas.width = 1024;
+    signCanvas.height = 256;
+    const sCtx = signCanvas.getContext("2d");
+
+    sCtx.fillStyle = "#090d16";
+    sCtx.fillRect(0, 0, 1024, 256);
+
+    sCtx.strokeStyle = "#38bdf8";
+    sCtx.lineWidth = 8;
+    sCtx.strokeRect(12, 12, 1000, 232);
+
+    sCtx.fillStyle = "#38bdf8";
+    sCtx.font = "900 72px Segoe UI, sans-serif";
+    sCtx.textAlign = "center";
+    sCtx.fillText("LOS SANTOS CUSTOMS", 512, 120);
+
+    sCtx.fillStyle = "#f59e0b";
+    sCtx.font = "800 36px Segoe UI, sans-serif";
+    sCtx.fillText("PREMIUM MOTORSPORT TUNING & DYNO", 512, 185);
+
+    const signTex = new THREE.CanvasTexture(signCanvas);
+    const neonSign = new THREE.Mesh(new THREE.PlaneGeometry(24, 6), new THREE.MeshBasicMaterial({ map: signTex }));
+    neonSign.position.set(-2, 10.5, -15.4);
+    this.garageGroup.add(neonSign);
+
+    // 4. Overhead Industrial White LED Light Bars
+    const ledGlowMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    for (let z = -10; z <= 10; z += 10) {
+      const ledBar = new THREE.Mesh(new THREE.BoxGeometry(26, 0.2, 0.6), ledGlowMat);
+      ledBar.position.set(-2, 15.6, z);
+      const barLight = new THREE.PointLight(0xffffff, 2.8, 25);
+      barLight.position.set(-2, 14.8, z);
+      this.garageGroup.add(ledBar, barLight);
+    }
+
+    // 5. Hydraulic Car Lift Posts
     const steelMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.9, roughness: 0.2 });
-    const postL = new THREE.Mesh(new THREE.BoxGeometry(0.6, 10, 0.6), steelMat);
-    postL.position.set(-8, 5, -6);
-    const postR = postL.clone();
-    postR.position.x = 4;
+    const liftPostL = new THREE.Mesh(new THREE.BoxGeometry(0.7, 12, 0.7), steelMat);
+    liftPostL.position.set(-9, 6, -6);
+    const liftPostR = liftPostL.clone();
+    liftPostR.position.x = 5;
 
-    // Tool Chests & Tire Stacks
+    const liftArmMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.3 });
+    const armL = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.3, 0.4), liftArmMat);
+    armL.position.set(-7.5, 2.5, -6);
+    const armR = armL.clone();
+    armR.position.x = 3.5;
+
+    this.garageGroup.add(liftPostL, liftPostR, armL, armR);
+
+    // 6. Red Tool Chests & Tire Racks
     const toolMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, metalness: 0.6, roughness: 0.3 });
-    const toolChest = new THREE.Mesh(new THREE.BoxGeometry(4.2, 3.2, 1.8), toolMat);
-    toolChest.position.set(-14, 1.6, -8);
+    const toolChest = new THREE.Mesh(new THREE.BoxGeometry(5.5, 3.4, 2.0), toolMat);
+    toolChest.position.set(-14, 1.7, -12);
 
     const tireMat = new THREE.MeshStandardMaterial({ color: 0x111215, roughness: 0.9 });
     const makeTireStack = (x, z) => {
@@ -220,10 +306,12 @@ export class CityTrackManager {
       return g;
     };
 
-    const tireStack1 = makeTireStack(-15, -3);
-    const tireStack2 = makeTireStack(-13.5, -3);
+    const tireStack1 = makeTireStack(-14.5, -5);
+    const tireStack2 = makeTireStack(-13.0, -5);
+    const tireStack3 = makeTireStack(12.5, -12);
 
-    this.garageGroup.add(backWall, sideWallL, neonSign, postL, postR, toolChest, tireStack1, tireStack2);
+    this.garageGroup.add(toolChest, tireStack1, tireStack2, tireStack3);
+
     this.scene.add(this.garageGroup);
   }
 
@@ -241,7 +329,6 @@ export class CityTrackManager {
       trunk.rotation.z = (Math.random() - 0.5) * 0.15;
       g.add(trunk);
 
-      // Palm fronds
       for (let k = 0; k < 7; k++) {
         const frond = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 6.5), frondMat);
         frond.position.set(0, 13.8, 0);
@@ -253,7 +340,6 @@ export class CityTrackManager {
       return g;
     };
 
-    // Plant along main straight & pits
     for (let z = 50; z <= 350; z += 60) {
       palmGroup.add(makePalmTree(45, z));
       palmGroup.add(makePalmTree(-45, z));
@@ -310,21 +396,21 @@ export class CityTrackManager {
     groundGroup.add(ground);
 
     const trackPoints = [
-      new THREE.Vector3(0, 0.12, 0),        // Start / Finish Line
-      new THREE.Vector3(0, 0.12, 380),      // Main Straight
-      new THREE.Vector3(90, 0.12, 560),     // Turn 1 Right
-      new THREE.Vector3(260, 0.12, 540),    // Turn 2 Left
-      new THREE.Vector3(460, 0.12, 340),    // Curva Grande Sweeper
-      new THREE.Vector3(520, 0.12, 60),     // Apex 1
-      new THREE.Vector3(420, 0.12, -220),   // Variante Chicane
-      new THREE.Vector3(220, 0.12, -440),   // Lesmo 1
-      new THREE.Vector3(-40, 0.12, -540),   // Hairpin Turn
-      new THREE.Vector3(-320, 0.12, -460),  // Back Straight
-      new THREE.Vector3(-480, 0.12, -220),  // Ascari Esses Entry
-      new THREE.Vector3(-520, 0.12, 40),    // Ascari Esses Mid
-      new THREE.Vector3(-420, 0.12, 280),   // Parabolica Entry
-      new THREE.Vector3(-220, 0.12, 340),   // Parabolica Apex
-      new THREE.Vector3(-70, 0.12, -180),   // Smooth straight entry aligning to Start line
+      new THREE.Vector3(0, 0.12, 0),
+      new THREE.Vector3(0, 0.12, 380),
+      new THREE.Vector3(90, 0.12, 560),
+      new THREE.Vector3(260, 0.12, 540),
+      new THREE.Vector3(460, 0.12, 340),
+      new THREE.Vector3(520, 0.12, 60),
+      new THREE.Vector3(420, 0.12, -220),
+      new THREE.Vector3(220, 0.12, -440),
+      new THREE.Vector3(-40, 0.12, -540),
+      new THREE.Vector3(-320, 0.12, -460),
+      new THREE.Vector3(-480, 0.12, -220),
+      new THREE.Vector3(-520, 0.12, 40),
+      new THREE.Vector3(-420, 0.12, 280),
+      new THREE.Vector3(-220, 0.12, 340),
+      new THREE.Vector3(-70, 0.12, -180),
     ];
 
     this.trackCurve = new THREE.CatmullRomCurve3(trackPoints, true, "catmullrom", 0.35);
@@ -376,7 +462,6 @@ export class CityTrackManager {
     this.roadMesh.receiveShadow = true;
     groundGroup.add(this.roadMesh);
 
-    // Red & White Apex Kerbs
     const curbRedMat = new THREE.MeshBasicMaterial({ color: 0xe11d48 });
     const curbWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
@@ -500,12 +585,11 @@ export class CityTrackManager {
     checkLine.position.set(0, 0.13, 0);
     g.add(checkLine);
 
-    // 4 Starting Grid Boxes
     const gridBoxMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const gridPositions = [
       { x: -5.5, z: 24 }, // Pos 1: Akira
       { x: 5.5, z: 24 },  // Pos 2: Ghost
-      { x: -5.5, z: 8 },  // Pos 3: Viper
+      { x: -5.5, z: 8 },  // Pos 3: Razor
       { x: 5.5, z: 8 },   // Pos 4: Player
     ];
 
@@ -767,11 +851,12 @@ export class CityTrackManager {
     }
   }
 
+  // 🏁 3 BALANCED FAIR AI RIVALS (Akira, Ghost, ⚡ Razor [M3 GTR])
   buildAIRivals() {
     const rivalsData = [
       { name: "Akira [GT-R]", color: 0x0284c7, u: 0.008, lane: -5.5, baseSpeedU: 0.018 },
       { name: "Ghost [911]", color: 0x18181b, u: 0.008, lane: 5.5, baseSpeedU: 0.019 },
-      { name: "Viper [Venom]", color: 0x16a34a, u: 0.0025, lane: -5.5, baseSpeedU: 0.017 },
+      { name: "⚡ Razor [M3 GTR]", color: 0x16a34a, u: 0.0025, lane: -5.5, baseSpeedU: 0.017 },
     ];
 
     const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
@@ -813,7 +898,7 @@ export class CityTrackManager {
       nCtx.lineWidth = 4;
       nCtx.stroke();
       nCtx.fillStyle = "#ffffff";
-      nCtx.font = "900 24px Segoe UI, sans-serif";
+      nCtx.font = "900 22px Segoe UI, sans-serif";
       nCtx.textAlign = "center";
       nCtx.fillText(r.name, 128, 40);
 
@@ -949,7 +1034,6 @@ export class CityTrackManager {
     this.helicopter = heliGroup;
   }
 
-  // 🚖 DETAILED CITY TRAFFIC WITH YELLOW CABS
   buildDetailedTraffic() {
     const carColors = [0xfacc15, 0x0284c7, 0xfacc15, 0xdc2626, 0x475569, 0xfacc15];
     const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
@@ -980,7 +1064,6 @@ export class CityTrackManager {
       roof.position.set(0, 1.48, -0.3);
 
       if (isTaxi) {
-        // Taxi Top Sign
         const signGeom = new THREE.BoxGeometry(1.6, 0.4, 0.6);
         const signMat = new THREE.MeshBasicMaterial({ color: 0xfff000 });
         const sign = new THREE.Mesh(signGeom, signMat);
@@ -1145,6 +1228,11 @@ export class CityTrackManager {
     const playerU = this.getClosestU(playerPos);
     const now = Date.now();
 
+    // Hide garage building during live racing
+    if (this.garageGroup) {
+      this.garageGroup.visible = !isRaceRunning;
+    }
+
     // 1. Rain
     if (this.isRaining && this.rainParticles) {
       this.rainParticles.position.copy(playerPos);
@@ -1164,7 +1252,7 @@ export class CityTrackManager {
       this.helicopter.position.z = THREE.MathUtils.lerp(this.helicopter.position.z, playerPos.z, delta * 2.0);
     }
 
-    // 3. BALANCED FAIR AI RIVALS
+    // 3. BALANCED FAIR AI RIVALS (Akira, Ghost, ⚡ Razor)
     for (let i = 0; i < this.aiRivals.length; i++) {
       const rival = this.aiRivals[i];
       if (isRaceRunning) {
