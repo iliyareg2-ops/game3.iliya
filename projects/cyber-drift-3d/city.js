@@ -1233,24 +1233,74 @@ export class CityTrackManager {
       return minD;
     };
 
-    let bldgIndex = 0;
-    for (let x = -800; x <= 800; x += 120) {
-      for (let z = -800; z <= 800; z += 120) {
-        const distToTrack = getMinDistToTrack(x, z);
-        if (distToTrack < 56) continue;
+    if (this.trackIndex === 1) {
+      // 🏔️ TOUGE MOUNTAIN PASS - Cliffs, Rocks, Torii Gates & Mountain Lanterns
+      const rockMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.95 });
+      const mossMat = new THREE.MeshStandardMaterial({ color: 0x334d28, roughness: 0.9 });
+      const toriiMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.4 });
+      const toriiBlackMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.3 });
 
-        bldgIndex++;
-        const facadeMat = this.facadeMats[bldgIndex % this.facadeMats.length];
-        const height = 100 + Math.random() * 220;
-        const w = 48;
-        const d = 48;
+      // Mountain Cliff Ridges
+      for (let x = -800; x <= 800; x += 110) {
+        for (let z = -800; z <= 800; z += 110) {
+          const dist = getMinDistToTrack(x, z);
+          if (dist < 45) continue;
 
-        const bldg = new THREE.Mesh(new THREE.BoxGeometry(w, height, d), facadeMat);
-        bldg.position.set(x, height / 2, z);
-        bldg.castShadow = true;
-        cityGroup.add(bldg);
+          const cliffHeight = 40 + Math.random() * 90;
+          const cliffGeom = new THREE.ConeGeometry(35 + Math.random() * 25, cliffHeight, 6);
+          const cliff = new THREE.Mesh(cliffGeom, Math.random() > 0.4 ? rockMat : mossMat);
+          cliff.position.set(x, cliffHeight / 2, z);
+          cliff.rotation.y = Math.random() * Math.PI;
+          cityGroup.add(cliff);
+        }
+      }
 
-        this.colliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 });
+      // Traditional Japanese Torii Gate on Mountain Apex
+      const toriiU = [0.28, 0.72];
+      for (const u of toriiU) {
+        const pt = this.trackCurve.getPointAt(u);
+        const tangent = this.trackCurve.getTangentAt(u).normalize();
+        const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+        const tg = new THREE.Group();
+        const colL = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 14, 10), toriiMat);
+        colL.position.set(-this.trackWidth / 2 - 2, 7, 0);
+        const colR = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 14, 10), toriiMat);
+        colR.position.set(this.trackWidth / 2 + 2, 7, 0);
+
+        const beamTop = new THREE.Mesh(new THREE.BoxGeometry(this.trackWidth + 12, 1.2, 1.4), toriiMat);
+        beamTop.position.set(0, 13.8, 0);
+        const capTop = new THREE.Mesh(new THREE.BoxGeometry(this.trackWidth + 14, 0.4, 1.8), toriiBlackMat);
+        capTop.position.set(0, 14.5, 0);
+        const beamSub = new THREE.Mesh(new THREE.BoxGeometry(this.trackWidth + 8, 0.8, 0.9), toriiMat);
+        beamSub.position.set(0, 11.2, 0);
+
+        tg.add(colL, colR, beamTop, capTop, beamSub);
+        tg.position.set(pt.x, 0, pt.z);
+        tg.lookAt(pt.x + tangent.x, 0, pt.z + tangent.z);
+        cityGroup.add(tg);
+      }
+    } else {
+      // 🏙️ F1 AUTODROME & MIAMI COAST - Modern Architectural Towers
+      let bldgIndex = 0;
+      for (let x = -800; x <= 800; x += 120) {
+        for (let z = -800; z <= 800; z += 120) {
+          const distToTrack = getMinDistToTrack(x, z);
+          if (distToTrack < 56) continue;
+
+          bldgIndex++;
+          const facadeMat = this.facadeMats[bldgIndex % this.facadeMats.length];
+          const height = 100 + Math.random() * 220;
+          const w = 48;
+          const d = 48;
+
+          const bldg = new THREE.Mesh(new THREE.BoxGeometry(w, height, d), facadeMat);
+          bldg.position.set(x, height / 2, z);
+          bldg.castShadow = true;
+          cityGroup.add(bldg);
+
+          this.colliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 });
+        }
       }
     }
 
@@ -1324,9 +1374,9 @@ export class CityTrackManager {
 
   buildAIRivals() {
     const rivalsData = [
-      { name: "Akira [GT-R]", color: 0x1d4ed8, u: 0.008, lane: -5.5, baseSpeedU: 0.018 },
-      { name: "Ghost [911]", color: 0x1e293b, u: 0.008, lane: 5.5, baseSpeedU: 0.019 },
-      { name: "⚡ Razor [M3 GTR]", color: 0x15803d, u: 0.0025, lane: -5.5, baseSpeedU: 0.017 },
+      { name: "Akira [GT-R]", color: 0x1d4ed8, u: 0.008, lane: -5.5, baseSpeedU: 0.024 },
+      { name: "Ghost [911]", color: 0x1e293b, u: 0.008, lane: 5.5, baseSpeedU: 0.025 },
+      { name: "⚡ Razor [M3 GTR]", color: 0x15803d, u: 0.0025, lane: -5.5, baseSpeedU: 0.023 },
     ];
 
     const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
@@ -1849,7 +1899,7 @@ export class CityTrackManager {
     }
   }
 
-  update(delta, playerCar, isRaceRunning = true) {
+  update(delta, playerCar, isRaceRunning = true, playerLaps = 0) {
     const playerPos = playerCar.mesh.position;
     const playerSpeed = Math.abs(playerCar.speed);
     const playerU = this.getClosestU(playerPos);
@@ -1875,28 +1925,28 @@ export class CityTrackManager {
       posAttr.needsUpdate = true;
     }
 
-    // 2. AI RIVALS
+    // 2. AI RIVALS - TRUE CONTINUOUS PROGRESS TRACKING & CLOSE COMPETITIVE RACING
     for (let i = 0; i < this.aiRivals.length; i++) {
       const rival = this.aiRivals[i];
       if (isRaceRunning) {
-        let diffU = (rival.u - playerU);
-        if (diffU > 0.5) diffU -= 1.0;
-        if (diffU < -0.5) diffU += 1.0;
+        const playerTotal = playerLaps + playerU;
+        const rivalTotal = rival.lapsCompleted + rival.u;
+        const diffProgress = rivalTotal - playerTotal;
 
         let targetSpeedMultiplier = 1.0;
-        if (diffU > 0.05) {
-          targetSpeedMultiplier = 0.85;
-        } else if (diffU < -0.05) {
-          targetSpeedMultiplier = 1.15;
+        if (diffProgress > 0.04) {
+          targetSpeedMultiplier = 0.90;
+        } else if (diffProgress < -0.04) {
+          targetSpeedMultiplier = 1.16;
         } else {
-          targetSpeedMultiplier = 0.95 + (i * 0.03);
+          targetSpeedMultiplier = 0.98 + (i * 0.02);
         }
 
-        rival.currentSpeedU = THREE.MathUtils.lerp(rival.currentSpeedU, rival.baseSpeedU * targetSpeedMultiplier, delta * 1.5);
+        rival.currentSpeedU = THREE.MathUtils.lerp(rival.currentSpeedU, rival.baseSpeedU * targetSpeedMultiplier, delta * 2.0);
 
         const prevU = rival.u;
         rival.u = (rival.u + rival.currentSpeedU * delta) % 1.0;
-        if (prevU > 0.85 && rival.u < 0.15) rival.lapsCompleted++;
+        if (prevU > 0.80 && rival.u < 0.20) rival.lapsCompleted++;
       } else {
         rival.currentSpeedU = 0;
       }

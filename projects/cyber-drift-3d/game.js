@@ -854,7 +854,7 @@ export class CyberDriftGame {
         this.car.nitroActive = this.keys.nitro;
 
         this.car.updatePhysics(delta, this.trackManager);
-        this.trackManager.update(delta, this.car, true);
+        this.trackManager.update(delta, this.car, true, this.playerLapsCompleted);
         this.checkSkillChains();
       }
 
