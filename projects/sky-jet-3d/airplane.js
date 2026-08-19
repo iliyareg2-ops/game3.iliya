@@ -1,4 +1,4 @@
-// airplane.js - Supersonic Jet with Energy Shield, Aerodynamics, and Infinite Flight Tracking
+// airplane.js - Supersonic Aerodynamics, Stunt Recognition Engine, Sonic Boom Cone, Wing Vortices & Avionics
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { flightAudio } from "./audio.js";
 
@@ -14,12 +14,15 @@ export class Airplane {
     this.rightCanard = null;
     this.thrusterGlows = [];
     this.exhaustParticles = [];
+    this.wingtipVortices = [];
 
-    // Shield Mesh
+    // Shield & Sonic Boom Visuals
     this.shieldMesh = null;
-    this.shieldTime = 0; // Shield duration in seconds
+    this.shieldTime = 0;
+    this.sonicBoomCone = null;
+    this.sonicBoomTriggered = false;
 
-    // Flight Physics
+    // Flight Dynamics State
     this.position = new THREE.Vector3(0, 1.4, -450);
     this.mesh.position.copy(this.position);
     this.mesh.rotation.y = 0;
@@ -28,6 +31,7 @@ export class Airplane {
     this.takeoffSpeed = 170;
     this.cruiseSpeed = 580;
     this.boostSpeed = 1450;
+    this.machSpeed = 1235;
 
     this.throttle = 0;
     this.boostFuel = 100;
@@ -43,6 +47,14 @@ export class Airplane {
     this.rollRate = 0;
     this.yawRate = 0;
     this.rollAngle = 0;
+    this.pitchAngle = 0;
+    this.gForce = 1.0;
+
+    // Stunt Tracking
+    this.accumulatedRoll = 0;
+    this.accumulatedPitch = 0;
+    this.onStuntCallback = null;
+    this.stuntCooldown = 0;
 
     this.distanceFlownMeters = 0;
     this.lastPosition = this.position.clone();
@@ -50,6 +62,7 @@ export class Airplane {
     this.createJetModel();
     this.createCockpitInterior();
     this.createShieldBubble();
+    this.createSonicBoomCone();
     this.createParticleSystems();
     this.scene.add(this.mesh);
   }
@@ -98,7 +111,7 @@ export class Airplane {
     wings.receiveShadow = true;
     this.mesh.add(wings);
 
-    // Wing Neon Edge Trims
+    // Wing Neon Trims
     const leftWingTrimGeom = new THREE.BoxGeometry(0.15, 0.2, 3.8);
     const leftWingTrim = new THREE.Mesh(leftWingTrimGeom, accentMat);
     leftWingTrim.position.set(6.8, 0.15, 3.8);
@@ -108,7 +121,7 @@ export class Airplane {
     rightWingTrim.rotation.y = 0.32;
     this.mesh.add(leftWingTrim, rightWingTrim);
 
-    // Movable Elevons
+    // Elevons
     const elevonGeom = new THREE.BoxGeometry(2.4, 0.18, 0.9);
     this.leftElevon = new THREE.Mesh(elevonGeom, darkTrimMat);
     this.leftElevon.position.set(4.5, 0.15, 4.6);
@@ -116,7 +129,7 @@ export class Airplane {
     this.rightElevon.position.set(-4.5, 0.15, 4.6);
     this.mesh.add(this.leftElevon, this.rightElevon);
 
-    // Forward Canards
+    // Canards
     const canardGeom = new THREE.BoxGeometry(1.6, 0.12, 0.8);
     this.leftCanard = new THREE.Mesh(canardGeom, hullMat);
     this.leftCanard.position.set(1.9, 0.2, -4.2);
@@ -124,7 +137,7 @@ export class Airplane {
     this.rightCanard.position.set(-1.9, 0.2, -4.2);
     this.mesh.add(this.leftCanard, this.rightCanard);
 
-    // Twin Tail Fins
+    // Tail Fins
     const finShape = new THREE.Shape();
     finShape.moveTo(0, 0);
     finShape.lineTo(0.4, 2.8);
@@ -146,7 +159,7 @@ export class Airplane {
     rightFin.castShadow = true;
     this.mesh.add(leftFin, rightFin);
 
-    // Twin Engine Nacelles
+    // Engines
     const nacelleGeom = new THREE.CylinderGeometry(0.75, 0.85, 5.5, 12);
     nacelleGeom.rotateX(Math.PI / 2);
     const leftNacelle = new THREE.Mesh(nacelleGeom, darkTrimMat);
@@ -155,7 +168,7 @@ export class Airplane {
     rightNacelle.position.set(-1.2, 0.1, 4.0);
     this.mesh.add(leftNacelle, rightNacelle);
 
-    // Glowing Thruster Discs
+    // Plasma Discs
     const glowGeom = new THREE.CylinderGeometry(0.6, 0.6, 0.3, 12);
     glowGeom.rotateX(Math.PI / 2);
     const glowMat = new THREE.MeshBasicMaterial({ color: 0x00e1ff });
@@ -171,11 +184,19 @@ export class Airplane {
     this.cockpitPoint.position.set(0, 0.82, -1.1);
     this.mesh.add(this.cockpitPoint);
 
+    // Futuristic Holographic Reticle Ring
     const hudFrameGeom = new THREE.RingGeometry(0.18, 0.2, 16);
     const hudMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
     this.hudRing = new THREE.Mesh(hudFrameGeom, hudMat);
     this.hudRing.position.set(0, 0.82, -2.4);
     this.mesh.add(this.hudRing);
+
+    // Flight Control Stick (Yoke)
+    const stickGeom = new THREE.CylinderGeometry(0.04, 0.05, 0.6, 8);
+    const stickMat = new THREE.MeshStandardMaterial({ color: 0x22262e, metalness: 0.8 });
+    this.controlStick = new THREE.Mesh(stickGeom, stickMat);
+    this.controlStick.position.set(0, 0.45, -1.8);
+    this.mesh.add(this.controlStick);
   }
 
   createShieldBubble() {
@@ -189,6 +210,21 @@ export class Airplane {
     this.shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
     this.shieldMesh.visible = false;
     this.mesh.add(this.shieldMesh);
+  }
+
+  createSonicBoomCone() {
+    const coneGeom = new THREE.ConeGeometry(8.5, 6.0, 24, 1, true);
+    coneGeom.rotateX(-Math.PI / 2);
+    const coneMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.7,
+      side: THREE.DoubleSide,
+    });
+    this.sonicBoomCone = new THREE.Mesh(coneGeom, coneMat);
+    this.sonicBoomCone.position.set(0, 0.2, 2.0);
+    this.sonicBoomCone.visible = false;
+    this.mesh.add(this.sonicBoomCone);
   }
 
   createParticleSystems() {
@@ -239,7 +275,6 @@ export class Airplane {
   updatePhysics(delta, worldManager) {
     if (this.isCrashed) return;
 
-    // Shield countdown & pulse
     if (this.shieldTime > 0) {
       this.shieldTime -= delta;
       this.shieldMesh.visible = true;
@@ -259,16 +294,35 @@ export class Airplane {
       targetSpd = Math.max(0, targetSpd * 0.4);
     }
 
-    const accelRate = this.isBoosting ? 4.0 : 1.8;
+    const accelRate = this.isBoosting ? 4.2 : 1.8;
     this.speed = THREE.MathUtils.lerp(this.speed, targetSpd, delta * accelRate);
+
+    // Sonic Boom Trigger
+    if (this.speed >= this.machSpeed && !this.sonicBoomTriggered) {
+      this.sonicBoomTriggered = true;
+      flightAudio.playSonicBoom();
+      this.sonicBoomCone.visible = true;
+      setTimeout(() => {
+        this.sonicBoomCone.visible = false;
+      }, 700);
+      if (this.onStuntCallback) this.onStuntCallback("💥 ЗВУКОВОЙ БАРЬЕР (MACH 1+)", 600);
+    } else if (this.speed < this.machSpeed - 50) {
+      this.sonicBoomTriggered = false;
+    }
 
     // 2. Control Inputs
     const controlEffectiveness = Math.min(1.0, this.speed / 260);
     this.pitchRate = THREE.MathUtils.lerp(this.pitchRate, this.pitchInput * 1.6 * controlEffectiveness, delta * 4);
-    this.rollRate = THREE.MathUtils.lerp(this.rollRate, this.rollInput * 2.8 * controlEffectiveness, delta * 5);
+    this.rollRate = THREE.MathUtils.lerp(this.rollRate, this.rollInput * 3.2 * controlEffectiveness, delta * 5);
     this.yawRate = THREE.MathUtils.lerp(this.yawRate, (this.yawInput * 0.9 - this.rollAngle * 0.4) * controlEffectiveness, delta * 3);
 
-    // Elevons visual deflection
+    // Animate stick inside cockpit
+    if (this.controlStick) {
+      this.controlStick.rotation.x = this.pitchInput * 0.35;
+      this.controlStick.rotation.z = -this.rollInput * 0.35;
+    }
+
+    // Elevons
     if (this.leftElevon && this.rightElevon) {
       this.leftElevon.rotation.x = this.pitchInput * 0.4 + this.rollInput * 0.5;
       this.rightElevon.rotation.x = this.pitchInput * 0.4 - this.rollInput * 0.5;
@@ -278,7 +332,7 @@ export class Airplane {
       this.rightCanard.rotation.x = -this.pitchInput * 0.35;
     }
 
-    // 3. Rotations
+    // 3. Rotations & Attitude
     const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(this.mesh.quaternion);
     const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.mesh.quaternion);
 
@@ -292,24 +346,62 @@ export class Airplane {
 
     const localRight = new THREE.Vector3(1, 0, 0).applyQuaternion(this.mesh.quaternion);
     this.rollAngle = Math.asin(Math.max(-1, Math.min(1, -localRight.y)));
+    this.pitchAngle = Math.asin(Math.max(-1, Math.min(1, forward.y)));
+
+    // Calculate G-Force
+    this.gForce = 1.0 + Math.abs(this.pitchRate) * (this.speed / 280) * 1.8;
 
     // 4. Movement
     const speedMs = (this.speed * 1000) / 3600;
     const moveStep = forward.clone().multiplyScalar(speedMs * delta);
     this.mesh.position.add(moveStep);
 
-    // Distance tracking
     this.distanceFlownMeters += this.mesh.position.distanceTo(this.lastPosition);
     this.lastPosition.copy(this.mesh.position);
 
-    // 5. Terrain & Skyscraper Ground Collisions
+    // 5. Stunt Recognition (Barrel Roll & Loop-the-Loop & Low Flyby)
+    this.stuntCooldown = Math.max(0, this.stuntCooldown - delta);
+    if (this.isAirborne && this.stuntCooldown === 0) {
+      // Roll tracking
+      this.accumulatedRoll += Math.abs(this.rollRate * delta);
+      if (this.accumulatedRoll >= Math.PI * 1.9) {
+        this.accumulatedRoll = 0;
+        this.stuntCooldown = 2.0;
+        flightAudio.playStuntFanfare();
+        this.addBoost(25);
+        if (this.onStuntCallback) this.onStuntCallback("🔄 ФИГУРА: БОЧКА В ВОЗДУХЕ!", 400);
+      }
+
+      // Pitch loop tracking
+      this.accumulatedPitch += Math.abs(this.pitchRate * delta);
+      if (this.accumulatedPitch >= Math.PI * 1.9) {
+        this.accumulatedPitch = 0;
+        this.stuntCooldown = 2.5;
+        flightAudio.playStuntFanfare();
+        this.addBoost(35);
+        if (this.onStuntCallback) this.onStuntCallback("🔁 МЁРТВАЯ ПЕТЛЯ НЕСТЕРОВА!", 500);
+      }
+
+      // Low Altitude Flyby
+      const groundY = worldManager.getTerrainHeight(this.mesh.position.x, this.mesh.position.z);
+      if (this.mesh.position.y - groundY < 18 && this.speed > 550) {
+        this.stuntCooldown = 3.5;
+        flightAudio.playStuntFanfare();
+        this.addBoost(20);
+        if (this.onStuntCallback) this.onStuntCallback("⚡ БРЕЮЩИЙ ПОЛЁТ У ЗЕМЛИ!", 350);
+      }
+    }
+
+    if (Math.abs(this.rollInput) < 0.1) this.accumulatedRoll = 0;
+    if (Math.abs(this.pitchInput) < 0.1) this.accumulatedPitch = 0;
+
+    // 6. Terrain & Building Collisions
     const groundHeight = worldManager.getTerrainHeight(this.mesh.position.x, this.mesh.position.z);
     const minAltitude = groundHeight + 1.4;
     const isBuildingHit = worldManager.checkBuildingCollision(this.mesh.position, 4.5);
 
     if (this.mesh.position.y <= minAltitude + 0.2 || isBuildingHit) {
       if (this.speed < this.takeoffSpeed && Math.abs(this.mesh.position.x) < 400 && Math.abs(this.mesh.position.z) < 700 && !isBuildingHit) {
-        // Taxiing on runway
         this.mesh.position.y = minAltitude;
         this.isAirborne = false;
         const euler = new THREE.Euler().setFromQuaternion(this.mesh.quaternion, "YXZ");
@@ -320,13 +412,11 @@ export class Airplane {
         this.isAirborne = true;
       }
 
-      // Check crash or shield bounce
       if (this.isAirborne && (this.mesh.position.y < groundHeight + 0.8 || isBuildingHit)) {
         if (this.shieldTime > 0) {
-          // Shield absorbs collision and bounces jet up & away!
           this.mesh.position.y += 35;
           flightAudio.playShieldDeflect();
-          this.shieldTime = 0; // Consume shield
+          this.shieldTime = 0;
         } else {
           this.isCrashed = true;
         }
@@ -335,7 +425,7 @@ export class Airplane {
       this.isAirborne = true;
     }
 
-    // 6. Exhaust particles
+    // 7. Exhaust & Thrusters
     const isBoosting = this.isBoosting && this.boostFuel > 0;
     const thrusterColor = isBoosting ? 0xff7700 : 0x00e1ff;
     for (const glow of this.thrusterGlows) {
@@ -380,6 +470,9 @@ export class Airplane {
     this.rollRate = 0;
     this.yawRate = 0;
     this.distanceFlownMeters = 0;
+    this.accumulatedRoll = 0;
+    this.accumulatedPitch = 0;
+    this.sonicBoomTriggered = false;
     this.lastPosition.copy(this.position);
   }
 }

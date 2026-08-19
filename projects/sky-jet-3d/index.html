@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Sky Jet 3D: Бесконечный Полёт</title>
+  <title>Sky Jet 3D: Авиасимулятор Высшего Пилотажа</title>
   <style>
     * {
       box-sizing: border-box;
@@ -85,6 +85,7 @@
     .hud-val.alt { color: #55ff99; text-shadow: 0 0 10px rgba(85, 255, 153, 0.6); }
     .hud-val.gold { color: #ffcc00; text-shadow: 0 0 10px rgba(255, 204, 0, 0.6); }
     .hud-val.dist { color: #ff88ff; text-shadow: 0 0 10px rgba(255, 136, 255, 0.6); }
+    .hud-val.mach { color: #ff3b30; text-shadow: 0 0 10px rgba(255, 59, 48, 0.6); font-size: 16px; }
 
     /* Nitro & Shield Bars */
     .bar-box {
@@ -134,7 +135,32 @@
       gap: 6px;
     }
 
-    /* Crosshair */
+    /* Target Lock-On Reticle */
+    #hud-target-box {
+      position: absolute;
+      width: 46px;
+      height: 46px;
+      border: 2px dashed #00ffcc;
+      border-radius: 6px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      display: none;
+      box-shadow: 0 0 14px #00ffcc;
+    }
+
+    #hud-target-dist {
+      position: absolute;
+      bottom: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      font-weight: 900;
+      color: #00ffcc;
+      text-shadow: 0 0 6px #00ffcc;
+      white-space: nowrap;
+    }
+
+    /* Central Crosshair */
     #crosshair {
       position: absolute;
       top: 50%;
@@ -182,12 +208,12 @@
       top: 17%;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(8, 14, 24, 0.9);
+      background: rgba(8, 14, 24, 0.92);
       border: 1px solid #00f0ff;
       border-radius: 12px;
       padding: 10px 22px;
       font-size: 14px;
-      font-weight: 800;
+      font-weight: 900;
       letter-spacing: 0.08em;
       color: #fff;
       text-shadow: 0 0 12px #00f0ff;
@@ -199,7 +225,7 @@
       pointer-events: none;
     }
 
-    /* Bottom Info & Radar */
+    /* Bottom HUD */
     .hud-bottom {
       display: flex;
       justify-content: space-between;
@@ -314,7 +340,7 @@
       .controls-hint { display: none; }
     }
 
-    /* Modal Screens */
+    /* Modals */
     .screen-overlay {
       position: fixed;
       inset: 0;
@@ -362,14 +388,14 @@
       font-size: 14px;
       color: #b0c4de;
       line-height: 1.55;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
     }
 
     .biome-badges {
       display: flex;
       justify-content: center;
-      gap: 8px;
-      margin-bottom: 18px;
+      gap: 6px;
+      margin-bottom: 16px;
       flex-wrap: wrap;
     }
 
@@ -377,7 +403,7 @@
       background: rgba(0, 240, 255, 0.1);
       border: 1px solid rgba(0, 240, 255, 0.35);
       border-radius: 8px;
-      padding: 4px 10px;
+      padding: 4px 8px;
       font-size: 11px;
       font-weight: 800;
       color: #a5ebff;
@@ -387,7 +413,7 @@
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 8px;
-      margin-bottom: 22px;
+      margin-bottom: 20px;
       text-align: left;
     }
 
@@ -435,6 +461,11 @@
 <body>
   <div id="canvas-container"></div>
 
+  <!-- Target Lock-On Bracket -->
+  <div id="hud-target-box">
+    <span id="hud-target-dist">450M</span>
+  </div>
+
   <!-- HUD -->
   <div id="hud">
     <!-- Top Bar -->
@@ -445,8 +476,16 @@
           <span class="hud-val"><span id="hud-speed">0</span> <small style="font-size:11px">КМ/Ч</small></span>
         </div>
         <div class="hud-pill">
+          <span class="hud-label">РЕЖИМ МАХА</span>
+          <span class="hud-val mach" id="hud-mach">MACH 0.0</span>
+        </div>
+        <div class="hud-pill">
           <span class="hud-label">ВЫСОТА</span>
           <span class="hud-val alt"><span id="hud-altitude">0</span> <small style="font-size:11px">М</small></span>
+        </div>
+        <div class="hud-pill">
+          <span class="hud-label">ПЕРЕГРУЗКА</span>
+          <span class="hud-val alt" id="hud-gforce">1.0G</span>
         </div>
         <div class="hud-pill">
           <span class="hud-label">ДИСТАНЦИЯ</span>
@@ -481,6 +520,7 @@
 
         <div class="quick-actions">
           <button class="hud-btn" id="btn-cam-switch"><span id="hud-cam-mode">ОБЗОР (3P)</span></button>
+          <button class="hud-btn" id="btn-time-toggle"><span id="hud-time-mode">☀️ ДЕНЬ</span></button>
           <button class="hud-btn" id="btn-sound-toggle">🔊</button>
         </div>
       </div>
@@ -498,9 +538,9 @@
     <div class="hud-bottom">
       <div class="controls-hint">
         <b>W / S:</b> Тангаж (Тянуть на себя / От себя)<br>
-        <b>A / D:</b> Крен влево / вправо<br>
-        <b>SHIFT:</b> Форсаж (Boost) &bull; <b>SPACE:</b> Тормоз<br>
-        <b>C:</b> Переключить в кабину &bull; <b>R:</b> Рестарт
+        <b>A / D:</b> Крен (Бочка / Поворот)<br>
+        <b>SHIFT:</b> Форсаж (Сверхзвук Mach 1+) &bull; <b>SPACE:</b> Тормоз<br>
+        <b>C:</b> Вид из кабины &bull; <b>T:</b> Время суток (День/Закат/Ночь) &bull; <b>R:</b> Рестарт
       </div>
 
       <div class="radar-wrapper">
@@ -532,26 +572,26 @@
   <!-- Intro Screen -->
   <div class="screen-overlay" id="intro-screen">
     <div class="modal-card">
-      <div class="modal-tag">БЕСКОНЕЧНЫЙ 3D МИР &bull; СИМУЛЯТОР ДЖЕТА</div>
+      <div class="modal-tag">СИМУЛЯТОР ВЫСШЕГО ПИЛОТАЖА &bull; БЕСКОНЕЧНЫЙ 3D МИР</div>
       <h1>Sky Jet 3D</h1>
       <p class="modal-desc">
-        Летайте в бесконечном открытом 3D-мире! Исследуйте 4 уникальных биома, пролетайте между небоскрёбами мегаполиса, над полями цветов, океанами и альпийскими горами. Собирайте ящики припасов на парашютах!
+        Взлетайте на сверхзвуковом джете! Выполняйте фигуры высшего пилотажа (бочки, мёртвые петли, слалом между небоскрёбами), преодолевайте звуковой барьер, пролетайте сквозь трюковые кольца и собирайте парашютные ящики припасов.
       </p>
 
       <div class="biome-badges">
         <span class="biome-badge">🏔️ Альпы и Каньоны</span>
         <span class="biome-badge">🏙️ 3D Мегаполис</span>
-        <span class="biome-badge">🌸 Цветочные Луга</span>
-        <span class="biome-badge">🌊 Океан и Острова</span>
+        <span class="biome-badge">🌸 Цветочные Поля</span>
+        <span class="biome-badge">🌊 Тропический Океан</span>
       </div>
 
       <div class="key-table">
-        <div class="key-row"><span>Взлёт / Подъём:</span><kbd>W / ↓</kbd></div>
-        <div class="key-row"><span>Нырок / Снижение:</span><kbd>S / ↑</kbd></div>
-        <div class="key-row"><span>Крен (Поворот):</span><kbd>A / D</kbd></div>
-        <div class="key-row"><span>Форсаж (Сверхзвук):</span><kbd>SHIFT</kbd></div>
+        <div class="key-row"><span>Взлёт / Тангаж вверх:</span><kbd>W / ↓</kbd></div>
+        <div class="key-row"><span>Нырок / Тангаж вниз:</span><kbd>S / ↑</kbd></div>
+        <div class="key-row"><span>Крен / Бочка:</span><kbd>A / D</kbd></div>
+        <div class="key-row"><span>Форсаж (Mach 1+):</span><kbd>SHIFT</kbd></div>
         <div class="key-row"><span>Вид из кабины:</span><kbd>C</kbd></div>
-        <div class="key-row"><span>Тормоз / Рестарт:</span><kbd>SPACE / R</kbd></div>
+        <div class="key-row"><span>Время суток (День/Закат/Ночь):</span><kbd>T</kbd></div>
       </div>
 
       <button class="btn-main" id="btn-start-game">ВЫЛЕТЕТЬ НА МИССИЮ</button>

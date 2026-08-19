@@ -1,4 +1,4 @@
-// audio.js - Web Audio API Sound Engine for Sky Jet 3D (Turbines, Sonic Booms, Radio Chatter & Shield)
+// audio.js - Web Audio API Sound Engine (Turbines, Sonic Booms, Stunts, Radios, Alarms & Ring Chimes)
 
 class FlightAudioEngine {
   constructor() {
@@ -142,18 +142,18 @@ class FlightAudioEngine {
     if (!this.isInitialized || this.isMuted) return;
     const t = this.ctx.currentTime;
 
-    const baseFreq = 50 + throttle * 120 + (speedKmH / 1200) * 90;
+    const baseFreq = 50 + throttle * 120 + (speedKmH / 1400) * 90;
     this.engineOsc1.frequency.setTargetAtTime(baseFreq, t, 0.08);
     this.engineOsc2.frequency.setTargetAtTime(baseFreq * 2.1, t, 0.08);
 
-    const filterFreq = 300 + throttle * 1400 + (speedKmH / 1200) * 900;
+    const filterFreq = 300 + throttle * 1400 + (speedKmH / 1400) * 900;
     this.engineFilter.frequency.setTargetAtTime(filterFreq, t, 0.08);
 
     const targetEngineVol = 0.2 + throttle * 0.45;
     this.engineGain.gain.setTargetAtTime(targetEngineVol, t, 0.08);
 
-    const windVol = Math.min(0.65, (speedKmH / 1200) * 0.55);
-    const windCutoff = 200 + (speedKmH / 1200) * 1600;
+    const windVol = Math.min(0.65, (speedKmH / 1400) * 0.55);
+    const windCutoff = 200 + (speedKmH / 1400) * 1600;
     this.windGain.gain.setTargetAtTime(windVol, t, 0.1);
     this.windFilter.frequency.setTargetAtTime(windCutoff, t, 0.1);
 
@@ -162,6 +162,107 @@ class FlightAudioEngine {
     if (isBoosting) {
       this.boostFilter.frequency.setTargetAtTime(1300 + Math.random() * 200, t, 0.05);
     }
+  }
+
+  // 💥 Thunderous Sonic Boom when breaking Mach 1 (1235 km/h)
+  playSonicBoom() {
+    if (!this.isInitialized || this.isMuted) return;
+    const t = this.ctx.currentTime;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(140, t);
+    osc.frequency.exponentialRampToValueAtTime(25, t + 0.6);
+
+    gain.gain.setValueAtTime(0.85, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.95);
+
+    // Boom sub-noise transient
+    const noiseBuffer = this._createNoiseBuffer();
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = noiseBuffer;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(300, t);
+    filter.frequency.exponentialRampToValueAtTime(30, t + 0.7);
+
+    const nGain = this.ctx.createGain();
+    nGain.gain.setValueAtTime(0.9, t);
+    nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+
+    noise.connect(filter);
+    filter.connect(nGain);
+    nGain.connect(this.masterGain);
+    noise.start(t);
+    noise.stop(t + 0.85);
+  }
+
+  // ⭕ Holographic Ring Pass Chime
+  playRingChime() {
+    if (!this.isInitialized || this.isMuted) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(523.25, t); // C5
+    osc.frequency.exponentialRampToValueAtTime(1046.50, t + 0.2); // C6
+
+    gain.gain.setValueAtTime(0.35, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.38);
+  }
+
+  // 🎯 Stunt Recognition Fanfare
+  playStuntFanfare() {
+    if (!this.isInitialized || this.isMuted) return;
+    const t = this.ctx.currentTime;
+
+    const freqs = [523.25, 659.25, 783.99, 1046.50]; // C-E-G-C Arpeggio
+    freqs.forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(freq, t + idx * 0.06);
+
+      gain.gain.setValueAtTime(0.25, t + idx * 0.06);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.06 + 0.28);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t + idx * 0.06);
+      osc.stop(t + idx * 0.06 + 0.3);
+    });
+  }
+
+  // ⚠️ Pull Up / Stall Warning
+  playPullUpAlert() {
+    if (!this.isInitialized || this.isMuted) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = "square";
+    osc.frequency.setValueAtTime(800, t);
+    osc.frequency.setValueAtTime(600, t + 0.1);
+
+    gain.gain.setValueAtTime(0.2, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.25);
   }
 
   playCollectSound(type = "normal") {
@@ -173,15 +274,13 @@ class FlightAudioEngine {
     const gain = this.ctx.createGain();
 
     if (type === "gold") {
-      // Epic fanfare chord
       osc1.type = "sine";
       osc2.type = "triangle";
-      osc1.frequency.setValueAtTime(659.25, t); // E5
-      osc1.frequency.exponentialRampToValueAtTime(1318.51, t + 0.3); // E6
-      osc2.frequency.setValueAtTime(1046.50, t); // C6
-      osc2.frequency.exponentialRampToValueAtTime(2093.00, t + 0.4); // C7
+      osc1.frequency.setValueAtTime(659.25, t);
+      osc1.frequency.exponentialRampToValueAtTime(1318.51, t + 0.3);
+      osc2.frequency.setValueAtTime(1046.50, t);
+      osc2.frequency.exponentialRampToValueAtTime(2093.00, t + 0.4);
     } else if (type === "plasma") {
-      // Sci-fi shield charge sound
       osc1.type = "sawtooth";
       osc2.type = "sine";
       osc1.frequency.setValueAtTime(300, t);
@@ -189,7 +288,6 @@ class FlightAudioEngine {
       osc2.frequency.setValueAtTime(600, t);
       osc2.frequency.exponentialRampToValueAtTime(1800, t + 0.35);
     } else {
-      // Standard Turbo Chime
       osc1.type = "sine";
       osc2.type = "triangle";
       osc1.frequency.setValueAtTime(587.33, t);
@@ -214,8 +312,6 @@ class FlightAudioEngine {
   playRadioChatter() {
     if (!this.isInitialized || this.isMuted) return;
     const t = this.ctx.currentTime;
-    
-    // Quick dual-tone military radio squelch
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = "square";

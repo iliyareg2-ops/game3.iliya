@@ -1,4 +1,4 @@
-// game.js - Main Game Loop, Infinite Biome Streaming, Radar, HUD and Flight Director
+// game.js - Main Game Loop, Day/Night Lighting, Stunt Engine, Target Lock-On Avionics & HUD
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { WorldManager } from "./world.js";
 import { Airplane } from "./airplane.js";
@@ -67,9 +67,14 @@ export class SkyJetGame {
     this.airplane = new Airplane(this.scene);
     this.crateManager = new SupplyCrateManager(this.scene, this.worldManager);
 
-    // Biome change dispatch
     this.worldManager.onBiomeChangeCallback = (newBiome) => {
       this.handleBiomeChange(newBiome);
+    };
+
+    // Stunt callback hook
+    this.airplane.onStuntCallback = (stuntName, bonusScore) => {
+      this.crateManager.score += bonusScore;
+      this.showBanner(`${stuntName} +${bonusScore} ОЧКОВ! 🔥`, 2800);
     };
   }
 
@@ -88,6 +93,7 @@ export class SkyJetGame {
       if (e.code === "Space" || e.code === "KeyB") this.keys.brake = true;
 
       if (e.code === "KeyC") this.toggleCamera();
+      if (e.code === "KeyT") this.cycleTimeOfDay();
       if (e.code === "KeyR") this.restartMission();
 
       if (this.gameState === "READY") this.startFlight();
@@ -139,6 +145,9 @@ export class SkyJetGame {
     const camBtn = document.getElementById("btn-cam-switch");
     if (camBtn) camBtn.addEventListener("click", () => this.toggleCamera());
 
+    const timeBtn = document.getElementById("btn-time-toggle");
+    if (timeBtn) timeBtn.addEventListener("click", () => this.cycleTimeOfDay());
+
     const soundBtn = document.getElementById("btn-sound-toggle");
     if (soundBtn) {
       soundBtn.addEventListener("click", () => {
@@ -155,10 +164,15 @@ export class SkyJetGame {
     this.cratesEl = document.getElementById("hud-crates");
     this.distanceEl = document.getElementById("hud-distance");
     this.biomeEl = document.getElementById("hud-biome");
+    this.gforceEl = document.getElementById("hud-gforce");
+    this.machEl = document.getElementById("hud-mach");
+    this.targetDistEl = document.getElementById("hud-target-dist");
+    this.targetBoxEl = document.getElementById("hud-target-box");
     this.shieldPillEl = document.getElementById("hud-shield-pill");
     this.shieldBarEl = document.getElementById("hud-shield-bar");
     this.nitroBarEl = document.getElementById("hud-nitro-bar");
     this.camModeEl = document.getElementById("hud-cam-mode");
+    this.timeModeEl = document.getElementById("hud-time-mode");
     this.bannerEl = document.getElementById("hud-banner");
 
     const startBtn = document.getElementById("btn-start-game");
@@ -173,6 +187,21 @@ export class SkyJetGame {
     if (restartBtn) {
       restartBtn.addEventListener("click", () => this.restartMission());
     }
+  }
+
+  cycleTimeOfDay() {
+    const modes = ["DAY", "SUNSET", "NIGHT", "AUTO"];
+    const curIdx = modes.indexOf(this.worldManager.timeOfDay);
+    const nextMode = modes[(curIdx + 1) % modes.length];
+    this.worldManager.setTimeOfDay(nextMode);
+
+    let label = "☀️ ДЕНЬ";
+    if (nextMode === "SUNSET") label = "🌅 ЗАКАТ";
+    if (nextMode === "NIGHT") label = "🌙 НОЧЬ";
+    if (nextMode === "AUTO") label = "⚡ АВТО-ЦИКЛ";
+
+    if (this.timeModeEl) this.timeModeEl.textContent = label;
+    this.showBanner(`ОСВЕЩЕНИЕ: ${label}`, 2200);
   }
 
   startFlight() {
@@ -200,10 +229,10 @@ export class SkyJetGame {
     if (biome === "AIRPORT") name = "🛫 ГЛАВНЫЙ АЭРОПОРТ";
 
     if (this.biomeEl) this.biomeEl.textContent = name;
-    this.showBanner(`📻 ДИСПЕТЧЕР: ВХОД В ЗОНУ [${name}]`, 3800);
+    this.showBanner(`📻 ДИСПЕТЧЕР: ВХОД В ЗОНУ [${name}]`, 3500);
   }
 
-  showBanner(text, duration = 3200) {
+  showBanner(text, duration = 3000) {
     if (!this.bannerEl) return;
     this.bannerEl.textContent = text;
     this.bannerEl.style.opacity = "1";
@@ -221,7 +250,7 @@ export class SkyJetGame {
 
   updateCamera(delta) {
     const isBoosting = this.airplane.isBoosting && this.airplane.boostFuel > 0;
-    const targetFov = isBoosting ? 76 : (this.cameraMode === "COCKPIT" ? 70 : 60);
+    const targetFov = isBoosting ? 78 : (this.cameraMode === "COCKPIT" ? 72 : 60);
     this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFov, delta * 3.5);
     this.camera.updateProjectionMatrix();
 
@@ -233,7 +262,7 @@ export class SkyJetGame {
       if (this.airplane.hudRing) this.airplane.hudRing.visible = true;
     } else {
       if (this.airplane.hudRing) this.airplane.hudRing.visible = false;
-      const chaseDist = isBoosting ? 26 : 22;
+      const chaseDist = isBoosting ? 27 : 22;
       const chaseHeight = 5.2;
 
       const offset = new THREE.Vector3(0, chaseHeight, -chaseDist);
@@ -311,6 +340,40 @@ export class SkyJetGame {
     ctx.fill();
   }
 
+  // Updates Target Lock-on Bracket pointing to closest crate
+  updateTargetLockOn() {
+    if (!this.targetBoxEl || !this.targetDistEl) return;
+
+    let nearestCrate = null;
+    let minDist = Infinity;
+    for (const c of this.crateManager.crates) {
+      if (!c.active) continue;
+      const d = c.group.position.distanceTo(this.airplane.mesh.position);
+      if (d < minDist) {
+        minDist = d;
+        nearestCrate = c;
+      }
+    }
+
+    if (nearestCrate && minDist < 1500) {
+      const cratePos = nearestCrate.group.position.clone();
+      cratePos.project(this.camera);
+
+      // Check if crate is in front of camera
+      if (cratePos.z < 1) {
+        const screenX = (cratePos.x * 0.5 + 0.5) * window.innerWidth;
+        const screenY = (-cratePos.y * 0.5 + 0.5) * window.innerHeight;
+
+        this.targetBoxEl.style.display = "block";
+        this.targetBoxEl.style.left = `${screenX}px`;
+        this.targetBoxEl.style.top = `${screenY}px`;
+        this.targetDistEl.textContent = `${Math.round(minDist)}M`;
+        return;
+      }
+    }
+    this.targetBoxEl.style.display = "none";
+  }
+
   onCrateCollected(type, points, count, score) {
     flightAudio.playCollectSound(type);
 
@@ -353,9 +416,10 @@ export class SkyJetGame {
     if (this.scoreEl) this.scoreEl.textContent = this.crateManager.score;
     if (this.cratesEl) this.cratesEl.textContent = this.crateManager.collectedCount;
     if (this.distanceEl) this.distanceEl.textContent = (this.airplane.distanceFlownMeters / 1000).toFixed(1);
+    if (this.gforceEl) this.gforceEl.textContent = `${this.airplane.gForce.toFixed(1)}G`;
+    if (this.machEl) this.machEl.textContent = `MACH ${(this.airplane.speed / 1235).toFixed(2)}`;
     if (this.nitroBarEl) this.nitroBarEl.style.width = `${Math.round(this.airplane.boostFuel)}%`;
 
-    // Shield UI
     if (this.shieldPillEl) {
       if (this.airplane.shieldTime > 0) {
         this.shieldPillEl.style.display = "flex";
@@ -381,7 +445,12 @@ export class SkyJetGame {
       this.airplane.isBraking = this.keys.brake;
 
       this.airplane.updatePhysics(delta, this.worldManager);
-      this.worldManager.update(delta, this.airplane.mesh.position);
+      this.worldManager.update(delta, this.airplane.mesh.position, () => {
+        this.crateManager.score += 300;
+        this.airplane.addBoost(30);
+        this.showBanner("⭕ ТРЮКОВОЕ КОЛЬЦО ПРОЙДЕНО! +300 PTS | БУСТ +30%", 2400);
+      });
+
       this.crateManager.update(delta, this.airplane, (type, pts, count, score) =>
         this.onCrateCollected(type, pts, count, score)
       );
@@ -398,6 +467,7 @@ export class SkyJetGame {
 
       this.updateCamera(delta);
       this.drawRadar();
+      this.updateTargetLockOn();
       this.updateHUD();
     }
 

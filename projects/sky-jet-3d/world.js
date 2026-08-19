@@ -1,22 +1,31 @@
-// world.js - Infinite Multi-Biome Procedural World with Realistic Textured 3D Skyscrapers, Collision Detection, and 4 Dynamic Biomes
+// world.js - Infinite Procedural World with Day/Sunset/Night Cycles, Water Waves, Stunt Rings, AI Traffic & Skyscraper Collisions
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+import { flightAudio } from "./audio.js";
 
 export class WorldManager {
   constructor(scene) {
     this.scene = scene;
     this.chunks = new Map();
     this.chunkSize = 900;
-    this.viewDistance = 2; // 5x5 grid
+    this.viewDistance = 2;
 
     this.windmills = [];
     this.lighthouses = [];
     this.trafficCars = [];
     this.clouds = [];
-    this.buildingColliders = []; // Active building AABB bounding boxes
+    this.buildingColliders = [];
     this.beaconLights = [];
+    this.waterMeshes = [];
+    this.stuntRings = [];
+    this.aiPlanes = [];
+    this.birdFlocks = [];
 
     this.radarDish = null;
     this.windsock = null;
+
+    // Time of Day
+    this.timeOfDay = "DAY"; // 'DAY', 'SUNSET', 'NIGHT', 'AUTO'
+    this.timeCycle = 0.2; // 0 to 1
 
     this.currentBiome = "AIRPORT";
     this.onBiomeChangeCallback = null;
@@ -25,33 +34,25 @@ export class WorldManager {
     this.initLighting();
     this.initAirportBase();
     this.initClouds();
+    this.initSkyTraffic();
+    this.initStuntRings();
   }
 
-  // Create high-detail procedural skyscraper canvas textures (Windows, Neon Ads, Architectural Facades)
   initTexturesAndMaterials() {
-    // 1. Blue Glass Highrise Facade Texture
+    // 1. Blue Glass Highrise
     const blueCanvas = document.createElement("canvas");
     blueCanvas.width = 512;
     blueCanvas.height = 1024;
     const bCtx = blueCanvas.getContext("2d");
-
     bCtx.fillStyle = "#162338";
     bCtx.fillRect(0, 0, 512, 1024);
 
-    // Floor dividers & windows
     for (let y = 16; y < 1024; y += 32) {
-      // Horizontal concrete slab
       bCtx.fillStyle = "#2c3e55";
       bCtx.fillRect(0, y, 512, 4);
-
       for (let x = 12; x < 512; x += 28) {
         const isLit = Math.random() > 0.35;
-        if (isLit) {
-          const warm = Math.random() > 0.6;
-          bCtx.fillStyle = warm ? "#ffeaa7" : "#00f0ff";
-        } else {
-          bCtx.fillStyle = "#0c1524";
-        }
+        bCtx.fillStyle = isLit ? (Math.random() > 0.6 ? "#ffeaa7" : "#00f0ff") : "#0c1524";
         bCtx.fillRect(x, y + 6, 20, 20);
       }
     }
@@ -63,16 +64,15 @@ export class WorldManager {
       map: blueTex,
       metalness: 0.85,
       roughness: 0.18,
-      emissive: 0x005577,
-      emissiveIntensity: 0.35,
+      emissive: 0x004466,
+      emissiveIntensity: 0.4,
     });
 
-    // 2. Gold Luxury Skyscraper Facade Texture
+    // 2. Gold Luxury Skyscraper
     const goldCanvas = document.createElement("canvas");
     goldCanvas.width = 512;
     goldCanvas.height = 1024;
     const gCtx = goldCanvas.getContext("2d");
-
     gCtx.fillStyle = "#2b2216";
     gCtx.fillRect(0, 0, 512, 1024);
 
@@ -93,16 +93,15 @@ export class WorldManager {
       map: goldTex,
       metalness: 0.88,
       roughness: 0.22,
-      emissive: 0x664400,
-      emissiveIntensity: 0.35,
+      emissive: 0x553300,
+      emissiveIntensity: 0.4,
     });
 
-    // 3. Cyberpunk Neon Tower with Billboard Screen
+    // 3. Cyberpunk Neon Tower with Animated Billboard
     const cyberCanvas = document.createElement("canvas");
     cyberCanvas.width = 512;
     cyberCanvas.height = 1024;
     const cCtx = cyberCanvas.getContext("2d");
-
     cCtx.fillStyle = "#11141c";
     cCtx.fillRect(0, 0, 512, 1024);
 
@@ -116,7 +115,6 @@ export class WorldManager {
       }
     }
 
-    // Huge Neon Billboard in the middle
     cCtx.fillStyle = "#000000";
     cCtx.fillRect(32, 360, 448, 260);
     cCtx.strokeStyle = "#ff0055";
@@ -141,7 +139,7 @@ export class WorldManager {
       metalness: 0.8,
       roughness: 0.3,
       emissive: 0x112233,
-      emissiveIntensity: 0.5,
+      emissiveIntensity: 0.55,
     });
 
     // 4. Modern White Architectural Highrise
@@ -149,7 +147,6 @@ export class WorldManager {
     whiteCanvas.width = 512;
     whiteCanvas.height = 1024;
     const wCtx = whiteCanvas.getContext("2d");
-
     wCtx.fillStyle = "#dde4ed";
     wCtx.fillRect(0, 0, 512, 1024);
 
@@ -176,9 +173,9 @@ export class WorldManager {
   initLighting() {
     this.scene.fog = new THREE.FogExp2(0xcfe2f3, 0.00032);
 
-    const hemiLight = new THREE.HemisphereLight(0xbde0fe, 0x485635, 0.9);
-    hemiLight.position.set(0, 800, 0);
-    this.scene.add(hemiLight);
+    this.hemiLight = new THREE.HemisphereLight(0xbde0fe, 0x485635, 0.9);
+    this.hemiLight.position.set(0, 800, 0);
+    this.scene.add(this.hemiLight);
 
     this.sunLight = new THREE.DirectionalLight(0xfffaea, 1.8);
     this.sunLight.position.set(900, 1000, 700);
@@ -196,30 +193,68 @@ export class WorldManager {
     this.sunLight.shadow.bias = -0.0004;
     this.scene.add(this.sunLight);
 
-    // Sun Visual Billboard
     const sunGeom = new THREE.SphereGeometry(70, 16, 16);
-    const sunMat = new THREE.MeshBasicMaterial({ color: 0xfff3aa });
-    const sunMesh = new THREE.Mesh(sunGeom, sunMat);
-    sunMesh.position.copy(this.sunLight.position).multiplyScalar(3.0);
-    this.scene.add(sunMesh);
+    this.sunMat = new THREE.MeshBasicMaterial({ color: 0xfff3aa });
+    this.sunOrb = new THREE.Mesh(sunGeom, this.sunMat);
+    this.sunOrb.position.copy(this.sunLight.position).multiplyScalar(3.0);
+    this.scene.add(this.sunOrb);
   }
 
-  // Balanced 2D Biome Distribution: alternating smoothly every 1600m in all directions
-  getBiomeAt(x, z) {
-    // Starting runway plateau
-    if (Math.abs(x) < 550 && Math.abs(z) < 700) {
-      return "AIRPORT";
+  setTimeOfDay(mode) {
+    this.timeOfDay = mode;
+    if (mode === "DAY") {
+      this.scene.background.setHex(0xcbe0f5);
+      this.scene.fog.color.setHex(0xcfe2f3);
+      this.hemiLight.color.setHex(0xbde0fe);
+      this.hemiLight.groundColor.setHex(0x485635);
+      this.hemiLight.intensity = 0.9;
+      this.sunLight.color.setHex(0xfffaea);
+      this.sunLight.intensity = 1.8;
+      this.sunLight.position.set(900, 1000, 700);
+      this.sunMat.color.setHex(0xfff3aa);
+      this.blueGlassMat.emissiveIntensity = 0.35;
+      this.goldGlassMat.emissiveIntensity = 0.35;
+      this.cyberMat.emissiveIntensity = 0.5;
+    } else if (mode === "SUNSET") {
+      this.scene.background.setHex(0x351d38);
+      this.scene.fog.color.setHex(0xc8644e);
+      this.hemiLight.color.setHex(0xff7744);
+      this.hemiLight.groundColor.setHex(0x331122);
+      this.hemiLight.intensity = 1.1;
+      this.sunLight.color.setHex(0xff8844);
+      this.sunLight.intensity = 2.2;
+      this.sunLight.position.set(1400, 260, 400); // Low golden sun
+      this.sunMat.color.setHex(0xff6622);
+      this.blueGlassMat.emissiveIntensity = 0.65;
+      this.goldGlassMat.emissiveIntensity = 0.7;
+      this.cyberMat.emissiveIntensity = 0.85;
+    } else if (mode === "NIGHT") {
+      this.scene.background.setHex(0x050811);
+      this.scene.fog.color.setHex(0x090e1c);
+      this.hemiLight.color.setHex(0x223355);
+      this.hemiLight.groundColor.setHex(0x050b15);
+      this.hemiLight.intensity = 0.5;
+      this.sunLight.color.setHex(0x7799cc); // Moon light
+      this.sunLight.intensity = 0.7;
+      this.sunLight.position.set(600, 800, -500);
+      this.sunMat.color.setHex(0xddffff);
+      this.blueGlassMat.emissiveIntensity = 0.95;
+      this.goldGlassMat.emissiveIntensity = 0.95;
+      this.cyberMat.emissiveIntensity = 1.2;
     }
+  }
 
-    // Grid cells of 1800m
+  getBiomeAt(x, z) {
+    if (Math.abs(x) < 550 && Math.abs(z) < 700) return "AIRPORT";
+
     const cellX = Math.floor((x + 100000) / 1800);
     const cellZ = Math.floor((z + 100000) / 1800);
     const hash = Math.abs((cellX * 73856093) ^ (cellZ * 19349663)) % 4;
 
-    if (hash === 0) return "MOUNTAINS"; // 🏔️ Alpine Mountains
-    if (hash === 1) return "CITY";      // 🏙️ 3D Megacity
-    if (hash === 2) return "FLOWERS";   // 🌸 Flower Meadows & Windmills
-    return "OCEAN";                     // 🌊 Ocean & Archipelago
+    if (hash === 0) return "MOUNTAINS";
+    if (hash === 1) return "CITY";
+    if (hash === 2) return "FLOWERS";
+    return "OCEAN";
   }
 
   getTerrainHeight(x, z) {
@@ -232,15 +267,11 @@ export class WorldManager {
       return Math.min(25, (distToRunwayX - 140) * 0.15);
     }
 
-    if (biome === "CITY") {
-      return 1.5; // City road surface
-    }
+    if (biome === "CITY") return 1.5;
 
     if (biome === "OCEAN") {
       const islandNoise = Math.sin(x * 0.004) * Math.cos(z * 0.004);
-      if (islandNoise > 0.45) {
-        return (islandNoise - 0.45) * 220;
-      }
+      if (islandNoise > 0.45) return (islandNoise - 0.45) * 220;
       return 0;
     }
 
@@ -266,7 +297,6 @@ export class WorldManager {
     return Math.max(15, rawHeight);
   }
 
-  // Checks if airplane position intersects with any active skyscraper bounding box
   checkBuildingCollision(planePos, radius = 4.5) {
     const px = planePos.x;
     const py = planePos.y;
@@ -366,6 +396,73 @@ export class WorldManager {
     this.scene.add(group);
   }
 
+  // ⭕ Holographic Stunt Flight Rings
+  initStuntRings() {
+    const ringPositions = [
+      { x: 0, y: 110, z: 400 },
+      { x: 180, y: 160, z: 900 },
+      { x: -220, y: 210, z: 1400 },
+      { x: 340, y: 240, z: 2100 },
+      { x: -350, y: 280, z: -800 },
+      { x: 450, y: 310, z: -1400 },
+      { x: -600, y: 180, z: 500 },
+      { x: 700, y: 150, z: -400 },
+    ];
+
+    const ringGeom = new THREE.TorusGeometry(14, 1.2, 16, 32);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, side: THREE.DoubleSide });
+
+    ringPositions.forEach((p) => {
+      const ring = new THREE.Mesh(ringGeom, ringMat.clone());
+      ring.position.set(p.x, p.y, p.z);
+      ring.rotation.y = Math.random() * Math.PI;
+      this.scene.add(ring);
+      this.stuntRings.push({ mesh: ring, active: true });
+    });
+  }
+
+  // ✈️ AI Sky Traffic (Passenger Airliners Cruising on Flight Corridors)
+  initSkyTraffic() {
+    const airlinerMat = new THREE.MeshStandardMaterial({ color: 0xf5f8fc, roughness: 0.3, metalness: 0.7 });
+    const strobeMat = new THREE.MeshBasicMaterial({ color: 0xff0044 });
+
+    for (let i = 0; i < 4; i++) {
+      const planeGroup = new THREE.Group();
+
+      // Fuselage
+      const fuseGeom = new THREE.CylinderGeometry(3.5, 3.5, 45, 12);
+      fuseGeom.rotateX(Math.PI / 2);
+      const fuse = new THREE.Mesh(fuseGeom, airlinerMat);
+      planeGroup.add(fuse);
+
+      // Wings
+      const wingGeom = new THREE.BoxGeometry(42, 0.6, 6);
+      const wings = new THREE.Mesh(wingGeom, airlinerMat);
+      wings.position.set(0, 0, 2);
+      planeGroup.add(wings);
+
+      // Wingtip Strobes
+      const strobe1 = new THREE.Mesh(new THREE.SphereGeometry(0.8, 6, 6), strobeMat);
+      strobe1.position.set(21, 0.4, 2);
+      const strobe2 = strobe1.clone();
+      strobe2.position.x = -21;
+      planeGroup.add(strobe1, strobe2);
+
+      planeGroup.position.set(
+        (Math.random() - 0.5) * 6000,
+        650 + Math.random() * 300, // High cruise altitude
+        (Math.random() - 0.5) * 6000
+      );
+
+      this.scene.add(planeGroup);
+      this.aiPlanes.push({
+        group: planeGroup,
+        speed: 180 + Math.random() * 60,
+        heading: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+
   createChunk(cx, cz) {
     const chunkGroup = new THREE.Group();
     const startX = cx * this.chunkSize;
@@ -403,9 +500,9 @@ export class WorldManager {
         else color.copy(oceanColor);
       } else if (biome === "FLOWERS") {
         const flowerNoise = Math.sin(vx * 0.02) * Math.cos(vz * 0.02);
-        if (flowerNoise > 0.45) color.setHex(0xe63946); // Poppy
-        else if (flowerNoise > 0.15) color.setHex(0x9d4edd); // Lavender
-        else if (flowerNoise < -0.3) color.setHex(0xffb703); // Sunflower
+        if (flowerNoise > 0.45) color.setHex(0xe63946);
+        else if (flowerNoise > 0.15) color.setHex(0x9d4edd);
+        else if (flowerNoise < -0.3) color.setHex(0xffb703);
         else color.copy(meadowColor);
       } else {
         if (vy > 320) color.copy(snowColor);
@@ -435,7 +532,6 @@ export class WorldManager {
 
     const chunkColliders = [];
 
-    // Populate Biome-Specific Features
     if (biome === "CITY") {
       this.populateCity(chunkGroup, centerX, centerZ, chunkColliders);
     } else if (biome === "FLOWERS") {
@@ -450,18 +546,17 @@ export class WorldManager {
     return { group: chunkGroup, cx, cz, biome, colliders: chunkColliders };
   }
 
-  // 🏙️ Realistic 3D Megacity with Textured Facades & Collision Boxes
   populateCity(group, cx, cz, collidersList) {
     const materials = [this.blueGlassMat, this.goldGlassMat, this.cyberMat, this.whiteArchMat];
     const gridStep = 130;
 
     for (let x = cx - this.chunkSize / 2 + 75; x < cx + this.chunkSize / 2 - 75; x += gridStep) {
       for (let z = cz - this.chunkSize / 2 + 75; z < cz + this.chunkSize / 2 - 75; z += gridStep) {
-        if (Math.random() < 0.2) continue; // Avenue gap
+        if (Math.random() < 0.2) continue;
 
         const width = 45 + Math.random() * 32;
         const depth = 45 + Math.random() * 32;
-        const height = 90 + Math.random() * 240; // 90m to 330m high
+        const height = 90 + Math.random() * 240;
 
         const mat = materials[Math.floor(Math.random() * materials.length)];
         const bldgGeom = new THREE.BoxGeometry(width, height, depth);
@@ -471,7 +566,6 @@ export class WorldManager {
         bldg.receiveShadow = true;
         group.add(bldg);
 
-        // Store AABB Collider for physical collision
         const boxCollider = {
           minX: x - width / 2,
           maxX: x + width / 2,
@@ -483,7 +577,6 @@ export class WorldManager {
         collidersList.push(boxCollider);
         this.buildingColliders.push(boxCollider);
 
-        // Rooftop glowing spire with blinking aviation beacon
         if (height > 180) {
           const spireGeom = new THREE.CylinderGeometry(0.5, 2.0, 40, 8);
           const spireMat = new THREE.MeshStandardMaterial({ color: 0x334455, metalness: 0.9 });
@@ -491,7 +584,6 @@ export class WorldManager {
           spire.position.set(x, height + 20 + 1.5, z);
           group.add(spire);
 
-          // Red Blinking Obstruction Beacon on top
           const beaconGeom = new THREE.SphereGeometry(1.5, 8, 8);
           const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
           const beacon = new THREE.Mesh(beaconGeom, beaconMat);
@@ -499,7 +591,6 @@ export class WorldManager {
           group.add(beacon);
           this.beaconLights.push(beacon);
         } else if (Math.random() > 0.5) {
-          // Helipad on roof
           const heliGeom = new THREE.RingGeometry(8, 11, 16);
           heliGeom.rotateX(-Math.PI / 2);
           const heliMat = new THREE.MeshBasicMaterial({ color: 0xffd700, side: THREE.DoubleSide });
@@ -510,7 +601,6 @@ export class WorldManager {
       }
     }
 
-    // Street traffic cars
     for (let i = 0; i < 16; i++) {
       const carGeom = new THREE.BoxGeometry(2.8, 1.3, 5.5);
       const isRed = Math.random() > 0.5;
@@ -570,7 +660,7 @@ export class WorldManager {
   }
 
   populateOceanIslands(group, cx, cz) {
-    const waterGeom = new THREE.PlaneGeometry(this.chunkSize, this.chunkSize);
+    const waterGeom = new THREE.PlaneGeometry(this.chunkSize, this.chunkSize, 16, 16);
     waterGeom.rotateX(-Math.PI / 2);
     const waterMat = new THREE.MeshStandardMaterial({
       color: 0x006699,
@@ -582,6 +672,7 @@ export class WorldManager {
     const water = new THREE.Mesh(waterGeom, waterMat);
     water.position.set(cx, 0.8, cz);
     group.add(water);
+    this.waterMeshes.push(water);
 
     const lx = cx + 80;
     const lz = cz + 80;
@@ -698,7 +789,6 @@ export class WorldManager {
       }
     }
 
-    // Unload distant chunks & remove their building colliders
     for (const [key, chunk] of this.chunks.entries()) {
       if (!neededKeys.has(key)) {
         if (chunk.colliders && chunk.colliders.length > 0) {
@@ -720,8 +810,16 @@ export class WorldManager {
     }
   }
 
-  update(delta, playerPos) {
+  update(delta, playerPos, onRingCollect) {
     this.updateChunks(playerPos.x, playerPos.z);
+
+    // Auto Time Cycle
+    if (this.timeOfDay === "AUTO") {
+      this.timeCycle = (this.timeCycle + delta * 0.015) % 1;
+      if (this.timeCycle < 0.4) this.setTimeOfDay("DAY");
+      else if (this.timeCycle < 0.65) this.setTimeOfDay("SUNSET");
+      else this.setTimeOfDay("NIGHT");
+    }
 
     if (this.radarDish) this.radarDish.rotation.y += delta * 1.2;
 
@@ -733,10 +831,56 @@ export class WorldManager {
       beam.rotation.y += delta * 1.4;
     }
 
-    // Blink red aviation lights on skyscrapers
-    const isBlink = Math.sin(Date.now() * 0.005) > 0;
+    // Stunt Rings check & pulse
+    const time = Date.now() * 0.003;
+    for (const ring of this.stuntRings) {
+      if (!ring.active) continue;
+      ring.mesh.rotation.z += delta * 1.5;
+      ring.mesh.scale.setScalar(1.0 + Math.sin(time + ring.mesh.position.x) * 0.08);
+
+      const d = ring.mesh.position.distanceTo(playerPos);
+      if (d < 16) {
+        ring.active = false;
+        ring.mesh.material.color.setHex(0x00ff88);
+        flightAudio.playRingChime();
+        if (onRingCollect) onRingCollect();
+        setTimeout(() => {
+          ring.active = true;
+          ring.mesh.material.color.setHex(0x00f0ff);
+        }, 12000);
+      }
+    }
+
+    // AI Sky Traffic movement
+    for (const plane of this.aiPlanes) {
+      plane.group.position.x += Math.cos(plane.heading) * plane.speed * delta;
+      plane.group.position.z += Math.sin(plane.heading) * plane.speed * delta;
+      plane.group.rotation.y = -plane.heading + Math.PI / 2;
+
+      // Wrap around player radius
+      if (plane.group.position.distanceTo(playerPos) > 4000) {
+        plane.group.position.x = playerPos.x - Math.cos(plane.heading) * 3500;
+        plane.group.position.z = playerPos.z - Math.sin(plane.heading) * 3500;
+      }
+    }
+
+    // Water wave ripples
+    const waveTime = Date.now() * 0.002;
+    for (const water of this.waterMeshes) {
+      const pos = water.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const u = pos.getX(i);
+        const v = pos.getY(i);
+        const w = Math.sin(u * 0.05 + waveTime) * Math.cos(v * 0.05 + waveTime) * 0.7;
+        pos.setZ(i, w);
+      }
+      pos.needsUpdate = true;
+    }
+
+    // Skyscraper beacons blink
+    const isBlink = Math.sin(Date.now() * 0.006) > 0;
     for (const beacon of this.beaconLights) {
-      beacon.material.color.setHex(isBlink ? 0xff0033 : 0x440011);
+      beacon.material.color.setHex(isBlink ? 0xff0033 : 0x330008);
     }
 
     for (const car of this.trafficCars) {
