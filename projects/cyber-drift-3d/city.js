@@ -1184,6 +1184,7 @@ export class CityTrackManager {
       }
     }
 
+    this.nearestPoliceDist = nearestPoliceDist;
     this.isPoliceNearby = nearestPoliceDist < 75;
     if (playerSpeed > 35) this.bustedTimer = Math.max(0, this.bustedTimer - delta * 2);
 
@@ -1202,6 +1203,14 @@ export class CityTrackManager {
 
       for (const w of car.wheels) {
         w.children[0].rotation.x += delta * 12;
+      }
+
+      const d = car.mesh.position.distanceTo(playerPos);
+      if (d < 8.0 && playerSpeed > 120 && !car.passedAudio) {
+        car.passedAudio = true;
+        cyberAudio.playTrafficFlyby();
+      } else if (d > 20.0) {
+        car.passedAudio = false;
       }
     }
   }
