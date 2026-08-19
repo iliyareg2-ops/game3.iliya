@@ -562,6 +562,9 @@ export class CyberDriftGame {
       this.car.mesh.position.copy(this.car.position);
       this.car.mesh.rotation.set(0, 0, 0);
 
+      // Randomize fresh rival supercars, liveries, wheels, and neons on every race!
+      this.trackManager.randomizeAIRivals();
+
       if (this.trackManager.aiRivals.length >= 3) {
         this.trackManager.aiRivals[0].u = 0.008;
         this.trackManager.aiRivals[1].u = 0.008;

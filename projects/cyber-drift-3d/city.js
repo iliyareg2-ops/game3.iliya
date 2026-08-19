@@ -19,6 +19,9 @@ export class CityTrackManager {
     this.trackWorldGroup = new THREE.Group();
     this.scene.add(this.trackWorldGroup);
 
+    this.aiRivalsGroup = new THREE.Group();
+    this.scene.add(this.aiRivalsGroup);
+
     // Rewind buffer
     this.aiHistoryBuffer = [];
     this.maxHistoryFrames = 240;
@@ -1364,41 +1367,77 @@ export class CityTrackManager {
   }
 
   buildAIRivals() {
-    const rivalsData = [
-      {
-        name: "Ghost [911 GT3]",
-        carType: 1, // Porsche 911 GT3 RS
-        color: 0x1e293b, // Satin Stealth Slate
-        rimColor: 0xb45309, // Bronze GT3 Wheels
-        neonColor: 0x39ff14, // Acid Lime Underglow
-        u: 0.008,
-        lane: 5.5,
-        baseSpeedU: 0.0202, // ~236 km/h (Calibrated)
-      },
-      {
-        name: "Akira [GT-R R34]",
-        carType: 0, // Nissan Skyline GT-R R34
-        color: 0x1d4ed8, // Bayside Blue Pearl
-        rimColor: 0xeab308, // Gold BBS Rims
-        neonColor: 0x00f0ff, // Cyan Underglow
-        u: 0.008,
-        lane: -5.5,
-        baseSpeedU: 0.0192, // ~225 km/h
-      },
-      {
-        name: "⚡ Razor [M3 GTR]",
-        carType: 3, // BMW M3 E46 GTR
-        color: 0x94a3b8, // Silver Metallic with Blue Livery
-        rimColor: 0xd4d4d8, // Deep Chrome BBS
-        neonColor: 0xff007f, // Magenta Underglow
-        u: 0.0025,
-        lane: -5.5,
-        baseSpeedU: 0.0182, // ~215 km/h
-      },
+    this.randomizeAIRivals();
+  }
+
+  randomizeAIRivals() {
+    while (this.aiRivalsGroup.children.length > 0) {
+      this.aiRivalsGroup.remove(this.aiRivalsGroup.children[0]);
+    }
+    this.aiRivals = [];
+
+    const carModels = [
+      ["GT-R R34", 0],
+      ["911 GT3 RS", 1],
+      ["Venom F5", 2],
+      ["M3 E46 GTR", 3],
+      ["Supra MK4", 4],
+      ["Aventador SVJ", 5],
     ];
 
-    for (const r of rivalsData) {
-      const { group: g, wheels } = this._buildDetailedAIRivalCar(r);
+    const driverNicknames = [
+      "Ghost", "Akira", "⚡ Razor", "Torretto", "Diablo", "Viper", "Klaus",
+      "Kenji", "Ryosuke", "SpeedHunter", "Shadow", "Apex", "Phantom", "Tatsuya"
+    ];
+
+    const colorPalette = [
+      0x1d4ed8, // Bayside Blue Pearl
+      0xdc2626, // Rosso Corsa Red
+      0x1e293b, // Satin Slate
+      0x84cc16, // Acid Lime
+      0xeab308, // Austin Gold Yellow
+      0x94a3b8, // Silver Metallic
+      0x7c3aed, // Midnight Violet
+      0xf97316, // Sunset Orange
+      0x0284c7, // Miami Cyan
+      0x18181b, // Jet Obsidian Black
+      0xf8fafc, // Pearl White
+      0xe11d48, // Ruby Crimson
+    ];
+
+    const rimPalette = [0xd4d4d8, 0xeab308, 0x18181b, 0xb45309];
+    const neonPalette = [0x00f0ff, 0x39ff14, 0xff007f, 0xffd700, 0xff073a, 0xa855f7, 0x38bdf8];
+
+    // Pick 3 random, distinct rivals
+    const shuffledNicknames = [...driverNicknames].sort(() => 0.5 - Math.random());
+    const shuffledColors = [...colorPalette].sort(() => 0.5 - Math.random());
+    const shuffledRims = [...rimPalette].sort(() => 0.5 - Math.random());
+    const shuffledNeons = [...neonPalette].sort(() => 0.5 - Math.random());
+    const shuffledCars = [...carModels].sort(() => 0.5 - Math.random());
+
+    const baseConfigs = [
+      { u: 0.008, lane: 5.5, baseSpeedU: 0.0202 },  // Leader ~236 km/h
+      { u: 0.008, lane: -5.5, baseSpeedU: 0.0192 }, // P2 ~225 km/h
+      { u: 0.0025, lane: -5.5, baseSpeedU: 0.0182 },// P3 ~215 km/h
+    ];
+
+    for (let i = 0; i < 3; i++) {
+      const carChoice = shuffledCars[i % shuffledCars.length];
+      const nick = shuffledNicknames[i];
+      const displayName = `${nick} [${carChoice[0]}]`;
+
+      const rivalSpec = {
+        name: displayName,
+        carType: carChoice[1],
+        color: shuffledColors[i],
+        rimColor: shuffledRims[i % shuffledRims.length],
+        neonColor: shuffledNeons[i % shuffledNeons.length],
+        u: baseConfigs[i].u,
+        lane: baseConfigs[i].lane,
+        baseSpeedU: baseConfigs[i].baseSpeedU,
+      };
+
+      const { group: g, wheels } = this._buildDetailedAIRivalCar(rivalSpec);
 
       const nameCanvas = document.createElement("canvas");
       nameCanvas.width = 256;
@@ -1413,24 +1452,24 @@ export class CityTrackManager {
       nCtx.fillStyle = "#ffffff";
       nCtx.font = "900 22px Segoe UI, sans-serif";
       nCtx.textAlign = "center";
-      nCtx.fillText(r.name, 128, 40);
+      nCtx.fillText(rivalSpec.name, 128, 40);
 
       const nameTex = new THREE.CanvasTexture(nameCanvas);
       const namePlate = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshBasicMaterial({ map: nameTex, transparent: true, side: THREE.DoubleSide }));
       namePlate.position.set(0, 3.4, 0);
       g.add(namePlate);
 
-      const pt = this.trackCurve.getPointAt(r.u);
+      const pt = this.trackCurve.getPointAt(rivalSpec.u);
       g.position.set(pt.x, 0.15, pt.z);
-      this.trackWorldGroup.add(g);
+      this.aiRivalsGroup.add(g);
 
       this.aiRivals.push({
-        name: r.name,
+        name: rivalSpec.name,
         mesh: g,
         wheels: wheels,
-        u: r.u,
-        laneOffset: r.lane,
-        baseSpeedU: r.baseSpeedU,
+        u: rivalSpec.u,
+        laneOffset: rivalSpec.lane,
+        baseSpeedU: rivalSpec.baseSpeedU,
         currentSpeedU: 0.0,
         lapsCompleted: 0,
         namePlate: namePlate,
