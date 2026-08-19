@@ -1,4 +1,4 @@
-// game.js - Cyber Drift 3D Main Director, Clean Keyboard Controls & Immersive HUD
+// game.js - Cyber Drift 3D Main Director, Highway Police Pursuits, Speed Cameras & Synthwave Radio
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { CyberCar } from "./car.js";
 import { CityTrackManager } from "./city.js";
@@ -15,8 +15,8 @@ export class CyberDriftGame {
     this.car = null;
 
     this.clock = new THREE.Clock();
-    this.cameraMode = "CHASE"; // 'CHASE', 'HOOD', 'COCKPIT'
-    this.gameState = "GARAGE"; // 'GARAGE', 'RACING', 'BUSTED'
+    this.cameraMode = "CHASE";
+    this.gameState = "GARAGE";
     this.garageOrbitAngle = 0;
     this.screenShake = 0;
 
@@ -73,6 +73,16 @@ export class CyberDriftGame {
     this.trackManager.onNitroPickupCallback = (bannerText) => {
       this.showBanner(bannerText, 2200);
     };
+
+    // 📸 Speed Trap Flash & Banner
+    this.trackManager.onSpeedTrapCallback = (speedKmH, pts) => {
+      const flashEl = document.getElementById("camera-flash");
+      if (flashEl) {
+        flashEl.style.opacity = "0.95";
+        setTimeout(() => { flashEl.style.opacity = "0"; }, 140);
+      }
+      this.showBanner(`📸 РАДАР СКОРОСТИ: ${speedKmH} КМ/Ч! +${pts} PTS`, 2800);
+    };
   }
 
   initInputs() {
@@ -107,6 +117,15 @@ export class CyberDriftGame {
     const camBtn = document.getElementById("btn-cam-switch");
     if (camBtn) camBtn.addEventListener("click", () => this.toggleCamera());
 
+    const radioBtn = document.getElementById("btn-radio-toggle");
+    if (radioBtn) {
+      radioBtn.addEventListener("click", () => {
+        cyberAudio.init();
+        const isRadioOn = cyberAudio.toggleRadio();
+        radioBtn.textContent = isRadioOn ? "📻 РАДИО: ON" : "📻 РАДИО: OFF";
+      });
+    }
+
     const soundBtn = document.getElementById("btn-sound-toggle");
     if (soundBtn) {
       soundBtn.addEventListener("click", () => {
@@ -127,6 +146,7 @@ export class CyberDriftGame {
     this.wantedEl = document.getElementById("hud-wanted");
     this.camModeEl = document.getElementById("hud-cam-mode");
     this.bannerEl = document.getElementById("hud-banner");
+    this.pursuitAlertEl = document.getElementById("hud-pursuit-alert");
 
     document.querySelectorAll(".car-select-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -326,6 +346,10 @@ export class CyberDriftGame {
       } else {
         this.driftBoxEl.style.display = "none";
       }
+    }
+
+    if (this.pursuitAlertEl) {
+      this.pursuitAlertEl.style.display = this.trackManager.isPoliceNearby ? "block" : "none";
     }
 
     if (this.wantedEl) {

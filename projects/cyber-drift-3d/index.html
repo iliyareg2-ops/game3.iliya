@@ -28,6 +28,17 @@
       z-index: 1;
     }
 
+    /* Speed Trap Camera Flash */
+    #camera-flash {
+      position: fixed;
+      inset: 0;
+      z-index: 45;
+      background: #ffffff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.05s ease-out;
+    }
+
     /* HUD Overlay */
     #hud {
       position: absolute;
@@ -79,6 +90,27 @@
       font-size: 18px;
       text-shadow: 0 0 10px #ff3b30;
       letter-spacing: 2px;
+    }
+
+    /* Pursuit Warning Radar */
+    #hud-pursuit-alert {
+      display: none;
+      background: rgba(255, 0, 51, 0.92);
+      border: 2px solid #ffffff;
+      border-radius: 12px;
+      padding: 8px 18px;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      color: #fff;
+      text-shadow: 0 0 10px #000;
+      box-shadow: 0 0 25px rgba(255, 0, 51, 0.8);
+      animation: pulseAlert 0.4s infinite alternate;
+    }
+
+    @keyframes pulseAlert {
+      0% { transform: scale(1.0); box-shadow: 0 0 15px rgba(255, 0, 51, 0.5); }
+      100% { transform: scale(1.06); box-shadow: 0 0 35px rgba(0, 240, 255, 0.9); }
     }
 
     /* Drift Box */
@@ -391,6 +423,7 @@
 </head>
 <body>
   <div id="canvas-container"></div>
+  <div id="camera-flash"></div>
 
   <!-- Drift Floating Score -->
   <div id="hud-drift-box">
@@ -401,7 +434,7 @@
   <!-- HUD Overlay -->
   <div id="hud">
     <div class="hud-top">
-      <div style="display: flex; gap: 10px;">
+      <div style="display: flex; gap: 10px; align-items: center;">
         <div class="hud-pill">
           <span class="hud-label">ОЧКИ ДРИФТА (SPACE)</span>
           <span class="hud-val" id="hud-score">0</span>
@@ -410,10 +443,12 @@
           <span class="hud-label">РОЗЫСК ПОЛИЦИИ</span>
           <span class="wanted-stars" id="hud-wanted">☆☆☆☆☆</span>
         </div>
+        <div id="hud-pursuit-alert">🚨 ПОЛИЦЕЙСКАЯ ПОГОНЯ!</div>
       </div>
 
       <div class="quick-actions">
         <button class="hud-btn" id="btn-cam-switch"><span id="hud-cam-mode">ОБЗОР (3P)</span></button>
+        <button class="hud-btn" id="btn-radio-toggle">📻 РАДИО: ON</button>
         <button class="hud-btn" id="btn-reset-car">🔄 РЕСТАРТ (R)</button>
         <button class="hud-btn" id="btn-sound-toggle">🔊</button>
       </div>

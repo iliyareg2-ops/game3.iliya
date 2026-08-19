@@ -1,4 +1,4 @@
-// city.js - Realistic World Mechanics, Solid Grounded Gantries, Human-Paced Pedestrians, Destructible Props, Bus Stops, Vending Machines & Asphalt Manholes
+// city.js - Highway Police Interceptors, Speed Trap Flash Cameras, Roadblocks & Dynamic Urban World
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -11,13 +11,16 @@ export class CityTrackManager {
     this.nitroPickups = [];
     this.pedestrians = [];
     this.trafficLights = [];
+    this.speedCameras = [];
     this.destructibleProps = [];
     this.helicopter = null;
 
     this.onTakedownCallback = null;
     this.onBustedCallback = null;
     this.onNitroPickupCallback = null;
+    this.onSpeedTrapCallback = null;
     this.bustedTimer = 0;
+    this.isPoliceNearby = false;
 
     this.initTextures();
     this.initLighting();
@@ -25,6 +28,8 @@ export class CityTrackManager {
     this.buildRoadsideStreetlights();
     this.buildSkyscrapersWithBillboards();
     this.buildSolidTrafficGantries();
+    this.buildSpeedTrapCameras();
+    this.buildPoliceRoadblocks();
     this.buildDestructibleProps();
     this.buildCityFurniture();
     this.buildNitroPickups();
@@ -35,7 +40,6 @@ export class CityTrackManager {
   }
 
   initTextures() {
-    // 1. High-Res Bright Asphalt Texture
     const roadCanvas = document.createElement("canvas");
     roadCanvas.width = 1024;
     roadCanvas.height = 1024;
@@ -85,7 +89,6 @@ export class CityTrackManager {
       metalness: 0.15,
     });
 
-    // 2. High-Resolution Realistic Cyberpunk Neon Billboards
     this.billboardTextures = [
       this._createBillboardCyberDrift(),
       this._createBillboardNitroBoost(),
@@ -324,7 +327,6 @@ export class CityTrackManager {
     roadMesh.receiveShadow = true;
     groundGroup.add(roadMesh);
 
-    // Curbs
     const curbRedMat = new THREE.MeshBasicMaterial({ color: 0xe11d48 });
     const curbWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
@@ -349,7 +351,6 @@ export class CityTrackManager {
       groundGroup.add(curb1, curb2);
     }
 
-    // Asphalt Details: Round Cast-Iron Sewer Manholes & Storm Drains
     const manholeGeom = new THREE.CylinderGeometry(1.0, 1.0, 0.04, 16);
     const manholeMat = new THREE.MeshStandardMaterial({ color: 0x222630, metalness: 0.8, roughness: 0.6 });
 
@@ -489,10 +490,9 @@ export class CityTrackManager {
     this.scene.add(cityGroup);
   }
 
-  // 🚦 REALISTIC GROUND-SUPPORTED GANTRY TRUSSES (NO FLOATING LIGHTS!)
   buildSolidTrafficGantries() {
     const halfWidth = this.trackWidth / 2;
-    const count = 5;
+    const count = 4;
 
     const steelMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.9, roughness: 0.3 });
     const concreteMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.8 });
@@ -505,7 +505,6 @@ export class CityTrackManager {
 
       const g = new THREE.Group();
 
-      // 1. Left Vertical Pillar from Ground (y=0 to y=14)
       const pillarGeom = new THREE.CylinderGeometry(0.55, 0.65, 14, 8);
       const leftPillar = new THREE.Mesh(pillarGeom, steelMat);
       leftPillar.position.set(-halfWidth - 4.5, 7, 0);
@@ -514,21 +513,18 @@ export class CityTrackManager {
       const leftFoot = new THREE.Mesh(footGeom, concreteMat);
       leftFoot.position.set(-halfWidth - 4.5, 0.6, 0);
 
-      // 2. Right Vertical Pillar from Ground
       const rightPillar = new THREE.Mesh(pillarGeom, steelMat);
       rightPillar.position.set(halfWidth + 4.5, 7, 0);
 
       const rightFoot = new THREE.Mesh(footGeom, concreteMat);
       rightFoot.position.set(halfWidth + 4.5, 0.6, 0);
 
-      // 3. Overhead Cross-Truss Beam
       const spanLength = this.trackWidth + 9.5;
       const beam = new THREE.Mesh(new THREE.BoxGeometry(spanLength, 1.6, 1.6), steelMat);
       beam.position.set(0, 13.8, 0);
 
       g.add(leftPillar, leftFoot, rightPillar, rightFoot, beam);
 
-      // 4. Traffic Signal Heads with Red/Yellow/Green LEDs
       const sigGeom = new THREE.BoxGeometry(1.6, 3.8, 1.2);
       const sigMat = new THREE.MeshStandardMaterial({ color: 0x111827 });
 
@@ -552,7 +548,6 @@ export class CityTrackManager {
 
       this.trafficLights.push({ redLight, yelLight, grnLight, time: i * 3.5 });
 
-      // Zebra Crosswalk on asphalt
       const zebraMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
       for (let s = -halfWidth + 4; s < halfWidth - 4; s += 3.2) {
         const stripe = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.04, 8), zebraMat);
@@ -564,7 +559,72 @@ export class CityTrackManager {
     }
   }
 
-  // 💥 DESTRUCTIBLE DYNAMIC ROAD PROPS (Traffic Cones & Hazard Barrels with physics!)
+  // 📸 SPEED TRAP FLASH CAMERAS
+  buildSpeedTrapCameras() {
+    const uPositions = [0.08, 0.52, 0.88];
+    const camMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9 });
+    const lensMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+
+    for (const u of uPositions) {
+      const pt = this.trackCurve.getPointAt(u);
+      const tangent = this.trackCurve.getTangentAt(u).normalize();
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+      const g = new THREE.Group();
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 12, 8), camMat);
+      pole.position.set(-this.trackWidth / 2 - 4.5, 6, 0);
+
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(24, 0.8, 0.8), camMat);
+      arm.position.set(0, 11.5, 0);
+
+      const camBox = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.4, 1.8), camMat);
+      camBox.position.set(0, 10.4, 0);
+      const lens = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8), lensMat);
+      lens.position.set(0, 10.4, 1.0);
+
+      g.add(pole, arm, camBox, lens);
+      g.position.set(pt.x, 0, pt.z);
+      g.lookAt(pt.x + tangent.x, 0, pt.z + tangent.z);
+      this.scene.add(g);
+
+      this.speedCameras.push({
+        pos: pt,
+        u: u,
+        lastTriggerTime: 0,
+      });
+    }
+  }
+
+  // 🚧 POLICE ROADBLOCKS ON HIGHWAY
+  buildPoliceRoadblocks() {
+    const uPositions = [0.38, 0.76];
+    const cruiserMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3 });
+    const barMat = new THREE.MeshStandardMaterial({ color: 0xff5500 });
+
+    for (const u of uPositions) {
+      const pt = this.trackCurve.getPointAt(u);
+      const tangent = this.trackCurve.getTangentAt(u).normalize();
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+      const g = new THREE.Group();
+
+      const cruiser1 = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1.2, 8.8), cruiserMat);
+      cruiser1.position.set(-11, 0.6, 0);
+      cruiser1.rotation.y = 0.5;
+
+      const light1 = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.3, 0.5), new THREE.MeshBasicMaterial({ color: 0x00f0ff }));
+      light1.position.set(-11, 1.5, 0);
+
+      const barrier = new THREE.Mesh(new THREE.BoxGeometry(12, 1.2, 0.4), barMat);
+      barrier.position.set(-3, 0.6, 0);
+
+      g.add(cruiser1, light1, barrier);
+      g.position.set(pt.x, 0.12, pt.z);
+      g.lookAt(pt.x + tangent.x, 0.12, pt.z + tangent.z);
+      this.scene.add(g);
+    }
+  }
+
   buildDestructibleProps() {
     const halfWidth = this.trackWidth / 2;
 
@@ -584,7 +644,6 @@ export class CityTrackManager {
 
       const g = new THREE.Group();
       if (i % 2 === 0) {
-        // Traffic Cone
         const cone = new THREE.Mesh(coneGeom, coneMat);
         cone.position.y = 0.55;
         const base = new THREE.Mesh(coneBaseGeom, coneMat);
@@ -593,7 +652,6 @@ export class CityTrackManager {
         stripe.position.y = 0.65;
         g.add(cone, base, stripe);
       } else {
-        // Yellow Hazard Barrel
         const barrel = new THREE.Mesh(barrelGeom, barrelMat);
         barrel.position.y = 0.8;
         g.add(barrel);
@@ -615,7 +673,6 @@ export class CityTrackManager {
     }
   }
 
-  // 🚏 RICH CITY INFRASTRUCTURE (Bus Stops, Cyber Vending Machines, Planters)
   buildCityFurniture() {
     const halfWidth = this.trackWidth / 2;
     const glassMat = new THREE.MeshStandardMaterial({ color: 0x0ea5e9, transparent: true, opacity: 0.5, metalness: 0.9 });
@@ -634,7 +691,6 @@ export class CityTrackManager {
 
       const g = new THREE.Group();
 
-      // 1. Bus Shelter
       const roof = new THREE.Mesh(new THREE.BoxGeometry(7.0, 0.2, 3.5), metalMat);
       roof.position.set(0, 3.8, 0);
       const glassBack = new THREE.Mesh(new THREE.BoxGeometry(6.6, 3.2, 0.1), glassMat);
@@ -643,7 +699,6 @@ export class CityTrackManager {
       bench.position.set(0, 0.7, 0.8);
       g.add(roof, glassBack, bench);
 
-      // 2. Cyber Cola Vending Machine
       const vendor = new THREE.Mesh(new THREE.BoxGeometry(2.0, 3.2, 1.4), vendorMat);
       vendor.position.set(5.2, 1.6, 0.8);
       const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 2.2), vendorGlow);
@@ -657,7 +712,6 @@ export class CityTrackManager {
     }
   }
 
-  // 🚶 REAL HUMAN-PACED ANIMATED PEDESTRIANS (1.3 m/s)
   buildAnimatedPedestrians() {
     const pedCount = 18;
     const suitMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
@@ -701,7 +755,6 @@ export class CityTrackManager {
         group: g,
         u: u,
         sideOffset: sideOffset,
-        // REAL HUMAN WALKING SPEED (~1.3 m/s)
         speed: 0.00045 + Math.random() * 0.0002,
         legL: legL,
         legR: legR,
@@ -752,8 +805,9 @@ export class CityTrackManager {
     }
   }
 
+  // 🚓 HIGHWAY-PATROLLING AGGRESSIVE POLICE INTERCEPTORS
   buildPoliceFleet() {
-    const policeCount = 3;
+    const policeCount = 4;
     const bodyMat = new THREE.MeshStandardMaterial({ color: 0x08090c, roughness: 0.2, metalness: 0.85 });
     const whiteDoorMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.3 });
 
@@ -774,17 +828,21 @@ export class CityTrackManager {
       redLight.position.set(-0.7, 1.55, -0.4);
       g.add(blueLight, redLight);
 
-      g.position.set((i - 1) * 60, 0.12, -260 - i * 80);
+      const u = (i * 0.25 + 0.15) % 1.0;
+      const pt = this.trackCurve.getPointAt(u);
+      g.position.set(pt.x, 0.12, pt.z);
       this.scene.add(g);
 
       this.policeUnits.push({
         group: g,
+        u: u,
+        speedU: 0.022 + i * 0.004,
+        laneOffset: (i % 2 === 0 ? 5.5 : -5.5),
         active: true,
         isDestroyed: false,
         flipRot: 0,
         blueLight,
         redLight,
-        speed: 160 + i * 25,
       });
     }
   }
@@ -901,7 +959,6 @@ export class CityTrackManager {
     const pz = car.position.z;
     const carRadius = 2.6;
 
-    // 1. Building Collisions
     for (const b of this.colliders) {
       const cx = Math.max(b.minX, Math.min(b.maxX, px));
       const cz = Math.max(b.minZ, Math.min(b.maxZ, pz));
@@ -927,7 +984,6 @@ export class CityTrackManager {
       }
     }
 
-    // 2. Destructible Props Physics Collisions
     for (const prop of this.destructibleProps) {
       if (prop.isHit) continue;
       const dist = prop.group.position.distanceTo(car.position);
@@ -958,19 +1014,36 @@ export class CityTrackManager {
   update(delta, playerCar) {
     const playerPos = playerCar.mesh.position;
     const playerSpeed = Math.abs(playerCar.speed);
+    const now = Date.now();
 
-    // 1. Helicopter
+    // 1. Helicopter Searchlight
     if (this.helicopter) {
       if (this.heliRotor) this.heliRotor.rotation.y += delta * 25;
       this.helicopter.position.x = THREE.MathUtils.lerp(this.helicopter.position.x, playerPos.x, delta * 2.0);
       this.helicopter.position.z = THREE.MathUtils.lerp(this.helicopter.position.z, playerPos.z, delta * 2.0);
     }
 
-    // 2. Destructible Props Dynamic Physics
+    // 2. Speed Trap Flash Cameras
+    for (const cam of this.speedCameras) {
+      const dist = cam.pos.distanceTo(playerPos);
+      if (dist < 12.0 && playerSpeed > 175) {
+        if (now - cam.lastTriggerTime > 6000) {
+          cam.lastTriggerTime = now;
+          cyberAudio.playCameraFlash();
+          const pts = Math.round(playerSpeed * 4);
+          playerCar.totalScore += pts;
+          if (this.onSpeedTrapCallback) {
+            this.onSpeedTrapCallback(Math.round(playerSpeed), pts);
+          }
+        }
+      }
+    }
+
+    // 3. Destructible Props
     for (const prop of this.destructibleProps) {
       if (prop.isHit) {
         prop.group.position.addScaledVector(prop.velocity, delta);
-        prop.velocity.y -= delta * 28; // Gravity
+        prop.velocity.y -= delta * 28;
         prop.group.rotation.x += prop.rotVelocity.x * delta;
         prop.group.rotation.y += prop.rotVelocity.y * delta;
         prop.group.rotation.z += prop.rotVelocity.z * delta;
@@ -992,7 +1065,7 @@ export class CityTrackManager {
       }
     }
 
-    // 3. Nitro Pickups
+    // 4. Nitro Pickups
     for (const pickup of this.nitroPickups) {
       if (!pickup.active) {
         pickup.respawnTimer += delta;
@@ -1004,7 +1077,7 @@ export class CityTrackManager {
       }
 
       pickup.group.rotation.y += delta * 3.5;
-      pickup.group.position.y = 1.2 + Math.sin(Date.now() * 0.005) * 0.25;
+      pickup.group.position.y = 1.2 + Math.sin(now * 0.005) * 0.25;
 
       const dist = pickup.group.position.distanceTo(playerPos);
       if (dist < 4.2) {
@@ -1023,7 +1096,7 @@ export class CityTrackManager {
       }
     }
 
-    // 4. Traffic Lights Cycling
+    // 5. Traffic Lights
     for (const tl of this.trafficLights) {
       tl.time += delta;
       const cycle = Math.floor(tl.time) % 12;
@@ -1042,7 +1115,7 @@ export class CityTrackManager {
       }
     }
 
-    // 5. Animated Pedestrians walking at natural human speed (~1.3 m/s)
+    // 6. Pedestrians
     for (const ped of this.pedestrians) {
       ped.u = (ped.u + ped.speed * delta) % 1.0;
       const pt = this.trackCurve.getPointAt(ped.u);
@@ -1055,13 +1128,15 @@ export class CityTrackManager {
       const lookPt = pt.clone().addScaledVector(tangent, 3).addScaledVector(normal, ped.sideOffset);
       ped.group.lookAt(lookPt.x, 0.12, lookPt.z);
 
-      const legSwing = Math.sin(Date.now() * 0.005) * 0.35;
+      const legSwing = Math.sin(now * 0.005) * 0.35;
       ped.legL.rotation.x = legSwing;
       ped.legR.rotation.x = -legSwing;
     }
 
-    // 6. Police Units
-    const isBlink = Math.sin(Date.now() * 0.02) > 0;
+    // 7. HIGHWAY-PATROLLING AGGRESSIVE POLICE INTERCEPTORS
+    let nearestPoliceDist = 999999;
+    const isBlink = Math.sin(now * 0.025) > 0;
+
     for (const police of this.policeUnits) {
       if (police.isDestroyed) {
         police.group.position.y += delta * 8;
@@ -1076,14 +1151,24 @@ export class CityTrackManager {
       police.blueLight.material.color.setHex(isBlink ? 0x00f0ff : 0x001144);
       police.redLight.material.color.setHex(!isBlink ? 0xff0022 : 0x330008);
 
-      const dir = new THREE.Vector3().subVectors(playerPos, police.group.position).normalize();
-      const speedMs = (Math.min(playerSpeed * 0.95 + 15, police.speed) * 1000) / 3600;
-      police.group.position.addScaledVector(dir, speedMs * delta);
-      police.group.lookAt(playerPos.x, 0.12, playerPos.z);
+      // Patrol along highway track
+      police.u = (police.u + police.speedU * delta) % 1.0;
+      const pt = this.trackCurve.getPointAt(police.u);
+      const tangent = this.trackCurve.getTangentAt(police.u).normalize();
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+      police.group.position.copy(pt).addScaledVector(normal, police.laneOffset);
+      police.group.position.y = 0.12;
+
+      const lookPt = pt.clone().addScaledVector(tangent, 6).addScaledVector(normal, police.laneOffset);
+      police.group.lookAt(lookPt.x, 0.12, lookPt.z);
 
       const dist = police.group.position.distanceTo(playerPos);
+      if (dist < nearestPoliceDist) nearestPoliceDist = dist;
+
+      // Aggressive Collision & Takedowns
       if (dist < 4.8) {
-        if (playerSpeed > 65) {
+        if (playerSpeed > 68) {
           police.isDestroyed = true;
           cyberAudio.playTakedownCrunch();
           playerCar.emitSparks(police.group.position);
@@ -1096,20 +1181,21 @@ export class CityTrackManager {
           setTimeout(() => {
             police.isDestroyed = false;
             police.group.rotation.set(0, 0, 0);
-            police.group.position.set(playerPos.x + (Math.random() - 0.5) * 180, 0.12, playerPos.z - 280);
-          }, 12000);
+            police.u = (police.u + 0.3) % 1.0;
+          }, 10000);
         } else {
           this.bustedTimer += delta;
-          if (this.bustedTimer > 2.8) {
+          if (this.bustedTimer > 2.6) {
             if (this.onBustedCallback) this.onBustedCallback();
           }
         }
       }
     }
 
+    this.isPoliceNearby = nearestPoliceDist < 75;
     if (playerSpeed > 35) this.bustedTimer = Math.max(0, this.bustedTimer - delta * 2);
 
-    // 7. Traffic Cars
+    // 8. Traffic Cars
     for (const car of this.trafficCars) {
       car.u = (car.u + car.speed * delta) % 1.0;
       const pt = this.trackCurve.getPointAt(car.u);

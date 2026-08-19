@@ -1,10 +1,11 @@
-// audio.js - Cyber Drift 3D Sound Engine (Engine, Turbo, Screech, Police, Takedowns, Nitro Pickups)
+// audio.js - Cyber Drift 3D Sound Engine with Synthwave Music Radio & Speed Camera Sounds
 
 class CyberAudioEngine {
   constructor() {
     this.ctx = null;
     this.isInitialized = false;
     this.isMuted = false;
+    this.isRadioPlaying = true;
 
     this.masterGain = null;
     this.engineGain = null;
@@ -25,6 +26,11 @@ class CyberAudioEngine {
 
     this.heliGain = null;
     this.heliOsc = null;
+
+    // Synthwave Radio
+    this.radioGain = null;
+    this.radioStep = 0;
+    this.radioInterval = null;
   }
 
   init() {
@@ -34,8 +40,12 @@ class CyberAudioEngine {
       this.ctx = new AudioContext();
 
       this.masterGain = this.ctx.createGain();
-      this.masterGain.gain.setValueAtTime(0.8, this.ctx.currentTime);
+      this.masterGain.gain.setValueAtTime(0.85, this.ctx.currentTime);
       this.masterGain.connect(this.ctx.destination);
+
+      this.radioGain = this.ctx.createGain();
+      this.radioGain.gain.setValueAtTime(0.35, this.ctx.currentTime);
+      this.radioGain.connect(this.masterGain);
 
       this._setupEngineSound();
       this._setupTurboSound();
@@ -43,6 +53,7 @@ class CyberAudioEngine {
       this._setupNitroSound();
       this._setupPoliceSiren();
       this._setupHelicopterSound();
+      this._startSynthwaveRadio();
 
       this.isInitialized = true;
     } catch (e) {
@@ -166,7 +177,7 @@ class CyberAudioEngine {
 
     const filter = this.ctx.createBiquadFilter();
     filter.type = "lowpass";
-    filter.frequency.setValueAtTime(1200, this.ctx.currentTime);
+    filter.frequency.setValueAtTime(1400, this.ctx.currentTime);
 
     this.sirenOsc.connect(filter);
     filter.connect(this.sirenGain);
@@ -194,6 +205,94 @@ class CyberAudioEngine {
     this.heliOsc.start();
   }
 
+  // 📻 Synthwave Radio Beat Generator (Kick, Snare, Hihat, Synth Bass)
+  _startSynthwaveRadio() {
+    const bassNotes = [110, 110, 130.81, 110, 98, 98, 110, 123.47]; // A2, C3, G2, B2
+    const stepDuration = 0.13; // ~115 BPM 16th notes
+
+    const playDrum = () => {
+      if (!this.isRadioPlaying || this.isMuted || !this.ctx) return;
+      const t = this.ctx.currentTime;
+      const step = this.radioStep % 16;
+      this.radioStep++;
+
+      // 1. Kick on 0, 4, 8, 12
+      if (step % 4 === 0) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.frequency.setValueAtTime(140, t);
+        osc.frequency.exponentialRampToValueAtTime(32, t + 0.1);
+        gain.gain.setValueAtTime(0.4, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+        osc.connect(gain);
+        gain.connect(this.radioGain);
+        osc.start(t);
+        osc.stop(t + 0.13);
+      }
+
+      // 2. Snare on 4, 12
+      if (step === 4 || step === 12) {
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = this._createNoiseBuffer();
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.setValueAtTime(1200, t);
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.25, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.radioGain);
+        noise.start(t);
+        noise.stop(t + 0.16);
+      }
+
+      // 3. Hi-Hat on every 2nd step
+      if (step % 2 === 0) {
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = this._createNoiseBuffer();
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = "highpass";
+        filter.frequency.setValueAtTime(7000, t);
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.08, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.radioGain);
+        noise.start(t);
+        noise.stop(t + 0.06);
+      }
+
+      // 4. Synth Bassline
+      const note = bassNotes[Math.floor(step / 2) % bassNotes.length];
+      const bassOsc = this.ctx.createOscillator();
+      const bassFilter = this.ctx.createBiquadFilter();
+      const bassGain = this.ctx.createGain();
+      bassOsc.type = "sawtooth";
+      bassOsc.frequency.setValueAtTime(note, t);
+      bassFilter.type = "lowpass";
+      bassFilter.frequency.setValueAtTime(450, t);
+      bassGain.gain.setValueAtTime(0.18, t);
+      bassGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      bassOsc.connect(bassFilter);
+      bassFilter.connect(bassGain);
+      bassGain.connect(this.radioGain);
+      bassOsc.start(t);
+      bassOsc.stop(t + 0.13);
+    };
+
+    this.radioInterval = setInterval(playDrum, 130);
+  }
+
+  toggleRadio() {
+    this.isRadioPlaying = !this.isRadioPlaying;
+    if (this.radioGain) {
+      this.radioGain.gain.setValueAtTime(this.isRadioPlaying ? 0.35 : 0, this.ctx.currentTime);
+    }
+    return this.isRadioPlaying;
+  }
+
   update(rpmRatio, speedKmH, driftRatio, isNitro, isPoliceNearby, isHeliNearby) {
     if (!this.isInitialized || this.isMuted) return;
     const t = this.ctx.currentTime;
@@ -218,10 +317,11 @@ class CyberAudioEngine {
     const targetNitro = isNitro ? 0.55 : 0.0;
     this.nitroGain.gain.setTargetAtTime(targetNitro, t, 0.05);
 
+    // 🚨 LOUD POLICE SIREN WHEN NEARBY
     if (isPoliceNearby) {
-      const sirenFreq = 650 + Math.sin(t * 4.5) * 350;
+      const sirenFreq = 650 + Math.sin(t * 5.2) * 380;
       this.sirenOsc.frequency.setValueAtTime(sirenFreq, t);
-      this.sirenGain.gain.setTargetAtTime(0.32, t, 0.1);
+      this.sirenGain.gain.setTargetAtTime(0.42, t, 0.08);
     } else {
       this.sirenGain.gain.setTargetAtTime(0.0, t, 0.15);
     }
@@ -233,12 +333,27 @@ class CyberAudioEngine {
     }
   }
 
-  // ⚡ Nitro Canister Pickup Sound
+  // 📸 Speed Camera Shutter Flash Sound
+  playCameraFlash() {
+    if (!this.isInitialized || this.isMuted) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(1800, t);
+    osc.frequency.exponentialRampToValueAtTime(400, t + 0.1);
+    gain.gain.setValueAtTime(0.6, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.14);
+  }
+
   playNitroPickupSound() {
     if (!this.isInitialized || this.isMuted) return;
     const t = this.ctx.currentTime;
-
-    const freqs = [659.25, 880.0, 1318.51, 1760.0]; // E5, A5, E6, A6 Arpeggio
+    const freqs = [659.25, 880.0, 1318.51, 1760.0];
     freqs.forEach((freq, idx) => {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
@@ -348,7 +463,7 @@ class CyberAudioEngine {
   toggleMute() {
     this.isMuted = !this.isMuted;
     if (this.masterGain) {
-      this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.8, this.ctx.currentTime);
+      this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.85, this.ctx.currentTime);
     }
     return this.isMuted;
   }
