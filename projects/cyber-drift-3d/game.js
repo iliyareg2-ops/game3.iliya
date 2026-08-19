@@ -1,4 +1,4 @@
-// game.js - Cyber Drift 3D Main Director, 3D Garage Showroom, Dynamic Cameras & Real-Time Customization
+// game.js - Cyber Drift 3D Main Director, Police Takedown FX, Busted Screen, Dynamic Cameras & UI
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { CyberCar } from "./car.js";
 import { CityTrackManager } from "./city.js";
@@ -16,8 +16,9 @@ export class CyberDriftGame {
 
     this.clock = new THREE.Clock();
     this.cameraMode = "CHASE"; // 'CHASE', 'HOOD', 'COCKPIT'
-    this.gameState = "GARAGE"; // 'GARAGE', 'RACING'
+    this.gameState = "GARAGE"; // 'GARAGE', 'RACING', 'BUSTED'
     this.garageOrbitAngle = 0;
+    this.screenShake = 0;
 
     this.keys = {
       forward: false,
@@ -40,7 +41,7 @@ export class CyberDriftGame {
 
   initThree() {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0a1020);
+    this.scene.background = new THREE.Color(0x0c1322);
 
     this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.2, 5000);
     this.camera.position.set(0, 4, 12);
@@ -58,7 +59,18 @@ export class CyberDriftGame {
 
   initWorld() {
     this.trackManager = new CityTrackManager(this.scene);
-    this.car = new CyberCar(this.scene, 0); // Apex GT
+    this.car = new CyberCar(this.scene, 0);
+
+    // Police Takedown Hook
+    this.trackManager.onTakedownCallback = (bannerText) => {
+      this.screenShake = 1.4;
+      this.showBanner(bannerText, 3200);
+    };
+
+    // Busted Hook
+    this.trackManager.onBustedCallback = () => {
+      this.triggerBusted();
+    };
   }
 
   initInputs() {
@@ -185,6 +197,11 @@ export class CyberDriftGame {
       });
     }
 
+    const restartBtn = document.getElementById("btn-restart-busted");
+    if (restartBtn) {
+      restartBtn.addEventListener("click", () => this.resetCar());
+    }
+
     const resetBtn = document.getElementById("btn-reset-car");
     if (resetBtn) {
       resetBtn.addEventListener("click", () => this.resetCar());
@@ -194,8 +211,16 @@ export class CyberDriftGame {
   startRace() {
     this.gameState = "RACING";
     document.getElementById("garage-screen").style.display = "none";
+    document.getElementById("busted-screen").style.display = "none";
     document.getElementById("hud").style.display = "flex";
     this.showBanner("🔥 СТАРТ! ВЫХОДИТЕ В ЗАНОС С ПОМОЩЬЮ ПРОБЕЛА (SPACE)");
+  }
+
+  triggerBusted() {
+    this.gameState = "BUSTED";
+    cyberAudio.playCrash();
+    document.getElementById("busted-score").textContent = this.car.totalScore;
+    document.getElementById("busted-screen").style.display = "grid";
   }
 
   toggleCamera() {
@@ -212,7 +237,12 @@ export class CyberDriftGame {
 
   resetCar() {
     this.car.reset();
-    this.showBanner("РЕСТАРТ МАШИНЫ НА ТРАССЕ");
+    this.gameState = "RACING";
+    this.trackManager.bustedTimer = 0;
+    document.getElementById("busted-screen").style.display = "none";
+    document.getElementById("garage-screen").style.display = "none";
+    document.getElementById("hud").style.display = "flex";
+    this.showBanner("🔄 РЕСТАРТ! ДАВИ НА ГАЗ");
   }
 
   showBanner(text, duration = 2800) {
@@ -233,7 +263,6 @@ export class CyberDriftGame {
 
   updateCamera(delta) {
     if (this.gameState === "GARAGE") {
-      // Smooth 3D Showroom Camera Orbit
       this.garageOrbitAngle += delta * 0.65;
       const radius = 12.5;
       const camX = Math.sin(this.garageOrbitAngle) * radius;
@@ -259,6 +288,14 @@ export class CyberDriftGame {
       offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), carHeading);
 
       const targetCamPos = carPos.clone().add(offset);
+
+      // Screen Shake
+      if (this.screenShake > 0) {
+        targetCamPos.x += (Math.random() - 0.5) * this.screenShake;
+        targetCamPos.y += (Math.random() - 0.5) * this.screenShake;
+        this.screenShake = Math.max(0, this.screenShake - delta * 4);
+      }
+
       this.camera.position.lerp(targetCamPos, delta * 9.0);
 
       const lookTarget = carPos.clone().add(new THREE.Vector3(0, 1.2, 8).applyAxisAngle(new THREE.Vector3(0, 1, 0), carHeading));

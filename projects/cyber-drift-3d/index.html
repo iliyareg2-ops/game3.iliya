@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Cyber Drift 3D: Ночной Киберпанк Дрифт</title>
+  <title>Cyber Drift 3D: Ночной Киберпанк Дрифт & Police Takedowns</title>
   <style>
     * {
       box-sizing: border-box;
@@ -122,15 +122,15 @@
       top: 10%;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(10, 18, 30, 0.92);
+      background: rgba(10, 18, 30, 0.94);
       border: 1px solid #00f0ff;
       border-radius: 12px;
-      padding: 10px 22px;
-      font-size: 14px;
+      padding: 12px 24px;
+      font-size: 15px;
       font-weight: 900;
       letter-spacing: 0.06em;
       color: #fff;
-      text-shadow: 0 0 10px #00f0ff;
+      text-shadow: 0 0 12px #00f0ff;
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
       opacity: 0;
       transition: opacity 0.3s ease;
@@ -138,7 +138,7 @@
       pointer-events: none;
     }
 
-    /* Bottom HUD (Speedometer, RPM & Nitro) */
+    /* Bottom HUD */
     .hud-bottom {
       display: flex;
       justify-content: space-between;
@@ -305,7 +305,7 @@
       #touch-controls { display: block; }
     }
 
-    /* Garage Customization HUD Card (Anchored to Left, so 3D Car is 100% visible on Screen!) */
+    /* Garage Customization HUD Card */
     #garage-screen {
       position: fixed;
       inset: 0;
@@ -427,6 +427,28 @@
     .btn-main:hover {
       filter: brightness(1.1);
     }
+
+    /* Busted Screen */
+    .screen-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      display: none;
+      place-items: center;
+      background: radial-gradient(circle at center, rgba(30, 10, 14, 0.95) 0%, rgba(10, 3, 5, 0.98) 100%);
+      backdrop-filter: blur(14px);
+      padding: 16px;
+    }
+
+    .busted-card {
+      width: min(520px, 92vw);
+      background: linear-gradient(145deg, #1f1014 0%, #2e141a 100%);
+      border: 2px solid #ff0033;
+      border-radius: 20px;
+      padding: 28px 24px;
+      box-shadow: 0 0 45px rgba(255, 0, 51, 0.4);
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -443,7 +465,7 @@
     <div class="hud-top">
       <div style="display: flex; gap: 10px;">
         <div class="hud-pill">
-          <span class="hud-label">ОЧКИ ДРИФТА</span>
+          <span class="hud-label">ОЧКИ ДРИФТА & ТАРАНОВ</span>
           <span class="hud-val" id="hud-score">0</span>
         </div>
         <div class="hud-pill">
@@ -541,6 +563,18 @@
       </div>
 
       <button class="btn-main" id="btn-start-race">ВЫЕХАТЬ НА ТРАССУ (SPACE)</button>
+    </div>
+  </div>
+
+  <!-- Busted Screen -->
+  <div class="screen-overlay" id="busted-screen">
+    <div class="busted-card">
+      <h1 style="font-size: 42px; color: #ff0033; text-shadow: 0 0 20px #ff0033; margin-bottom: 12px;">ПОЙМАН! (BUSTED)</h1>
+      <p style="color: #cbd5e1; font-size: 16px; margin-bottom: 20px;">
+        Полицейские перехватчики заблокировали ваш суперкар.<br>
+        Итоговый счет: <b id="busted-score" style="color: #00f0ff; font-size: 24px;">0</b> PTS
+      </p>
+      <button class="btn-main" id="btn-restart-busted" style="background: linear-gradient(135deg, #ff0033, #990011); color: #fff;">ПОВТОРИТЬ ЗАЕЗД (R)</button>
     </div>
   </div>
 
