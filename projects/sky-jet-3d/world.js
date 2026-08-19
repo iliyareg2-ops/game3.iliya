@@ -1,26 +1,176 @@
-// world.js - Infinite Multi-Biome Procedural World (Mountains, Megacity, Flower Meadows, Ocean Archipelago)
+// world.js - Infinite Multi-Biome Procedural World with Realistic Textured 3D Skyscrapers, Collision Detection, and 4 Dynamic Biomes
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 
 export class WorldManager {
   constructor(scene) {
     this.scene = scene;
-    this.chunks = new Map(); // key: "cx,cz" -> ChunkObject
+    this.chunks = new Map();
     this.chunkSize = 900;
-    this.viewDistance = 2; // radius of chunks around player (5x5 grid = 25 chunks)
+    this.viewDistance = 2; // 5x5 grid
 
     this.windmills = [];
     this.lighthouses = [];
     this.trafficCars = [];
     this.clouds = [];
+    this.buildingColliders = []; // Active building AABB bounding boxes
+    this.beaconLights = [];
+
     this.radarDish = null;
     this.windsock = null;
 
     this.currentBiome = "AIRPORT";
     this.onBiomeChangeCallback = null;
 
+    this.initTexturesAndMaterials();
     this.initLighting();
     this.initAirportBase();
     this.initClouds();
+  }
+
+  // Create high-detail procedural skyscraper canvas textures (Windows, Neon Ads, Architectural Facades)
+  initTexturesAndMaterials() {
+    // 1. Blue Glass Highrise Facade Texture
+    const blueCanvas = document.createElement("canvas");
+    blueCanvas.width = 512;
+    blueCanvas.height = 1024;
+    const bCtx = blueCanvas.getContext("2d");
+
+    bCtx.fillStyle = "#162338";
+    bCtx.fillRect(0, 0, 512, 1024);
+
+    // Floor dividers & windows
+    for (let y = 16; y < 1024; y += 32) {
+      // Horizontal concrete slab
+      bCtx.fillStyle = "#2c3e55";
+      bCtx.fillRect(0, y, 512, 4);
+
+      for (let x = 12; x < 512; x += 28) {
+        const isLit = Math.random() > 0.35;
+        if (isLit) {
+          const warm = Math.random() > 0.6;
+          bCtx.fillStyle = warm ? "#ffeaa7" : "#00f0ff";
+        } else {
+          bCtx.fillStyle = "#0c1524";
+        }
+        bCtx.fillRect(x, y + 6, 20, 20);
+      }
+    }
+    const blueTex = new THREE.CanvasTexture(blueCanvas);
+    blueTex.wrapS = THREE.RepeatWrapping;
+    blueTex.wrapT = THREE.RepeatWrapping;
+
+    this.blueGlassMat = new THREE.MeshStandardMaterial({
+      map: blueTex,
+      metalness: 0.85,
+      roughness: 0.18,
+      emissive: 0x005577,
+      emissiveIntensity: 0.35,
+    });
+
+    // 2. Gold Luxury Skyscraper Facade Texture
+    const goldCanvas = document.createElement("canvas");
+    goldCanvas.width = 512;
+    goldCanvas.height = 1024;
+    const gCtx = goldCanvas.getContext("2d");
+
+    gCtx.fillStyle = "#2b2216";
+    gCtx.fillRect(0, 0, 512, 1024);
+
+    for (let y = 16; y < 1024; y += 28) {
+      gCtx.fillStyle = "#59442a";
+      gCtx.fillRect(0, y, 512, 3);
+      for (let x = 14; x < 512; x += 24) {
+        const isLit = Math.random() > 0.4;
+        gCtx.fillStyle = isLit ? "#ffd166" : "#18120b";
+        gCtx.fillRect(x, y + 4, 18, 18);
+      }
+    }
+    const goldTex = new THREE.CanvasTexture(goldCanvas);
+    goldTex.wrapS = THREE.RepeatWrapping;
+    goldTex.wrapT = THREE.RepeatWrapping;
+
+    this.goldGlassMat = new THREE.MeshStandardMaterial({
+      map: goldTex,
+      metalness: 0.88,
+      roughness: 0.22,
+      emissive: 0x664400,
+      emissiveIntensity: 0.35,
+    });
+
+    // 3. Cyberpunk Neon Tower with Billboard Screen
+    const cyberCanvas = document.createElement("canvas");
+    cyberCanvas.width = 512;
+    cyberCanvas.height = 1024;
+    const cCtx = cyberCanvas.getContext("2d");
+
+    cCtx.fillStyle = "#11141c";
+    cCtx.fillRect(0, 0, 512, 1024);
+
+    for (let y = 20; y < 1024; y += 36) {
+      cCtx.fillStyle = "#1e2636";
+      cCtx.fillRect(0, y, 512, 4);
+      for (let x = 16; x < 512; x += 32) {
+        const isLit = Math.random() > 0.45;
+        cCtx.fillStyle = isLit ? "#00ffcc" : "#090d14";
+        cCtx.fillRect(x, y + 6, 22, 22);
+      }
+    }
+
+    // Huge Neon Billboard in the middle
+    cCtx.fillStyle = "#000000";
+    cCtx.fillRect(32, 360, 448, 260);
+    cCtx.strokeStyle = "#ff0055";
+    cCtx.lineWidth = 8;
+    cCtx.strokeRect(32, 360, 448, 260);
+
+    cCtx.font = "bold 56px Arial";
+    cCtx.fillStyle = "#00f0ff";
+    cCtx.textAlign = "center";
+    cCtx.fillText("SKY JET 3D", 256, 460);
+
+    cCtx.font = "bold 32px Arial";
+    cCtx.fillStyle = "#ff007f";
+    cCtx.fillText("CYBER METROPOLIS", 256, 530);
+
+    const cyberTex = new THREE.CanvasTexture(cyberCanvas);
+    cyberTex.wrapS = THREE.RepeatWrapping;
+    cyberTex.wrapT = THREE.RepeatWrapping;
+
+    this.cyberMat = new THREE.MeshStandardMaterial({
+      map: cyberTex,
+      metalness: 0.8,
+      roughness: 0.3,
+      emissive: 0x112233,
+      emissiveIntensity: 0.5,
+    });
+
+    // 4. Modern White Architectural Highrise
+    const whiteCanvas = document.createElement("canvas");
+    whiteCanvas.width = 512;
+    whiteCanvas.height = 1024;
+    const wCtx = whiteCanvas.getContext("2d");
+
+    wCtx.fillStyle = "#dde4ed";
+    wCtx.fillRect(0, 0, 512, 1024);
+
+    for (let y = 14; y < 1024; y += 30) {
+      wCtx.fillStyle = "#98a6b8";
+      wCtx.fillRect(0, y, 512, 5);
+      for (let x = 12; x < 512; x += 26) {
+        const isLit = Math.random() > 0.4;
+        wCtx.fillStyle = isLit ? "#3377aa" : "#445566";
+        wCtx.fillRect(x, y + 6, 18, 16);
+      }
+    }
+    const whiteTex = new THREE.CanvasTexture(whiteCanvas);
+    whiteTex.wrapS = THREE.RepeatWrapping;
+    whiteTex.wrapT = THREE.RepeatWrapping;
+
+    this.whiteArchMat = new THREE.MeshStandardMaterial({
+      map: whiteTex,
+      metalness: 0.4,
+      roughness: 0.5,
+    });
   }
 
   initLighting() {
@@ -54,28 +204,27 @@ export class WorldManager {
     this.scene.add(sunMesh);
   }
 
+  // Balanced 2D Biome Distribution: alternating smoothly every 1600m in all directions
   getBiomeAt(x, z) {
-    // Starting runway area
+    // Starting runway plateau
     if (Math.abs(x) < 550 && Math.abs(z) < 700) {
       return "AIRPORT";
     }
 
-    // Biome distribution based on world regions
-    if (z > 950) {
-      return "CITY"; // 🏙️ Megacity Skyline
-    } else if (z < -950 && x > 200) {
-      return "FLOWERS"; // 🌸 Flower Meadows & Windmills
-    } else if (x < -950) {
-      return "OCEAN"; // 🌊 Ocean & Islands
-    } else {
-      return "MOUNTAINS"; // 🏔️ Alpine Mountains
-    }
+    // Grid cells of 1800m
+    const cellX = Math.floor((x + 100000) / 1800);
+    const cellZ = Math.floor((z + 100000) / 1800);
+    const hash = Math.abs((cellX * 73856093) ^ (cellZ * 19349663)) % 4;
+
+    if (hash === 0) return "MOUNTAINS"; // 🏔️ Alpine Mountains
+    if (hash === 1) return "CITY";      // 🏙️ 3D Megacity
+    if (hash === 2) return "FLOWERS";   // 🌸 Flower Meadows & Windmills
+    return "OCEAN";                     // 🌊 Ocean & Archipelago
   }
 
   getTerrainHeight(x, z) {
     const biome = this.getBiomeAt(x, z);
 
-    // Flat airport zone
     if (biome === "AIRPORT") {
       const distToRunwayX = Math.abs(x);
       const distToRunwayZ = Math.abs(z);
@@ -84,27 +233,24 @@ export class WorldManager {
     }
 
     if (biome === "CITY") {
-      // City ground is mostly flat with slight terraces
-      return 1.5;
+      return 1.5; // City road surface
     }
 
     if (biome === "OCEAN") {
-      // Ocean water level is 0, rocky islands rise up
       const islandNoise = Math.sin(x * 0.004) * Math.cos(z * 0.004);
       if (islandNoise > 0.45) {
-        return (islandNoise - 0.45) * 220; // Island hills
+        return (islandNoise - 0.45) * 220;
       }
-      return 0; // Water
+      return 0;
     }
 
     if (biome === "FLOWERS") {
-      // Smooth rolling green hills
       const h1 = Math.sin(x * 0.0025) * Math.cos(z * 0.0025) * 45;
       const h2 = Math.sin(x * 0.006 + 1.2) * 15;
       return Math.max(2, h1 + h2 + 18);
     }
 
-    // Default: Alpine Mountains & Canyons
+    // Mountains
     const nx1 = x * 0.0007;
     const nz1 = z * 0.0007;
     const nx2 = x * 0.0022;
@@ -120,10 +266,30 @@ export class WorldManager {
     return Math.max(15, rawHeight);
   }
 
+  // Checks if airplane position intersects with any active skyscraper bounding box
+  checkBuildingCollision(planePos, radius = 4.5) {
+    const px = planePos.x;
+    const py = planePos.y;
+    const pz = planePos.z;
+
+    for (const b of this.buildingColliders) {
+      if (
+        px + radius >= b.minX &&
+        px - radius <= b.maxX &&
+        pz + radius >= b.minZ &&
+        pz - radius <= b.maxZ &&
+        py + radius >= b.minY &&
+        py - radius <= b.maxY
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   initAirportBase() {
     const group = new THREE.Group();
 
-    // Runway
     const rwLength = 1200;
     const rwWidth = 54;
     const rwGeom = new THREE.PlaneGeometry(rwWidth, rwLength);
@@ -134,7 +300,6 @@ export class WorldManager {
     runway.receiveShadow = true;
     group.add(runway);
 
-    // Dashed center line
     const dashGeom = new THREE.PlaneGeometry(2.4, 24);
     dashGeom.rotateX(-Math.PI / 2);
     const dashMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
@@ -144,7 +309,6 @@ export class WorldManager {
       group.add(dash);
     }
 
-    // Runway Edge Lights
     const lightGeom = new THREE.CylinderGeometry(0.2, 0.2, 0.8, 8);
     const whiteGlowMat = new THREE.MeshBasicMaterial({ color: 0xeeffff });
     const greenGlowMat = new THREE.MeshBasicMaterial({ color: 0x00ff66 });
@@ -162,7 +326,6 @@ export class WorldManager {
       group.add(leftLight, rightLight);
     }
 
-    // Control Tower
     const towerBaseGeom = new THREE.CylinderGeometry(6, 9, 45, 12);
     const concreteMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.7 });
     const towerBase = new THREE.Mesh(towerBaseGeom, concreteMat);
@@ -181,7 +344,6 @@ export class WorldManager {
     cab.position.set(80, 50, -200);
     group.add(cab);
 
-    // Radar dish
     const dishGroup = new THREE.Group();
     const dishGeom = new THREE.SphereGeometry(4, 12, 12, 0, Math.PI * 2, 0, Math.PI / 2);
     const dishMat = new THREE.MeshStandardMaterial({ color: 0xff3300, roughness: 0.4 });
@@ -192,7 +354,6 @@ export class WorldManager {
     group.add(dishGroup);
     this.radarDish = dishGroup;
 
-    // Hangars
     const hangarGeom = new THREE.CylinderGeometry(28, 28, 70, 16, 1, false, 0, Math.PI);
     hangarGeom.rotateZ(Math.PI / 2);
     const hangarMat = new THREE.MeshStandardMaterial({ color: 0x485260, metalness: 0.7, roughness: 0.4 });
@@ -205,7 +366,6 @@ export class WorldManager {
     this.scene.add(group);
   }
 
-  // Create a Chunk Mesh based on its Biome
   createChunk(cx, cz) {
     const chunkGroup = new THREE.Group();
     const startX = cx * this.chunkSize;
@@ -242,19 +402,12 @@ export class WorldManager {
         if (vy > 4) color.copy(sandColor);
         else color.copy(oceanColor);
       } else if (biome === "FLOWERS") {
-        // Multi-color flower field patches
         const flowerNoise = Math.sin(vx * 0.02) * Math.cos(vz * 0.02);
-        if (flowerNoise > 0.45) {
-          color.setHex(0xe63946); // Red Poppy
-        } else if (flowerNoise > 0.15) {
-          color.setHex(0x9d4edd); // Lavender
-        } else if (flowerNoise < -0.3) {
-          color.setHex(0xffb703); // Golden Sunflower
-        } else {
-          color.copy(meadowColor);
-        }
+        if (flowerNoise > 0.45) color.setHex(0xe63946); // Poppy
+        else if (flowerNoise > 0.15) color.setHex(0x9d4edd); // Lavender
+        else if (flowerNoise < -0.3) color.setHex(0xffb703); // Sunflower
+        else color.copy(meadowColor);
       } else {
-        // Mountains
         if (vy > 320) color.copy(snowColor);
         else if (vy > 180) color.lerpColors(rockColor, snowColor, (vy - 180) / 140);
         else if (vy > 60) color.lerpColors(grassColor, rockColor, (vy - 60) / 120);
@@ -280,9 +433,11 @@ export class WorldManager {
     terrain.receiveShadow = true;
     chunkGroup.add(terrain);
 
+    const chunkColliders = [];
+
     // Populate Biome-Specific Features
     if (biome === "CITY") {
-      this.populateCity(chunkGroup, centerX, centerZ);
+      this.populateCity(chunkGroup, centerX, centerZ, chunkColliders);
     } else if (biome === "FLOWERS") {
       this.populateFlowerMeadow(chunkGroup, centerX, centerZ);
     } else if (biome === "OCEAN") {
@@ -292,82 +447,88 @@ export class WorldManager {
     }
 
     this.scene.add(chunkGroup);
-    return { group: chunkGroup, cx, cz, biome };
+    return { group: chunkGroup, cx, cz, biome, colliders: chunkColliders };
   }
 
-  // 🏙️ 3D Megacity with Skyscrapers, Neon Spires & Moving Traffic
-  populateCity(group, cx, cz) {
-    const bldgCount = 28;
-    const bldgMat = new THREE.MeshStandardMaterial({
-      color: 0x222a36,
-      metalness: 0.85,
-      roughness: 0.25,
-    });
+  // 🏙️ Realistic 3D Megacity with Textured Facades & Collision Boxes
+  populateCity(group, cx, cz, collidersList) {
+    const materials = [this.blueGlassMat, this.goldGlassMat, this.cyberMat, this.whiteArchMat];
+    const gridStep = 130;
 
-    const neonMat = new THREE.MeshStandardMaterial({
-      color: 0x00f0ff,
-      emissive: 0x00e1ff,
-      emissiveIntensity: 0.9,
-    });
+    for (let x = cx - this.chunkSize / 2 + 75; x < cx + this.chunkSize / 2 - 75; x += gridStep) {
+      for (let z = cz - this.chunkSize / 2 + 75; z < cz + this.chunkSize / 2 - 75; z += gridStep) {
+        if (Math.random() < 0.2) continue; // Avenue gap
 
-    const goldNeonMat = new THREE.MeshStandardMaterial({
-      color: 0xffa500,
-      emissive: 0xff8800,
-      emissiveIntensity: 0.9,
-    });
+        const width = 45 + Math.random() * 32;
+        const depth = 45 + Math.random() * 32;
+        const height = 90 + Math.random() * 240; // 90m to 330m high
 
-    const gridStep = 120;
-    for (let x = cx - this.chunkSize / 2 + 70; x < cx + this.chunkSize / 2 - 70; x += gridStep) {
-      for (let z = cz - this.chunkSize / 2 + 70; z < cz + this.chunkSize / 2 - 70; z += gridStep) {
-        if (Math.random() < 0.25) continue; // Street intersection
-
-        const width = 45 + Math.random() * 30;
-        const depth = 45 + Math.random() * 30;
-        const height = 80 + Math.random() * 220; // 80m to 300m tall skyscrapers!
-
+        const mat = materials[Math.floor(Math.random() * materials.length)];
         const bldgGeom = new THREE.BoxGeometry(width, height, depth);
-        const bldg = new THREE.Mesh(bldgGeom, bldgMat);
+        const bldg = new THREE.Mesh(bldgGeom, mat);
         bldg.position.set(x, height / 2 + 1.5, z);
         bldg.castShadow = true;
         bldg.receiveShadow = true;
         group.add(bldg);
 
-        // Rooftop glowing spire or helipad
+        // Store AABB Collider for physical collision
+        const boxCollider = {
+          minX: x - width / 2,
+          maxX: x + width / 2,
+          minZ: z - depth / 2,
+          maxZ: z + depth / 2,
+          minY: 1.5,
+          maxY: height + 1.5,
+        };
+        collidersList.push(boxCollider);
+        this.buildingColliders.push(boxCollider);
+
+        // Rooftop glowing spire with blinking aviation beacon
         if (height > 180) {
-          const spireGeom = new THREE.CylinderGeometry(0.5, 2.0, 35, 8);
-          const spire = new THREE.Mesh(spireGeom, Math.random() > 0.5 ? neonMat : goldNeonMat);
-          spire.position.set(x, height + 17.5 + 1.5, z);
+          const spireGeom = new THREE.CylinderGeometry(0.5, 2.0, 40, 8);
+          const spireMat = new THREE.MeshStandardMaterial({ color: 0x334455, metalness: 0.9 });
+          const spire = new THREE.Mesh(spireGeom, spireMat);
+          spire.position.set(x, height + 20 + 1.5, z);
           group.add(spire);
-        } else if (Math.random() > 0.6) {
-          // Helipad ring
-          const ringGeom = new THREE.RingGeometry(8, 10, 16);
-          ringGeom.rotateX(-Math.PI / 2);
-          const helipad = new THREE.Mesh(ringGeom, goldNeonMat);
-          helipad.position.set(x, height + 1.7, z);
+
+          // Red Blinking Obstruction Beacon on top
+          const beaconGeom = new THREE.SphereGeometry(1.5, 8, 8);
+          const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
+          const beacon = new THREE.Mesh(beaconGeom, beaconMat);
+          beacon.position.set(x, height + 40 + 1.5, z);
+          group.add(beacon);
+          this.beaconLights.push(beacon);
+        } else if (Math.random() > 0.5) {
+          // Helipad on roof
+          const heliGeom = new THREE.RingGeometry(8, 11, 16);
+          heliGeom.rotateX(-Math.PI / 2);
+          const heliMat = new THREE.MeshBasicMaterial({ color: 0xffd700, side: THREE.DoubleSide });
+          const helipad = new THREE.Mesh(heliGeom, heliMat);
+          helipad.position.set(x, height + 1.6, z);
           group.add(helipad);
         }
       }
     }
 
-    // Traffic lanes with moving glowing headlights
-    for (let i = 0; i < 14; i++) {
-      const carGeom = new THREE.BoxGeometry(2.5, 1.2, 5.0);
+    // Street traffic cars
+    for (let i = 0; i < 16; i++) {
+      const carGeom = new THREE.BoxGeometry(2.8, 1.3, 5.5);
       const isRed = Math.random() > 0.5;
-      const carMat = new THREE.MeshBasicMaterial({ color: isRed ? 0xff2222 : 0xffffaa });
+      const carMat = new THREE.MeshBasicMaterial({ color: isRed ? 0xff2222 : 0xffffdd });
       const car = new THREE.Mesh(carGeom, carMat);
 
       const isXAxis = Math.random() > 0.5;
       car.position.set(
         cx + (Math.random() - 0.5) * this.chunkSize * 0.8,
-        2.2,
+        2.4,
         cz + (Math.random() - 0.5) * this.chunkSize * 0.8
       );
-
       group.add(car);
+
       this.trafficCars.push({
         mesh: car,
         axis: isXAxis ? "x" : "z",
-        speed: 35 + Math.random() * 45,
+        speed: 40 + Math.random() * 50,
         dir: Math.random() > 0.5 ? 1 : -1,
         min: (isXAxis ? cx : cz) - this.chunkSize / 2,
         max: (isXAxis ? cx : cz) + this.chunkSize / 2,
@@ -375,9 +536,7 @@ export class WorldManager {
     }
   }
 
-  // 🌸 Flower Meadow with Windmills
   populateFlowerMeadow(group, cx, cz) {
-    // Add 1-2 Windmills per chunk
     for (let i = 0; i < 2; i++) {
       const wx = cx + (Math.random() - 0.5) * (this.chunkSize - 200);
       const wz = cz + (Math.random() - 0.5) * (this.chunkSize - 200);
@@ -390,7 +549,6 @@ export class WorldManager {
       tower.position.y = 15;
       millGroup.add(tower);
 
-      // Blades
       const bladesGroup = new THREE.Group();
       const bladeGeom = new THREE.BoxGeometry(1.8, 22, 0.4);
       bladeGeom.translate(0, 11, 0);
@@ -411,9 +569,7 @@ export class WorldManager {
     }
   }
 
-  // 🌊 Ocean with Lighthouses
   populateOceanIslands(group, cx, cz) {
-    // Water surface
     const waterGeom = new THREE.PlaneGeometry(this.chunkSize, this.chunkSize);
     waterGeom.rotateX(-Math.PI / 2);
     const waterMat = new THREE.MeshStandardMaterial({
@@ -427,7 +583,6 @@ export class WorldManager {
     water.position.set(cx, 0.8, cz);
     group.add(water);
 
-    // Lighthouse on island
     const lx = cx + 80;
     const lz = cz + 80;
     const ly = this.getTerrainHeight(lx, lz);
@@ -439,7 +594,6 @@ export class WorldManager {
       lh.position.y = 18;
       lhGroup.add(lh);
 
-      // Light beam
       const beamGeom = new THREE.ConeGeometry(12, 120, 16);
       beamGeom.rotateX(Math.PI / 2);
       beamGeom.translate(0, 0, 60);
@@ -454,7 +608,6 @@ export class WorldManager {
     }
   }
 
-  // 🏔️ Mountain Pine Trees
   populateMountainPines(group, cx, cz) {
     const treeCount = 45;
     const coneGeom = new THREE.ConeGeometry(6, 18, 5);
@@ -525,12 +678,10 @@ export class WorldManager {
     }
   }
 
-  // Stream chunks around player position
   updateChunks(playerX, playerZ) {
     const currentChunkX = Math.floor(playerX / this.chunkSize);
     const currentChunkZ = Math.floor(playerZ / this.chunkSize);
 
-    // Track active chunk keys
     const neededKeys = new Set();
 
     for (let dx = -this.viewDistance; dx <= this.viewDistance; dx++) {
@@ -547,15 +698,19 @@ export class WorldManager {
       }
     }
 
-    // Unload distant chunks
+    // Unload distant chunks & remove their building colliders
     for (const [key, chunk] of this.chunks.entries()) {
       if (!neededKeys.has(key)) {
+        if (chunk.colliders && chunk.colliders.length > 0) {
+          this.buildingColliders = this.buildingColliders.filter(
+            (b) => !chunk.colliders.includes(b)
+          );
+        }
         this.scene.remove(chunk.group);
         this.chunks.delete(key);
       }
     }
 
-    // Check biome change
     const newBiome = this.getBiomeAt(playerX, playerZ);
     if (newBiome !== this.currentBiome) {
       this.currentBiome = newBiome;
@@ -568,20 +723,22 @@ export class WorldManager {
   update(delta, playerPos) {
     this.updateChunks(playerPos.x, playerPos.z);
 
-    // Rotate radar
     if (this.radarDish) this.radarDish.rotation.y += delta * 1.2;
 
-    // Rotate windmill blades
     for (const blades of this.windmills) {
       blades.rotation.z += delta * 1.8;
     }
 
-    // Sweep lighthouse beams
     for (const beam of this.lighthouses) {
       beam.rotation.y += delta * 1.4;
     }
 
-    // Move traffic cars
+    // Blink red aviation lights on skyscrapers
+    const isBlink = Math.sin(Date.now() * 0.005) > 0;
+    for (const beacon of this.beaconLights) {
+      beacon.material.color.setHex(isBlink ? 0xff0033 : 0x440011);
+    }
+
     for (const car of this.trafficCars) {
       if (car.axis === "x") {
         car.mesh.position.x += car.speed * car.dir * delta;
@@ -594,7 +751,6 @@ export class WorldManager {
       }
     }
 
-    // Drift clouds
     for (const cloud of this.clouds) {
       cloud.group.position.x += cloud.speedX * delta * 6;
       if (cloud.group.position.x > playerPos.x + 3500) {

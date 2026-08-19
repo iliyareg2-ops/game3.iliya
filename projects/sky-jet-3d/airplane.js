@@ -305,9 +305,10 @@ export class Airplane {
     // 5. Terrain & Skyscraper Ground Collisions
     const groundHeight = worldManager.getTerrainHeight(this.mesh.position.x, this.mesh.position.z);
     const minAltitude = groundHeight + 1.4;
+    const isBuildingHit = worldManager.checkBuildingCollision(this.mesh.position, 4.5);
 
-    if (this.mesh.position.y <= minAltitude + 0.2) {
-      if (this.speed < this.takeoffSpeed && Math.abs(this.mesh.position.x) < 400 && Math.abs(this.mesh.position.z) < 700) {
+    if (this.mesh.position.y <= minAltitude + 0.2 || isBuildingHit) {
+      if (this.speed < this.takeoffSpeed && Math.abs(this.mesh.position.x) < 400 && Math.abs(this.mesh.position.z) < 700 && !isBuildingHit) {
         // Taxiing on runway
         this.mesh.position.y = minAltitude;
         this.isAirborne = false;
@@ -320,10 +321,10 @@ export class Airplane {
       }
 
       // Check crash or shield bounce
-      if (this.isAirborne && this.mesh.position.y < groundHeight + 0.8) {
+      if (this.isAirborne && (this.mesh.position.y < groundHeight + 0.8 || isBuildingHit)) {
         if (this.shieldTime > 0) {
-          // Shield absorbs collision and bounces jet up!
-          this.mesh.position.y = groundHeight + 25;
+          // Shield absorbs collision and bounces jet up & away!
+          this.mesh.position.y += 35;
           flightAudio.playShieldDeflect();
           this.shieldTime = 0; // Consume shield
         } else {
