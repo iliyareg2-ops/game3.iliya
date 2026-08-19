@@ -1,4 +1,4 @@
-// car.js - Realistic Supercar Physics with Airborne Jump Gravity, Focus Energy & Automotive Tuning
+// car.js - Realistic Supercar Physics with Dense Volumetric Tire Drift Smoke Clouds & Jump Physics
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -12,7 +12,7 @@ export class CyberCar {
     this.speed = 0;
     this.angularVelocity = 0;
     this.driftAngle = 0;
-    this.verticalVelocity = 0; // Stunt ramp jumping
+    this.verticalVelocity = 0;
 
     this.totalScore = 0;
     this.currentDriftScore = 0;
@@ -21,11 +21,10 @@ export class CyberCar {
 
     this.nitroFuel = 100;
     this.nitroActive = false;
-    this.focusEnergy = 100; // Bullet-Time Focus
+    this.focusEnergy = 100;
 
-    this.spoilerType = 0; // 0: GT Wing, 1: Ducktail, 2: Aerofoil
-    this.wheelType = 0;   // 0: BBS Mesh, 1: 5-Spoke, 2: Monoblock
-    this.finishType = "metallic"; // 'metallic', 'matte', 'pearlescent'
+    this.spoilerType = 0;
+    this.finishType = "metallic";
 
     this.throttleInput = 0;
     this.steerInput = 0;
@@ -38,7 +37,6 @@ export class CyberCar {
     this.spoilerMesh = null;
     this.initCarModel();
     this.initParticleSystems();
-    this.initSkidmarks();
   }
 
   initCarModel() {
@@ -72,14 +70,12 @@ export class CyberCar {
     roof.position.set(0, 1.48, -0.3);
     this.mesh.add(roof);
 
-    // Front Bumper Splitter & Diffuser
     const splitter = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.1, 1.2), carbonMat);
     splitter.position.set(0, 0.22, 4.6);
     const diffuser = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.25, 0.8), carbonMat);
     diffuser.position.set(0, 0.35, -4.7);
     this.mesh.add(splitter, diffuser);
 
-    // Headlights & Taillights
     const hlGeom = new THREE.BoxGeometry(0.9, 0.25, 0.1);
     const hlMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const hlL = new THREE.Mesh(hlGeom, hlMat);
@@ -93,7 +89,6 @@ export class CyberCar {
     tl.position.set(0, 0.65, -4.71);
     this.mesh.add(hlL, hlR, tl);
 
-    // Headlight Projector Cones
     const beamGeom = new THREE.ConeGeometry(8.5, 55, 16, 1, true);
     beamGeom.rotateX(-Math.PI / 2);
     const beamMat = new THREE.MeshBasicMaterial({ color: 0xfffae6, transparent: true, opacity: 0.12, side: THREE.DoubleSide });
@@ -125,7 +120,7 @@ export class CyberCar {
     }
 
     return new THREE.MeshPhysicalMaterial({
-      color: this.bodyColorHex || 0xe11d48,
+      color: this.bodyColorHex || 0xdc2626,
       metalness: metalness,
       roughness: roughness,
       clearcoat: clearcoat,
@@ -138,7 +133,6 @@ export class CyberCar {
 
     const g = new THREE.Group();
     if (this.spoilerType === 0) {
-      // Carbon GT Wing
       const postL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.3), carbonMat);
       postL.position.set(1.4, 1.15, -4.2);
       const postR = postL.clone();
@@ -147,13 +141,11 @@ export class CyberCar {
       blade.position.set(0, 1.45, -4.2);
       g.add(postL, postR, blade);
     } else if (this.spoilerType === 1) {
-      // Ducktail Lip
       const lip = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.25, 0.6), carbonMat);
       lip.position.set(0, 0.98, -4.6);
       lip.rotation.x = -0.35;
       g.add(lip);
     } else {
-      // Aerofoil
       const foil = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.15, 0.8), carbonMat);
       foil.position.set(0, 1.25, -4.3);
       g.add(foil);
@@ -190,24 +182,44 @@ export class CyberCar {
     this.wheels = [this.wFL, this.wFR, this.wRL, this.wRR];
   }
 
+  // 💨 DENSE VOLUMETRIC TIRE DRIFT SMOKE SYSTEM
   initParticleSystems() {
-    // 1. Tire Smoke
-    const smokeCount = 120;
+    // 1. Tire Drift Smoke Particles
+    const smokeCount = 240;
     const smokeGeom = new THREE.BufferGeometry();
     const sPos = new Float32Array(smokeCount * 3);
+    const sSizes = new Float32Array(smokeCount);
+
+    for (let i = 0; i < smokeCount; i++) {
+      sPos[i * 3] = 0;
+      sPos[i * 3 + 1] = -999;
+      sPos[i * 3 + 2] = 0;
+      sSizes[i] = 1.0;
+    }
+
     smokeGeom.setAttribute("position", new THREE.BufferAttribute(sPos, 3));
+    smokeGeom.setAttribute("size", new THREE.BufferAttribute(sSizes, 1));
+
     const smokeMat = new THREE.PointsMaterial({
-      color: 0xd1d5db,
-      size: 1.8,
+      color: 0xecf0f4,
+      size: 3.2,
       transparent: true,
-      opacity: 0.45,
+      opacity: 0.65,
       depthWrite: false,
     });
+
     this.smokePoints = new THREE.Points(smokeGeom, smokeMat);
     this.scene.add(this.smokePoints);
+
     this.smokePool = [];
     for (let i = 0; i < smokeCount; i++) {
-      this.smokePool.push({ pos: new THREE.Vector3(0, -999, 0), life: 0, vel: new THREE.Vector3() });
+      this.smokePool.push({
+        pos: new THREE.Vector3(0, -999, 0),
+        vel: new THREE.Vector3(),
+        life: 0,
+        maxLife: 1.0,
+        scale: 1.0,
+      });
     }
 
     // 2. Collision Sparks
@@ -228,10 +240,6 @@ export class CyberCar {
     for (let i = 0; i < sparkCount; i++) {
       this.sparkPool.push({ pos: new THREE.Vector3(0, -999, 0), life: 0, vel: new THREE.Vector3() });
     }
-  }
-
-  initSkidmarks() {
-    this.skidmarks = [];
   }
 
   setCarType(typeIndex) {
@@ -264,8 +272,30 @@ export class CyberCar {
     }
   }
 
+  // 💨 EMIT DRIFT SMOKE PUFFS FROM REAR TIRES
+  emitDriftSmoke() {
+    const rearLeftPos = new THREE.Vector3(1.95, 0.2, -2.7).applyMatrix4(this.mesh.matrixWorld);
+    const rearRightPos = new THREE.Vector3(-1.95, 0.2, -2.7).applyMatrix4(this.mesh.matrixWorld);
+
+    [rearLeftPos, rearRightPos].forEach((wheelPos) => {
+      for (let k = 0; k < 2; k++) {
+        const p = this.smokePool.find((s) => s.life <= 0);
+        if (!p) break;
+
+        p.pos.copy(wheelPos).add(new THREE.Vector3((Math.random() - 0.5) * 0.6, Math.random() * 0.3, (Math.random() - 0.5) * 0.6));
+        p.vel.set(
+          (Math.random() - 0.5) * 2.5,
+          1.2 + Math.random() * 2.0,
+          (Math.random() - 0.5) * 2.5
+        );
+        p.life = 0.85 + Math.random() * 0.4;
+        p.maxLife = p.life;
+        p.scale = 1.0;
+      }
+    });
+  }
+
   updatePhysics(delta, trackManager) {
-    // 1. Acceleration & Top Speed
     const maxForwardSpeed = this.nitroActive && this.nitroFuel > 0 ? 360 : 255;
     const maxReverseSpeed = -75;
     const accelRate = (this.nitroActive && this.nitroFuel > 0 ? 190 : 110) * delta;
@@ -292,11 +322,14 @@ export class CyberCar {
     const driftTurnMultiplier = 1.95;
 
     let effectiveTurnSpeed = baseTurnSpeed;
-    if (this.driftActive && Math.abs(this.speed) > 40) {
+    if (this.driftActive && Math.abs(this.speed) > 35) {
       this.isDrifting = true;
       effectiveTurnSpeed *= driftTurnMultiplier;
       this.driftMultiplier = Math.min(8.0, this.driftMultiplier + delta * 0.9);
       this.currentDriftScore += Math.abs(this.speed) * delta * 18 * this.driftMultiplier;
+
+      // 💨 EMIT DRIFT SMOKE
+      this.emitDriftSmoke();
     } else {
       this.isDrifting = false;
       if (this.currentDriftScore > 0) {
@@ -322,7 +355,7 @@ export class CyberCar {
 
     if (this.verticalVelocity !== 0 || this.position.y > 0.12) {
       this.position.y += this.verticalVelocity * delta;
-      this.verticalVelocity -= 28.0 * delta; // Gravity
+      this.verticalVelocity -= 28.0 * delta;
       if (this.position.y <= 0.12) {
         this.position.y = 0.12;
         this.verticalVelocity = 0;
@@ -332,7 +365,6 @@ export class CyberCar {
     this.mesh.position.copy(this.position);
     this.mesh.rotation.y = this.heading;
 
-    // Steering wheel animation
     if (this.wFL && this.wFR) {
       const steerAngle = -this.steerInput * 0.45;
       this.wFL.rotation.y = steerAngle;
@@ -342,12 +374,10 @@ export class CyberCar {
       w.children[0].rotation.x += speedMs * delta * 4;
     }
 
-    // 4. City Collisions
     if (trackManager) {
       trackManager.handleCarTrackCollision(this);
     }
 
-    // 5. Realistic Automotive Sound Engine
     const rpmRatio = Math.min(1.0, (Math.abs(this.speed) % 65) / 65 + (this.throttleInput > 0 ? 0.35 : 0));
     cyberAudio.update(
       rpmRatio,
@@ -360,11 +390,13 @@ export class CyberCar {
   }
 
   _updateParticles(delta) {
+    // 1. Update Drift Smoke Particles
     const sPos = this.smokePoints.geometry.attributes.position;
     for (let i = 0; i < this.smokePool.length; i++) {
       const p = this.smokePool[i];
       if (p.life > 0) {
         p.pos.addScaledVector(p.vel, delta);
+        p.vel.y += delta * 0.5; // Billow upwards
         p.life -= delta;
         sPos.setXYZ(i, p.pos.x, p.pos.y, p.pos.z);
       } else {
@@ -373,6 +405,7 @@ export class CyberCar {
     }
     sPos.needsUpdate = true;
 
+    // 2. Update Sparks
     const spPos = this.sparkPoints.geometry.attributes.position;
     for (let i = 0; i < this.sparkPool.length; i++) {
       const p = this.sparkPool[i];
