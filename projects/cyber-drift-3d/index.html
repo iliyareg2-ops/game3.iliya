@@ -40,7 +40,6 @@
       padding: 16px;
     }
 
-    /* Top HUD */
     .hud-top {
       display: flex;
       justify-content: space-between;
@@ -116,7 +115,6 @@
       margin-top: 4px;
     }
 
-    /* Center Notification Banner */
     #hud-banner {
       position: absolute;
       top: 10%;
@@ -138,7 +136,6 @@
       pointer-events: none;
     }
 
-    /* Bottom HUD */
     .hud-bottom {
       display: flex;
       justify-content: space-between;
@@ -188,45 +185,6 @@
       color: #ffaa00;
       text-shadow: 0 0 12px #ff7700;
       line-height: 1;
-    }
-
-    /* Bars */
-    .bars-col {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      width: 170px;
-    }
-
-    .bar-pill {
-      background: rgba(10, 16, 28, 0.88);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 8px;
-      padding: 5px 10px;
-    }
-
-    .bar-track {
-      width: 100%;
-      height: 8px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 4px;
-      margin-top: 3px;
-      overflow: hidden;
-    }
-
-    #hud-nitro-bar {
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, #0088ff, #00f0ff);
-      box-shadow: 0 0 10px #00f0ff;
-      transition: width 0.1s linear;
-    }
-
-    #hud-rpm-bar {
-      width: 20%;
-      height: 100%;
-      background: linear-gradient(90deg, #38b000, #ffaa00, #ff0044);
-      transition: width 0.05s linear;
     }
 
     .quick-actions {
@@ -465,7 +423,7 @@
     <div class="hud-top">
       <div style="display: flex; gap: 10px;">
         <div class="hud-pill">
-          <span class="hud-label">ОЧКИ ДРИФТА & ТАРАНОВ</span>
+          <span class="hud-label">ОЧКИ ДРИФТА (SHIFT)</span>
           <span class="hud-val" id="hud-score">0</span>
         </div>
         <div class="hud-pill">
@@ -481,7 +439,7 @@
       </div>
     </div>
 
-    <div id="hud-banner">ГОТОВ К СТАРТУ</div>
+    <div id="hud-banner">ДЛЯ ЗАНОСА ЗАЖМИТЕ SHIFT</div>
 
     <div class="hud-bottom">
       <div class="speedo-cluster">
@@ -489,20 +447,6 @@
         <div class="speedo-box">
           <span class="speedo-val" id="hud-speed">0</span>
           <span class="speedo-unit">КМ/Ч</span>
-        </div>
-        <div class="bars-col">
-          <div class="bar-pill">
-            <span class="hud-label" style="color: #00f0ff;">⚡ N2O НИТРО (SHIFT)</span>
-            <div class="bar-track">
-              <div id="hud-nitro-bar"></div>
-            </div>
-          </div>
-          <div class="bar-pill">
-            <span class="hud-label" style="color: #ffaa00;">RPM ТАХОМЕТР</span>
-            <div class="bar-track">
-              <div id="hud-rpm-bar"></div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -515,9 +459,8 @@
       <button class="touch-btn" id="btn-steer-right">▶</button>
     </div>
     <div class="touch-right">
-      <button class="touch-btn" id="btn-nitro" style="border-color:#00f0ff; color:#00f0ff; height: 50px;">⚡ N2O</button>
+      <button class="touch-btn" id="btn-nitro" style="border-color:#ff007f; color:#ff007f; height: 50px; font-size:13px;">💨 ДРИФТ</button>
       <button class="touch-btn" id="btn-gas" style="border-color:#38b000; color:#38b000;">▲ ГАЗ</button>
-      <button class="touch-btn" id="btn-handbrake" style="border-color:#ff007f; color:#ff007f; height: 44px; font-size:12px;">РУЧНИК</button>
       <button class="touch-btn" id="btn-brake" style="border-color:#ff3344; color:#ff3344; height: 50px;">▼ ТОРМОЗ</button>
     </div>
   </div>
@@ -562,7 +505,7 @@
         </div>
       </div>
 
-      <button class="btn-main" id="btn-start-race">ВЫЕХАТЬ НА ТРАССУ (SPACE)</button>
+      <button class="btn-main" id="btn-start-race">ВЫЕХАТЬ НА ТРАССУ (ENTER)</button>
     </div>
   </div>
 
