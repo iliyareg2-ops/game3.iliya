@@ -135,6 +135,7 @@ export class CyberDriftGame {
       }
 
       if (e.code === "KeyC") this.toggleCamera();
+      if (e.code === "KeyH") this.toggleHUD();
       if (e.code === "KeyR") this.resetCar();
       if (e.code === "KeyV") this.toggleWeather();
       if (e.code === "KeyM") this.nextRadioStation();
@@ -536,6 +537,13 @@ export class CyberDriftGame {
     if (this.cameraMode === "COCKPIT") label = "САЛОН (1P)";
 
     if (this.camModeEl) this.camModeEl.textContent = label;
+  }
+
+  toggleHUD() {
+    this.hudHidden = !this.hudHidden;
+    const hudEl = document.getElementById("hud");
+    if (hudEl) hudEl.style.display = this.hudHidden ? "none" : "flex";
+    this.showBanner(this.hudHidden ? "🧘 ZEN РЕЖИМ: ИНТЕРФЕЙС СКРЫТ [H]" : "🖥️ ИНТЕРФЕЙС ВКЛЮЧЕН [H]", 2000);
   }
 
   resetCar() {

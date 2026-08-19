@@ -408,41 +408,53 @@ export class CityTrackManager {
     this.roadMesh.receiveShadow = true;
     this.trackWorldGroup.add(this.roadMesh);
 
-    // FIA Standard Apex Kerbs
-    const curbRedMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.6 });
-    const curbWhiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.6 });
-
-    for (let i = 0; i < this.trackSamplePoints.length; i += 2) {
-      const p1 = this.trackSamplePoints[i];
-      const p2 = this.trackSamplePoints[(i + 1) % this.trackSamplePoints.length];
-      const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
-      const tangent = new THREE.Vector3().subVectors(p2, p1).normalize();
-      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-      const dist = p1.distanceTo(p2) * 2;
-
-      const curbMat = (i / 2) % 2 === 0 ? curbRedMat : curbWhiteMat;
-
-      const curb1 = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.12, dist), curbMat);
-      curb1.position.set(mid.x + normal.x * (halfWidth + 1.0), 0.14, mid.z + normal.z * (halfWidth + 1.0));
-      curb1.lookAt(mid.x + normal.x * (halfWidth + 1.0) + tangent.x, 0.14, mid.z + normal.z * (halfWidth + 1.0) + tangent.z);
-
-      const curb2 = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.12, dist), curbMat);
-      curb2.position.set(mid.x - normal.x * (halfWidth + 1.0), 0.14, mid.z - normal.z * (halfWidth + 1.0));
-      curb2.lookAt(mid.x - normal.x * (halfWidth + 1.0) + tangent.x, 0.14, mid.z - normal.z * (halfWidth + 1.0) + tangent.z);
-
-      this.trackWorldGroup.add(curb1, curb2);
+    // In Free Roam on Miami Beach, hide the asphalt ribbon for pure open beach exploration, or keep clean coastal road
+    if (this.gameMode === "FREE_ROAM" && this.trackIndex === 2) {
+      this.roadMesh.visible = true;
+      this.roadMesh.material.color.setHex(0xd4af37); // Golden coastal paved sand blend
     }
 
-    this.buildMotorsportSponsorHoardings();
-    this.buildBrakingDistanceMarkerBoards();
-    this.buildFIAMarshalPosts();
+    // In Open World Free Roam, skip aggressive race track obstacles (curbs, tire walls, braking boards, marshal posts, finish gantry)
+    const isRace = this.gameMode !== "FREE_ROAM";
+
+    if (isRace) {
+      // FIA Standard Apex Kerbs
+      const curbRedMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.6 });
+      const curbWhiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.6 });
+
+      for (let i = 0; i < this.trackSamplePoints.length; i += 2) {
+        const p1 = this.trackSamplePoints[i];
+        const p2 = this.trackSamplePoints[(i + 1) % this.trackSamplePoints.length];
+        const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+        const tangent = new THREE.Vector3().subVectors(p2, p1).normalize();
+        const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+        const dist = p1.distanceTo(p2) * 2;
+
+        const curbMat = (i / 2) % 2 === 0 ? curbRedMat : curbWhiteMat;
+
+        const curb1 = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.12, dist), curbMat);
+        curb1.position.set(mid.x + normal.x * (halfWidth + 1.0), 0.14, mid.z + normal.z * (halfWidth + 1.0));
+        curb1.lookAt(mid.x + normal.x * (halfWidth + 1.0) + tangent.x, 0.14, mid.z + normal.z * (halfWidth + 1.0) + tangent.z);
+
+        const curb2 = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.12, dist), curbMat);
+        curb2.position.set(mid.x - normal.x * (halfWidth + 1.0), 0.14, mid.z - normal.z * (halfWidth + 1.0));
+        curb2.lookAt(mid.x - normal.x * (halfWidth + 1.0) + tangent.x, 0.14, mid.z - normal.z * (halfWidth + 1.0) + tangent.z);
+
+        this.trackWorldGroup.add(curb1, curb2);
+      }
+
+      this.buildMotorsportSponsorHoardings();
+      this.buildBrakingDistanceMarkerBoards();
+      this.buildFIAMarshalPosts();
+      this.buildTireBarriers();
+      this.buildF1GrandstandsAndPits();
+      this.buildStartFinishGantry();
+      this.buildSpeedTrapCameras();
+    }
+
     this.build3DFoliage();
-    this.buildTireBarriers();
-    this.buildF1GrandstandsAndPits();
-    this.buildStartFinishGantry();
     this.buildRoadsideStreetlights();
     this.buildDiverseBuildings();
-    this.buildSpeedTrapCameras();
     this.buildDestructibleProps();
     this.buildAIRivals();
     this.buildRichCityTrafficFleet();
@@ -1018,42 +1030,161 @@ export class CityTrackManager {
     this.trackWorldGroup.add(cityGroup);
   }
 
-  // 🌊🌴 REALISTIC 3D AZURE OCEAN & COASTAL BEACH (Miami Coast)
+  // 🌊🌴 REALISTIC 3D AZURE OCEAN & TROPICAL COASTAL BEACH (Miami Oceanfront)
   buildOceanAndBeach() {
     const oceanGroup = new THREE.Group();
 
-    // Vast animated ocean plane
-    const oceanGeom = new THREE.PlaneGeometry(3600, 3600, 48, 48);
+    // 1. Vast Deep Blue Ocean Plane
+    const oceanGeom = new THREE.PlaneGeometry(4500, 4500, 64, 64);
     oceanGeom.rotateX(-Math.PI / 2);
     const oceanMat = new THREE.MeshPhysicalMaterial({
-      color: 0x0284c7,
-      metalness: 0.85,
-      roughness: 0.12,
-      transmission: 0.5,
+      color: 0x0077b6,
+      metalness: 0.88,
+      roughness: 0.08,
+      transmission: 0.65,
       transparent: true,
-      opacity: 0.88,
-      reflectivity: 0.95,
+      opacity: 0.90,
+      reflectivity: 0.98,
       clearcoat: 1.0,
-      clearcoatRoughness: 0.1,
+      clearcoatRoughness: 0.08,
     });
     this.oceanMesh = new THREE.Mesh(oceanGeom, oceanMat);
-    this.oceanMesh.position.set(900, -0.25, -200);
+    this.oceanMesh.position.set(1200, -0.35, -200);
+    this.oceanMesh.receiveShadow = true;
     oceanGroup.add(this.oceanMesh);
 
-    // Luxury Yachts & Sailboats on Ocean
-    const hullMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2 });
-    const deckMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.4 });
-    const glassBlue = new THREE.MeshPhysicalMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.5 });
+    // 2. Crystal Clear Turquoise Shallow Water Lagoon along Shoreline
+    const lagoonGeom = new THREE.PlaneGeometry(350, 4000, 32, 32);
+    lagoonGeom.rotateX(-Math.PI / 2);
+    const lagoonMat = new THREE.MeshPhysicalMaterial({
+      color: 0x48cae4,
+      transparent: true,
+      opacity: 0.75,
+      roughness: 0.1,
+      metalness: 0.7,
+      transmission: 0.7,
+    });
+    const lagoonMesh = new THREE.Mesh(lagoonGeom, lagoonMat);
+    lagoonMesh.position.set(320, -0.15, -200);
+    oceanGroup.add(lagoonMesh);
+
+    // 3. Dynamic Animated Shoreline Foam Wave Mesh
+    const foamGeom = new THREE.PlaneGeometry(24, 4000, 1, 64);
+    foamGeom.rotateX(-Math.PI / 2);
+    const foamMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.7,
+      depthWrite: false,
+    });
+    this.shorelineFoamMesh = new THREE.Mesh(foamGeom, foamMat);
+    this.shorelineFoamMesh.position.set(160, 0.06, -200);
+    oceanGroup.add(this.shorelineFoamMesh);
+
+    // 4. 🪵 Driveable Wooden Ocean Pier / Jetty extending 240m into the Sea
+    const pierGroup = new THREE.Group();
+    const woodPlankMat = new THREE.MeshStandardMaterial({ color: 0x854d0e, roughness: 0.85 });
+    const woodPillarMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.95 });
+    const ropeMat = new THREE.MeshStandardMaterial({ color: 0xa16207, roughness: 0.8 });
+    const lanternMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, emissive: 0xfef08a, emissiveIntensity: 0.8 });
+
+    // Main Deck of the Pier
+    const deckLength = 240;
+    const deckWidth = 18;
+    const pierDeck = new THREE.Mesh(new THREE.BoxGeometry(deckLength, 0.5, deckWidth), woodPlankMat);
+    pierDeck.position.set(deckLength / 2, 0.35, 0);
+    pierDeck.receiveShadow = true;
+    pierGroup.add(pierDeck);
+
+    // Pier Support Pilings / Pillars & Lanterns
+    for (let px = 10; px <= deckLength; px += 20) {
+      const pilL = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 6, 8), woodPillarMat);
+      pilL.position.set(px, -2.5, -deckWidth / 2 + 0.6);
+      const pilR = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 6, 8), woodPillarMat);
+      pilR.position.set(px, -2.5, deckWidth / 2 - 0.6);
+      pierGroup.add(pilL, pilR);
+
+      // Wooden Railing & Lantern on Pier
+      const postL = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.4, 6), woodPillarMat);
+      postL.position.set(px, 1.2, -deckWidth / 2 + 0.5);
+      const postR = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.4, 6), woodPillarMat);
+      postR.position.set(px, 1.2, deckWidth / 2 - 0.5);
+      const lanternL = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.4), lanternMat);
+      lanternL.position.set(px, 2.0, -deckWidth / 2 + 0.5);
+      const lanternR = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.4), lanternMat);
+      lanternR.position.set(px, 2.0, deckWidth / 2 - 0.5);
+      pierGroup.add(postL, postR, lanternL, lanternR);
+    }
+
+    // Pier Terminal Lookout Platform
+    const terminalPlatform = new THREE.Mesh(new THREE.BoxGeometry(32, 0.5, 36), woodPlankMat);
+    terminalPlatform.position.set(deckLength + 16, 0.35, 0);
+    pierGroup.add(terminalPlatform);
+
+    pierGroup.position.set(130, 0, 140);
+    oceanGroup.add(pierGroup);
+
+    // 5. 🍹 Tropical Beach Tiki Bars with Thatched Roofs
+    const thatchMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.95 });
+    const bambooMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.8 });
+
+    const makeTikiBar = (bx, bz, brot) => {
+      const tg = new THREE.Group();
+      const counter = new THREE.Mesh(new THREE.BoxGeometry(10, 2.2, 4.5), bambooMat);
+      counter.position.y = 1.1;
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(8.5, 3.5, 8), thatchMat);
+      roof.position.y = 4.8;
+      roof.rotation.y = Math.PI / 4;
+
+      const p1 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 3.8, 6), bambooMat);
+      p1.position.set(-4.5, 2.0, -2.0);
+      const p2 = p1.clone(); p2.position.set(4.5, 2.0, -2.0);
+      const p3 = p1.clone(); p3.position.set(-4.5, 2.0, 2.0);
+      const p4 = p1.clone(); p4.position.set(4.5, 2.0, 2.0);
+
+      // Surfboard menu board
+      const surfMenu = new THREE.Mesh(new THREE.BoxGeometry(1.6, 4.2, 0.2), new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3 }));
+      surfMenu.position.set(-5.5, 2.0, 0);
+      surfMenu.rotation.z = 0.2;
+
+      tg.add(counter, roof, p1, p2, p3, p4, surfMenu);
+      tg.position.set(bx, 0.10, bz);
+      tg.rotation.y = brot;
+      return tg;
+    };
+
+    oceanGroup.add(makeTikiBar(110, 80, -0.4));
+    oceanGroup.add(makeTikiBar(90, -240, 0.5));
+    oceanGroup.add(makeTikiBar(130, -520, -0.2));
+
+    // 6. 🏄 Colorful Surfboards in the Sand
+    const surfColors = [0xef4444, 0x38bdf8, 0xf59e0b, 0x10b981, 0xec4899];
+    for (let s = 0; s < 18; s++) {
+      const color = surfColors[s % surfColors.length];
+      const surfMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.25, metalness: 0.2 });
+      const surfboard = new THREE.Mesh(new THREE.BoxGeometry(1.0, 3.8, 0.16), surfMat);
+      surfboard.position.set(135 + (s % 3) * 6 + Math.random() * 4, 1.8, -400 + s * 45);
+      surfboard.rotation.z = (Math.random() - 0.5) * 0.3;
+      surfboard.rotation.y = Math.random() * Math.PI;
+      oceanGroup.add(surfboard);
+    }
+
+    // 7. ⚓ Luxury Ocean Yachts & Catamarans with Animated Swell
+    const hullMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.15 });
+    const deckMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.4 });
+    const glassBlue = new THREE.MeshPhysicalMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.6 });
 
     const makeYacht = (x, z, rot) => {
       const g = new THREE.Group();
-      const hull = new THREE.Mesh(new THREE.BoxGeometry(14, 4, 38), hullMat);
-      hull.position.y = 1.2;
-      const cabin = new THREE.Mesh(new THREE.BoxGeometry(10, 5, 20), deckMat);
-      cabin.position.set(0, 4.5, -3);
-      const bridge = new THREE.Mesh(new THREE.BoxGeometry(8, 3, 10), glassBlue);
-      bridge.position.set(0, 7.5, 0);
-      g.add(hull, cabin, bridge);
+      const hull = new THREE.Mesh(new THREE.BoxGeometry(16, 4.5, 44), hullMat);
+      hull.position.y = 1.4;
+      const cabin = new THREE.Mesh(new THREE.BoxGeometry(12, 5.5, 24), deckMat);
+      cabin.position.set(0, 5.2, -3);
+      const bridge = new THREE.Mesh(new THREE.BoxGeometry(9, 3.5, 12), glassBlue);
+      bridge.position.set(0, 8.8, 0);
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 18, 8), hullMat);
+      mast.position.set(0, 14, -6);
+      g.add(hull, cabin, bridge, mast);
       g.position.set(x, 0.0, z);
       g.rotation.y = rot;
       return g;
@@ -1061,22 +1192,30 @@ export class CityTrackManager {
 
     oceanGroup.add(makeYacht(650, 200, 0.4));
     oceanGroup.add(makeYacht(820, -150, -0.6));
-    oceanGroup.add(makeYacht(1100, 400, 1.2));
+    oceanGroup.add(makeYacht(1200, 400, 1.2));
     oceanGroup.add(makeYacht(950, -450, 2.1));
+    oceanGroup.add(makeYacht(520, -320, 0.8));
 
-    // Beach Sun Parasols / Umbrellas & Loungers
+    // 8. 🏖️ Striped Beach Parasols / Umbrellas & Sun Loungers
     const umbrellaMat1 = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.6 });
     const umbrellaMat2 = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.6 });
+    const umbrellaMat3 = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.6 });
     const poleMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.8 });
+    const loungerMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.5 });
 
-    for (let b = 0; b < 30; b++) {
+    for (let b = 0; b < 40; b++) {
       const g = new THREE.Group();
-      const uPole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3.2, 8), poleMat);
-      uPole.position.y = 1.6;
-      const uCone = new THREE.Mesh(new THREE.ConeGeometry(2.4, 0.8, 12), (b % 2 === 0 ? umbrellaMat1 : umbrellaMat2));
-      uCone.position.y = 3.2;
-      g.add(uPole, uCone);
-      g.position.set(380 + Math.random() * 180, 0.10, -500 + b * 45 + Math.random() * 15);
+      const uPole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3.4, 8), poleMat);
+      uPole.position.y = 1.7;
+      const uMat = b % 3 === 0 ? umbrellaMat1 : (b % 3 === 1 ? umbrellaMat2 : umbrellaMat3);
+      const uCone = new THREE.Mesh(new THREE.ConeGeometry(2.8, 0.9, 14), uMat);
+      uCone.position.y = 3.4;
+
+      const lounger = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.35, 3.2), loungerMat);
+      lounger.position.set(1.2, 0.18, 0);
+
+      g.add(uPole, uCone, lounger);
+      g.position.set(140 + Math.random() * 140, 0.10, -700 + b * 38 + Math.random() * 12);
       oceanGroup.add(g);
     }
 
@@ -1843,9 +1982,16 @@ export class CityTrackManager {
       }
     }
 
-    // 3. Realistic Animated Ocean Water Oscillation
-    if (this.oceanMesh && this.trackIndex === 2) {
-      this.oceanMesh.position.y = -0.25 + Math.sin(now * 0.002) * 0.12;
+    // 3. Realistic Multi-Layer Ocean Waves & Shoreline Foam Animation
+    if (this.trackIndex === 2) {
+      if (this.oceanMesh) {
+        this.oceanMesh.position.y = -0.35 + Math.sin(now * 0.0018) * 0.14;
+      }
+      if (this.shorelineFoamMesh) {
+        // Roll wave foam smoothly up and down the sand beach
+        this.shorelineFoamMesh.position.x = 160 + Math.sin(now * 0.0022) * 12.0;
+        this.shorelineFoamMesh.material.opacity = 0.45 + Math.cos(now * 0.0022) * 0.35;
+      }
     }
 
     // 4. Speed Trap Cameras
