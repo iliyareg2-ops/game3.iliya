@@ -1,4 +1,4 @@
-// audio.js - Realistic Automotive Sound Engine (Combustion, Blow-Off Valve, Rewind, Evasion, Backfires, Slipstream, Sirens, Helicopter)
+// audio.js - Realistic Automotive Sound Engine (Combustion, Blow-Off Valve, Rewind, Kerb Rumble, Backfires, Slipstream, Sirens, Helicopter)
 class CyberAudioEngine {
   constructor() {
     this.ctx = null;
@@ -49,9 +49,14 @@ class CyberAudioEngine {
     // Rain
     this.rainGain = null;
 
-    // Forza Rewind Looping Audio
+    // Forza Rewind Audio
     this.rewindGain = null;
     this.rewindOsc = null;
+
+    // Kerb Rumble Strips
+    this.kerbGain = null;
+    this.kerbOsc = null;
+    this.lastKerbTime = 0;
   }
 
   init() {
@@ -74,6 +79,7 @@ class CyberAudioEngine {
       this._setupTrafficFlyby();
       this._setupRainAcoustics();
       this._setupRewindAudio();
+      this._setupKerbRumbleAudio();
 
       this.isInitialized = true;
     } catch (e) {
@@ -205,12 +211,11 @@ class CyberAudioEngine {
     this.slipstreamGain.gain.setTargetAtTime(isActive ? 0.45 : 0.0, this.ctx.currentTime, 0.1);
   }
 
-  // 💥 REALISTIC TURBO BLOW-OFF VALVE (pssshh-tsu-tsu-tsu)
+  // 💥 REALISTIC TURBO BLOW-OFF VALVE
   playBlowOffValve() {
     if (!this.isInitialized || this.isMuted || !this.ctx) return;
     const t = this.ctx.currentTime;
 
-    // 1. Initial High-Pressure Psshh Release
     const noiseBuffer = this._createNoiseBuffer(0.38);
     const noise = this.ctx.createBufferSource();
     noise.buffer = noiseBuffer;
@@ -232,7 +237,6 @@ class CyberAudioEngine {
     noise.start(t);
     noise.stop(t + 0.38);
 
-    // 2. Wastegate Resonant Flutter (tsu-tsu-tsu)
     const flutterOsc = this.ctx.createOscillator();
     flutterOsc.type = "triangle";
     flutterOsc.frequency.setValueAtTime(240, t);
@@ -241,13 +245,6 @@ class CyberAudioEngine {
     const flutterGain = this.ctx.createGain();
     flutterGain.gain.setValueAtTime(0.0, t);
     flutterGain.gain.linearRampToValueAtTime(0.3, t + 0.05);
-
-    // Pulse envelope for flutter effect
-    const lfo = this.ctx.createOscillator();
-    lfo.frequency.setValueAtTime(18, t); // 18 Hz flutter
-    const lfoGain = this.ctx.createGain();
-    lfoGain.gain.setValueAtTime(0.2, t);
-    lfo.connect(lfoGain.gain);
 
     flutterGain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
     flutterOsc.connect(flutterGain);
@@ -413,16 +410,46 @@ class CyberAudioEngine {
     this.rewindGain.gain.setTargetAtTime(0.0, this.ctx.currentTime, 0.08);
   }
 
+  // 📳 KERB RUMBLE STRIPS (trrr-trrr-trrr)
+  _setupKerbRumbleAudio() {
+    this.kerbGain = this.ctx.createGain();
+    this.kerbGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
+
+    this.kerbOsc = this.ctx.createOscillator();
+    this.kerbOsc.type = "triangle";
+    this.kerbOsc.frequency.setValueAtTime(45, this.ctx.currentTime);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(120, this.ctx.currentTime);
+
+    this.kerbOsc.connect(filter);
+    filter.connect(this.kerbGain);
+    this.kerbGain.connect(this.masterGain);
+
+    this.kerbOsc.start();
+  }
+
+  playKerbRumble(speedKmH) {
+    if (!this.kerbGain || !this.ctx || this.isMuted) return;
+    const t = this.ctx.currentTime;
+    const freq = 35 + (speedKmH / 300) * 45;
+    this.kerbOsc.frequency.setValueAtTime(freq, t);
+    this.kerbGain.gain.cancelScheduledValues(t);
+    this.kerbGain.gain.setValueAtTime(0.35, t);
+    this.kerbGain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+  }
+
   // ⭐ GTA EVASION CHIME
   playEvasionChime() {
     if (!this.isInitialized || this.isMuted || !this.ctx) return;
     const t = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     osc.type = "sine";
-    osc.frequency.setValueAtTime(523.25, t); // C5
-    osc.frequency.setValueAtTime(659.25, t + 0.12); // E5
-    osc.frequency.setValueAtTime(783.99, t + 0.24); // G5
-    osc.frequency.setValueAtTime(1046.50, t + 0.36); // C6
+    osc.frequency.setValueAtTime(523.25, t);
+    osc.frequency.setValueAtTime(659.25, t + 0.12);
+    osc.frequency.setValueAtTime(783.99, t + 0.24);
+    osc.frequency.setValueAtTime(1046.50, t + 0.36);
 
     const gain = this.ctx.createGain();
     gain.gain.setValueAtTime(0.35, t);

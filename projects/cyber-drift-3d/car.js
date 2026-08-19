@@ -1,4 +1,4 @@
-// car.js - Grand Prix Supercars: Forza Rewind Buffer, Turbo Blow-Off Valve, Tire Thermals, Underglow Neon & Custom Rims
+// car.js - Grand Prix Supercars: Suspension Pitch/Roll, Rain Spray Rooster Tails, Forza Rewind, Blow-Off Valve & Tire Thermals
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -14,6 +14,10 @@ export class CyberCar {
     this.driftAngle = 0;
     this.verticalVelocity = 0;
 
+    // Suspension Dynamic Pitch & Roll
+    this.bodyRoll = 0.0;
+    this.bodyPitch = 0.0;
+
     this.totalScore = 0;
     this.currentDriftScore = 0;
     this.driftMultiplier = 1.0;
@@ -24,11 +28,11 @@ export class CyberCar {
 
     this.isDrafting = false;
     this.brakeHeat = 0.0;
-    this.tireTemp = 0.0; // 0.0 (cold) to 1.0 (overheated)
+    this.tireTemp = 0.0;
     this.prevThrottle = 0;
     this.boostCharge = 0.0;
 
-    // Forza Rewind History Buffer (stores last 240 frames ~ 4 seconds)
+    // Forza Rewind History Buffer (240 frames ~ 4 seconds)
     this.historyBuffer = [];
     this.maxHistoryFrames = 240;
 
@@ -46,6 +50,8 @@ export class CyberCar {
     this.driftActive = false;
 
     this.mesh = new THREE.Group();
+    this.bodyGroup = new THREE.Group(); // Inner group for suspension pitch & roll
+    this.mesh.add(this.bodyGroup);
     this.scene.add(this.mesh);
 
     this.wheels = [];
@@ -59,8 +65,8 @@ export class CyberCar {
   }
 
   initCarModel() {
-    while (this.mesh.children.length > 0) {
-      this.mesh.remove(this.mesh.children[0]);
+    while (this.bodyGroup.children.length > 0) {
+      this.bodyGroup.remove(this.bodyGroup.children[0]);
     }
     this.wheels = [];
     this.brakeDiscs = [];
@@ -95,7 +101,7 @@ export class CyberCar {
       const tlR2 = tlL1.clone();
       tlR2.position.x = -0.8;
 
-      this.mesh.add(chassis, cabin, roof, hoodVents, splitter, tlL1, tlL2, tlR1, tlR2);
+      this.bodyGroup.add(chassis, cabin, roof, hoodVents, splitter, tlL1, tlL2, tlR1, tlR2);
     } else if (this.carTypeIndex === 1) {
       // 🏎️ 2. PHANTOM 911 TURBO SPEC
       const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.7, 9.0), bodyMat);
@@ -118,7 +124,7 @@ export class CyberCar {
       const tl = new THREE.Mesh(tlGeom, new THREE.MeshBasicMaterial({ color: 0xff0033 }));
       tl.position.set(0, 0.65, -4.51);
 
-      this.mesh.add(chassis, cabin, roof, flareL, flareR, tl);
+      this.bodyGroup.add(chassis, cabin, roof, flareL, flareR, tl);
     } else {
       // 🚀 3. VENOM HYPERCAR SPEC
       const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.62, 9.6), bodyMat);
@@ -138,7 +144,7 @@ export class CyberCar {
       const tl = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.15, 0.1), new THREE.MeshBasicMaterial({ color: 0xff0022 }));
       tl.position.set(0, 0.58, -4.81);
 
-      this.mesh.add(chassis, cabin, roof, diffuser, tl);
+      this.bodyGroup.add(chassis, cabin, roof, diffuser, tl);
     }
 
     // Exhausts
@@ -148,7 +154,7 @@ export class CyberCar {
     pipeL.position.set(0.9, 0.35, -4.8);
     const pipeR = pipeL.clone();
     pipeR.position.x = -0.9;
-    this.mesh.add(pipeL, pipeR);
+    this.bodyGroup.add(pipeL, pipeR);
 
     // Xenon Headlights
     const hlGeom = new THREE.BoxGeometry(0.9, 0.25, 0.1);
@@ -157,7 +163,7 @@ export class CyberCar {
     hlL.position.set(1.45, 0.65, 4.65);
     const hlR = hlL.clone();
     hlR.position.x = -1.45;
-    this.mesh.add(hlL, hlR);
+    this.bodyGroup.add(hlL, hlR);
 
     const beamGeom = new THREE.ConeGeometry(8.5, 55, 16, 1, true);
     beamGeom.rotateX(-Math.PI / 2);
@@ -166,7 +172,7 @@ export class CyberCar {
     beamL.position.set(1.45, 0.65, 28);
     const beamR = new THREE.Mesh(beamGeom, beamMat);
     beamR.position.set(-1.45, 0.65, 28);
-    this.mesh.add(beamL, beamR);
+    this.bodyGroup.add(beamL, beamR);
 
     this._buildUnderglowNeon();
     this._buildSpoiler(carbonMat);
@@ -225,8 +231,8 @@ export class CyberCar {
   }
 
   _buildUnderglowNeon() {
-    if (this.underglowMesh) this.mesh.remove(this.underglowMesh);
-    if (this.underglowLight) this.mesh.remove(this.underglowLight);
+    if (this.underglowMesh) this.bodyGroup.remove(this.underglowMesh);
+    if (this.underglowLight) this.bodyGroup.remove(this.underglowLight);
 
     if (!this.isNeonEnabled || this.neonColorHex === 0x000000) return;
 
@@ -251,15 +257,15 @@ export class CyberCar {
 
     g.add(tubeSideL, tubeSideR, tubeFront, tubeRear);
     this.underglowMesh = g;
-    this.mesh.add(g);
+    this.bodyGroup.add(g);
 
     this.underglowLight = new THREE.PointLight(this.neonColorHex, 2.8, 14);
     this.underglowLight.position.set(0, 0.25, 0);
-    this.mesh.add(this.underglowLight);
+    this.bodyGroup.add(this.underglowLight);
   }
 
   _buildSpoiler(carbonMat) {
-    if (this.spoilerMesh) this.mesh.remove(this.spoilerMesh);
+    if (this.spoilerMesh) this.bodyGroup.remove(this.spoilerMesh);
 
     const g = new THREE.Group();
     if (this.spoilerType === 0) {
@@ -287,7 +293,7 @@ export class CyberCar {
     }
 
     this.spoilerMesh = g;
-    this.mesh.add(g);
+    this.bodyGroup.add(g);
   }
 
   _buildWheels() {
@@ -350,6 +356,23 @@ export class CyberCar {
     return new THREE.CanvasTexture(c);
   }
 
+  _createWaterSprayTexture() {
+    const c = document.createElement("canvas");
+    c.width = 64;
+    c.height = 64;
+    const ctx = c.getContext("2d");
+
+    const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, "rgba(200, 230, 255, 0.5)");
+    grad.addColorStop(0.5, "rgba(180, 210, 240, 0.2)");
+    grad.addColorStop(1, "rgba(150, 180, 220, 0.0)");
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 64, 64);
+
+    return new THREE.CanvasTexture(c);
+  }
+
   _createNitroFlameTexture() {
     const c = document.createElement("canvas");
     c.width = 64;
@@ -387,6 +410,7 @@ export class CyberCar {
 
   initParticleSystems() {
     const smokeTex = this._createSmokeTexture();
+    const sprayTex = this._createWaterSprayTexture();
     const nitroTex = this._createNitroFlameTexture();
     const backfireTex = this._createBackfireTexture();
 
@@ -421,6 +445,37 @@ export class CyberCar {
         vel: new THREE.Vector3(),
         life: 0,
         maxLife: 0.75,
+      });
+    }
+
+    // 💧 Water Spray Particle System (Rooster Tails in rain)
+    const sprayCount = 180;
+    const sprayGeom = new THREE.BufferGeometry();
+    const spPos = new Float32Array(sprayCount * 3);
+    for (let i = 0; i < sprayCount; i++) {
+      spPos[i * 3] = 0;
+      spPos[i * 3 + 1] = -9999;
+      spPos[i * 3 + 2] = 0;
+    }
+    sprayGeom.setAttribute("position", new THREE.BufferAttribute(spPos, 3));
+    const sprayMat = new THREE.PointsMaterial({
+      map: sprayTex,
+      size: 4.5,
+      sizeAttenuation: true,
+      transparent: true,
+      opacity: 0.4,
+      depthWrite: false,
+    });
+    this.sprayPoints = new THREE.Points(sprayGeom, sprayMat);
+    this.sprayPoints.frustumCulled = false;
+    this.scene.add(this.sprayPoints);
+
+    this.sprayPool = [];
+    for (let i = 0; i < sprayCount; i++) {
+      this.sprayPool.push({
+        pos: new THREE.Vector3(0, -9999, 0),
+        vel: new THREE.Vector3(),
+        life: 0,
       });
     }
 
@@ -486,13 +541,13 @@ export class CyberCar {
 
     const sparkCount = 60;
     const sparkGeom = new THREE.BufferGeometry();
-    const spPos = new Float32Array(sparkCount * 3);
+    const spkPos = new Float32Array(sparkCount * 3);
     for (let i = 0; i < sparkCount; i++) {
-      spPos[i * 3] = 0;
-      spPos[i * 3 + 1] = -9999;
-      spPos[i * 3 + 2] = 0;
+      spkPos[i * 3] = 0;
+      spkPos[i * 3 + 1] = -9999;
+      spkPos[i * 3 + 2] = 0;
     }
-    sparkGeom.setAttribute("position", new THREE.BufferAttribute(spPos, 3));
+    sparkGeom.setAttribute("position", new THREE.BufferAttribute(spkPos, 3));
     const sparkMat = new THREE.PointsMaterial({
       color: 0xffaa00,
       size: 0.8,
@@ -577,6 +632,27 @@ export class CyberCar {
     });
   }
 
+  emitWaterSpray() {
+    const rearLeftPos = new THREE.Vector3(1.95, 0.2, -2.9).applyMatrix4(this.mesh.matrixWorld);
+    const rearRightPos = new THREE.Vector3(-1.95, 0.2, -2.9).applyMatrix4(this.mesh.matrixWorld);
+    const forwardX = Math.sin(this.heading);
+    const forwardZ = Math.cos(this.heading);
+    const speedRatio = Math.min(1.0, this.speed / 200);
+
+    [rearLeftPos, rearRightPos].forEach((wheelPos) => {
+      const p = this.sprayPool.find((s) => s.life <= 0);
+      if (p) {
+        p.pos.copy(wheelPos);
+        p.vel.set(
+          -forwardX * speedRatio * 15 + (Math.random() - 0.5) * 4,
+          2.5 + Math.random() * 4.0 * speedRatio,
+          -forwardZ * speedRatio * 15 + (Math.random() - 0.5) * 4
+        );
+        p.life = 0.45;
+      }
+    });
+  }
+
   emitNitroExhaust() {
     const pipeLPos = new THREE.Vector3(0.9, 0.35, -4.9).applyMatrix4(this.mesh.matrixWorld);
     const pipeRPos = new THREE.Vector3(-0.9, 0.35, -4.9).applyMatrix4(this.mesh.matrixWorld);
@@ -621,7 +697,6 @@ export class CyberCar {
     cyberAudio.playExhaustBackfire();
   }
 
-  // ⏪ RECORD STATE FOR FORZA REWIND
   recordHistoryState() {
     this.historyBuffer.push({
       x: this.position.x,
@@ -639,7 +714,6 @@ export class CyberCar {
     }
   }
 
-  // ⏪ STEP REWIND BACKWARDS ONE FRAME
   stepRewind() {
     if (this.historyBuffer.length === 0) return false;
     const state = this.historyBuffer.pop();
@@ -675,7 +749,6 @@ export class CyberCar {
       this.emitNitroExhaust();
     }
 
-    // 💥 REALISTIC TURBO BLOW-OFF VALVE & BACKFIRE ON THROTTLE LIFT-OFF
     if (this.throttleInput > 0.8 && this.speed > 90) {
       this.boostCharge = Math.min(1.0, this.boostCharge + delta * 1.5);
     }
@@ -705,7 +778,6 @@ export class CyberCar {
       else if (this.speed < 0) this.speed = Math.min(0, this.speed + coastDrag);
     }
 
-    // Glowing Carbon-Ceramic Brakes
     for (const disc of this.brakeDiscs) {
       if (this.brakeHeat > 0.15) {
         disc.material.emissive.setHex(0xff3300);
@@ -716,7 +788,6 @@ export class CyberCar {
       }
     }
 
-    // Drift Mechanics & Tire Thermals
     const speedRatio = Math.min(1.0, Math.abs(this.speed) / 100);
     const baseTurnSpeed = 1.35;
     const driftTurnMultiplier = 1.95;
@@ -740,6 +811,11 @@ export class CyberCar {
       }
     }
 
+    // 💧 Water spray in rain
+    if (trackManager && trackManager.isRaining && this.speed > 75) {
+      this.emitWaterSpray();
+    }
+
     if (this.steerInput !== 0) {
       this.angularVelocity = -this.steerInput * effectiveTurnSpeed * speedRatio;
     } else {
@@ -747,6 +823,18 @@ export class CyberCar {
     }
 
     this.heading += this.angularVelocity * delta;
+
+    // ⚖️ REALISTIC SUSPENSION BODY ROLL & PITCH PHYSICS
+    const targetRoll = -this.steerInput * Math.min(0.12, (Math.abs(this.speed) / 250) * 0.12);
+    this.bodyRoll = THREE.MathUtils.lerp(this.bodyRoll, targetRoll, delta * 8.0);
+
+    let targetPitch = 0.0;
+    if (this.throttleInput > 0) targetPitch = -0.04 * (isNitroFiring ? 1.8 : 1.0); // Squat on accel
+    else if (this.throttleInput < 0 && this.speed > 20) targetPitch = 0.07; // Dive on brake
+    this.bodyPitch = THREE.MathUtils.lerp(this.bodyPitch, targetPitch, delta * 7.0);
+
+    this.bodyGroup.rotation.z = this.bodyRoll;
+    this.bodyGroup.rotation.x = this.bodyPitch;
 
     const speedMs = (this.speed * 1000) / 3600;
     this.position.x += Math.sin(this.heading) * speedMs * delta;
@@ -767,7 +855,6 @@ export class CyberCar {
     if (trackManager) {
       trackManager.handleCarTrackCollision(this);
 
-      // Slipstream Drafting
       let drafting = false;
       const forwardX = Math.sin(this.heading);
       const forwardZ = Math.cos(this.heading);
@@ -818,6 +905,19 @@ export class CyberCar {
     }
     sPos.needsUpdate = true;
 
+    const spPos = this.sprayPoints.geometry.attributes.position;
+    for (let i = 0; i < this.sprayPool.length; i++) {
+      const p = this.sprayPool[i];
+      if (p.life > 0) {
+        p.pos.addScaledVector(p.vel, delta);
+        p.life -= delta;
+        spPos.setXYZ(i, p.pos.x, p.pos.y, p.pos.z);
+      } else {
+        spPos.setXYZ(i, 0, -9999, 0);
+      }
+    }
+    spPos.needsUpdate = true;
+
     const nPos = this.nitroPoints.geometry.attributes.position;
     for (let i = 0; i < this.nitroPool.length; i++) {
       const p = this.nitroPool[i];
@@ -844,18 +944,18 @@ export class CyberCar {
     }
     bfPos.needsUpdate = true;
 
-    const spPos = this.sparkPoints.geometry.attributes.position;
+    const spkPos = this.sparkPoints.geometry.attributes.position;
     for (let i = 0; i < this.sparkPool.length; i++) {
       const p = this.sparkPool[i];
       if (p.life > 0) {
         p.pos.addScaledVector(p.vel, delta);
         p.life -= delta;
-        spPos.setXYZ(i, p.pos.x, p.pos.y, p.pos.z);
+        spkPos.setXYZ(i, p.pos.x, p.pos.y, p.pos.z);
       } else {
-        spPos.setXYZ(i, 0, -9999, 0);
+        spkPos.setXYZ(i, 0, -9999, 0);
       }
     }
-    spPos.needsUpdate = true;
+    spkPos.needsUpdate = true;
   }
 
   reset() {
@@ -864,6 +964,8 @@ export class CyberCar {
     this.heading = 0;
     this.angularVelocity = 0;
     this.verticalVelocity = 0;
+    this.bodyRoll = 0;
+    this.bodyPitch = 0;
     this.nitroFuel = 100;
     this.currentDriftScore = 0;
     this.brakeHeat = 0;
@@ -872,5 +974,6 @@ export class CyberCar {
     this.historyBuffer = [];
     this.mesh.position.copy(this.position);
     this.mesh.rotation.set(0, 0, 0);
+    this.bodyGroup.rotation.set(0, 0, 0);
   }
 }

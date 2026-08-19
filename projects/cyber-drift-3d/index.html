@@ -368,7 +368,7 @@
       background: rgba(15, 23, 42, 0.96);
       border: 2px solid #38bdf8;
       border-radius: 20px;
-      padding: 20px 20px;
+      padding: 18px 20px;
       backdrop-filter: blur(16px);
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
       text-align: left;
@@ -384,22 +384,22 @@
     }
 
     .garage-card h1 {
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 900;
       line-height: 1.1;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
       color: #f8fafc;
     }
 
     .custom-row {
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
     .custom-row-title {
       font-size: 10px;
       font-weight: 800;
       color: #94a3b8;
-      margin-bottom: 5px;
+      margin-bottom: 4px;
       text-transform: uppercase;
       letter-spacing: 0.08em;
     }
@@ -411,8 +411,8 @@
     }
 
     .color-swatch {
-      width: 26px;
-      height: 26px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       cursor: pointer;
       border: 2px solid rgba(255, 255, 255, 0.3);
@@ -460,10 +460,10 @@
       border: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: 10px;
       padding: 8px 10px;
-      margin-top: 8px;
+      margin-top: 6px;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 5px 10px;
+      gap: 4px 8px;
     }
 
     .key-item {
@@ -499,7 +499,7 @@
       letter-spacing: 0.06em;
       cursor: pointer;
       box-shadow: 0 8px 25px rgba(2, 132, 199, 0.4);
-      margin-top: 10px;
+      margin-top: 8px;
     }
 
     .btn-main:hover {
@@ -642,6 +642,26 @@
       <div class="modal-tag">FORZA HORIZON 5 &bull; ТЮНИНГ ШОУРУМ</div>
       <h1>Cyber Drift 3D</h1>
 
+      <!-- 🗺️ ВЫБОР ЛОКАЦИИ / ТРАССЫ -->
+      <div class="custom-row">
+        <div class="custom-row-title">🗺️ Выбор локации:</div>
+        <div class="tuning-options">
+          <button class="tune-btn active" data-track="0">🏎️ F1 Autodrome</button>
+          <button class="tune-btn" data-track="1">🏔️ Touge Pass</button>
+          <button class="tune-btn" data-track="2">🌴 Miami Coast</button>
+        </div>
+      </div>
+
+      <!-- 🌅 ВРЕМЯ СУТОК И АТМОСФЕРА -->
+      <div class="custom-row">
+        <div class="custom-row-title">🌅 Время суток & Атмосфера:</div>
+        <div class="tuning-options">
+          <button class="tune-btn active" data-atmosphere="MIDNIGHT">🌙 Ночной неон</button>
+          <button class="tune-btn" data-atmosphere="SUNSET">🌅 Закат</button>
+          <button class="tune-btn" data-atmosphere="RAINSTORM">🌧️ Шторм</button>
+        </div>
+      </div>
+
       <!-- ВЫБОР АВТОМОБИЛЯ -->
       <div class="custom-row">
         <div class="custom-row-title">Выбор спорткара:</div>
@@ -723,7 +743,7 @@
         <div class="key-item"><span class="kbd-tag">V</span> <span>Погода (Дождь)</span></div>
       </div>
 
-      <button class="btn-main" id="btn-start-race">ВЫЕХАТЬ ИЗ ГАРАЖА (ENTER)</button>
+      <button class="btn-main" id="btn-start-race">ВЫЕХАТЬ НА ТРАССУ (ENTER)</button>
     </div>
   </div>
 

@@ -1,10 +1,13 @@
-// city.js - Pure Formula 1 Grand Prix Circuit with Forza Horizon 5 3D Studio, GTA Wanted Stars, Evasion System & Rewind
+// city.js - Pure Formula 1, Touge Mountain & Miami Coast Circuits with Dynamic Time-of-Day, Kerb Rumble & GTA Features
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
 export class CityTrackManager {
-  constructor(scene) {
+  constructor(scene, trackIndex = 0, timeOfDay = "MIDNIGHT") {
     this.scene = scene;
+    this.trackIndex = trackIndex; // 0: F1 Autodrome, 1: Touge Mountain, 2: Miami Coast
+    this.timeOfDay = timeOfDay; // "MIDNIGHT", "SUNSET", "RAINSTORM"
+
     this.colliders = [];
     this.trafficCars = [];
     this.policeUnits = [];
@@ -15,16 +18,20 @@ export class CityTrackManager {
     this.aiRivals = [];
     this.helicopter = null;
 
+    // Track Meshes Group
+    this.trackWorldGroup = new THREE.Group();
+    this.scene.add(this.trackWorldGroup);
+
     // GTA Wanted System
-    this.wantedLevel = 0; // 0 to 3 stars
-    this.evasionTimer = 0; // counts down when police > 135m away
+    this.wantedLevel = 0;
+    this.evasionTimer = 0;
     this.isEvasionFlashing = false;
 
-    // Rewind buffer for AI rivals & traffic
+    // Rewind buffer
     this.aiHistoryBuffer = [];
     this.maxHistoryFrames = 240;
 
-    this.isRaining = false;
+    this.isRaining = timeOfDay === "RAINSTORM";
     this.rainParticles = null;
     this.rainGeom = null;
 
@@ -38,26 +45,12 @@ export class CityTrackManager {
     this.bustedTimer = 0;
     this.isPoliceNearby = false;
     this.nearestPoliceDist = 999999;
+    this.lastKerbRumbleTime = 0;
 
     this.initTextures();
     this.initLighting();
-    this.buildSmoothF1CircuitAndKerbs();
+    this.buildTrackEnvironment();
     this.buildForzaHorizonStudioGarage();
-    this.buildGTAPalmTrees();
-    this.buildGTANeonBillboards();
-    this.buildF1GrandstandsAndPits();
-    this.buildStartFinishGantryAndGrid();
-    this.buildRoadsideStreetlights();
-    this.buildDiverseSkyscrapers();
-    this.buildSpeedTrapCameras();
-    this.buildDestructibleProps();
-    this.buildCityFurniture();
-    this.buildNitroPickups();
-    this.buildAnimatedPedestrians();
-    this.buildAIRivals();
-    this.buildPoliceFleet();
-    this.buildPoliceHelicopter();
-    this.buildDetailedTraffic();
     this.buildRainSystem();
   }
 
@@ -80,17 +73,14 @@ export class CityTrackManager {
       rCtx.fillRect(x, y, 2 + Math.random() * 2, 2 + Math.random() * 2);
     }
 
-    // Racing line groove rubber marks
     rCtx.fillStyle = "rgba(20, 24, 32, 0.45)";
     rCtx.fillRect(180, 0, 160, 1024);
     rCtx.fillRect(684, 0, 160, 1024);
 
-    // Track perimeter white lines
     rCtx.fillStyle = "#ffffff";
     rCtx.fillRect(35, 0, 18, 1024);
     rCtx.fillRect(971, 0, 18, 1024);
 
-    // Center dash line
     rCtx.fillStyle = "rgba(255, 255, 255, 0.85)";
     for (let y = 30; y < 1024; y += 140) {
       rCtx.fillRect(507, y, 10, 85);
@@ -102,8 +92,8 @@ export class CityTrackManager {
 
     this.roadMat = new THREE.MeshStandardMaterial({
       map: this.asphaltTex,
-      roughness: 0.38,
-      metalness: 0.15,
+      roughness: this.isRaining ? 0.08 : 0.38,
+      metalness: this.isRaining ? 0.65 : 0.15,
     });
 
     this.facadeMats = [
@@ -155,29 +145,263 @@ export class CityTrackManager {
   initLighting() {
     this.scene.fog = new THREE.FogExp2(0x141e2e, 0.0004);
 
-    const ambLight = new THREE.AmbientLight(0x7598c8, 2.2);
-    this.scene.add(ambLight);
+    this.ambLight = new THREE.AmbientLight(0x7598c8, 2.2);
+    this.scene.add(this.ambLight);
 
-    const hemiLight = new THREE.HemisphereLight(0x90b8f0, 0x30425c, 2.5);
-    hemiLight.position.set(0, 500, 0);
-    this.scene.add(hemiLight);
+    this.hemiLight = new THREE.HemisphereLight(0x90b8f0, 0x30425c, 2.5);
+    this.hemiLight.position.set(0, 500, 0);
+    this.scene.add(this.hemiLight);
 
-    this.moonLight = new THREE.DirectionalLight(0xd0e4ff, 3.2);
-    this.moonLight.position.set(500, 800, 400);
-    this.moonLight.castShadow = true;
-    this.moonLight.shadow.mapSize.width = 2048;
-    this.moonLight.shadow.mapSize.height = 2048;
-    this.moonLight.shadow.camera.near = 50;
-    this.moonLight.shadow.camera.far = 2800;
+    this.mainSunLight = new THREE.DirectionalLight(0xd0e4ff, 3.2);
+    this.mainSunLight.position.set(500, 800, 400);
+    this.mainSunLight.castShadow = true;
+    this.mainSunLight.shadow.mapSize.width = 2048;
+    this.mainSunLight.shadow.mapSize.height = 2048;
+    this.mainSunLight.shadow.camera.near = 50;
+    this.mainSunLight.shadow.camera.far = 2800;
     const d = 700;
-    this.moonLight.shadow.camera.left = -d;
-    this.moonLight.shadow.camera.right = d;
-    this.moonLight.shadow.camera.top = d;
-    this.moonLight.shadow.camera.bottom = -d;
-    this.scene.add(this.moonLight);
+    this.mainSunLight.shadow.camera.left = -d;
+    this.mainSunLight.shadow.camera.right = d;
+    this.mainSunLight.shadow.camera.top = d;
+    this.mainSunLight.shadow.camera.bottom = -d;
+    this.scene.add(this.mainSunLight);
+
+    this.applyAtmosphere(this.timeOfDay);
   }
 
-  // 🏎️ FORZA HORIZON 5 / MOTORSPORT 3D STUDIO SHOWROOM
+  // 🌅 TIME-OF-DAY / ATMOSPHERE PRESETS
+  applyAtmosphere(timeOfDay) {
+    this.timeOfDay = timeOfDay;
+    this.isRaining = timeOfDay === "RAINSTORM";
+
+    if (this.rainParticles) this.rainParticles.visible = this.isRaining;
+    cyberAudio.setRainActive(this.isRaining);
+
+    if (timeOfDay === "SUNSET") {
+      this.scene.fog.color.setHex(0x3a1c28);
+      this.scene.background.setHex(0x2d1424);
+      this.ambLight.color.setHex(0xfb923c);
+      this.ambLight.intensity = 2.4;
+      this.hemiLight.color.setHex(0xf472b6);
+      this.hemiLight.groundColor.setHex(0x451a03);
+      this.mainSunLight.color.setHex(0xfdba74);
+      this.mainSunLight.position.set(800, 250, 400); // Low golden hour sun
+      this.mainSunLight.intensity = 3.6;
+    } else if (timeOfDay === "RAINSTORM") {
+      this.scene.fog.color.setHex(0x0f172a);
+      this.scene.background.setHex(0x0a0f1d);
+      this.ambLight.color.setHex(0x64748b);
+      this.ambLight.intensity = 1.8;
+      this.hemiLight.color.setHex(0x38bdf8);
+      this.hemiLight.groundColor.setHex(0x020617);
+      this.mainSunLight.color.setHex(0x94a3b8);
+      this.mainSunLight.position.set(300, 700, 300);
+      this.mainSunLight.intensity = 2.2;
+    } else {
+      // MIDNIGHT
+      this.scene.fog.color.setHex(0x141e2e);
+      this.scene.background.setHex(0x0a0f1d);
+      this.ambLight.color.setHex(0x7598c8);
+      this.ambLight.intensity = 2.2;
+      this.hemiLight.color.setHex(0x90b8f0);
+      this.hemiLight.groundColor.setHex(0x30425c);
+      this.mainSunLight.color.setHex(0xd0e4ff);
+      this.mainSunLight.position.set(500, 800, 400);
+      this.mainSunLight.intensity = 3.2;
+    }
+
+    if (this.roadMat) {
+      this.roadMat.roughness = this.isRaining ? 0.08 : 0.38;
+      this.roadMat.metalness = this.isRaining ? 0.65 : 0.15;
+    }
+  }
+
+  // 🗺️ SWITCH TRACK LAYOUT
+  setTrack(trackIndex) {
+    this.trackIndex = trackIndex;
+    this.buildTrackEnvironment();
+  }
+
+  buildTrackEnvironment() {
+    // Clear old track items
+    while (this.trackWorldGroup.children.length > 0) {
+      this.trackWorldGroup.remove(this.trackWorldGroup.children[0]);
+    }
+    this.colliders = [];
+    this.trafficCars = [];
+    this.policeUnits = [];
+    this.nitroPickups = [];
+    this.pedestrians = [];
+    this.speedCameras = [];
+    this.destructibleProps = [];
+    this.aiRivals = [];
+
+    // Track Path Splines for 3 Layouts
+    let trackPoints = [];
+    if (this.trackIndex === 1) {
+      // 🏔️ 2. TOUGE MOUNTAIN PASS (Technical S-curves & Hairpins)
+      trackPoints = [
+        new THREE.Vector3(0, 0.12, 0),
+        new THREE.Vector3(0, 0.12, 280),
+        new THREE.Vector3(140, 0.12, 450),
+        new THREE.Vector3(320, 0.12, 420),
+        new THREE.Vector3(380, 0.12, 220),
+        new THREE.Vector3(260, 0.12, 60),
+        new THREE.Vector3(440, 0.12, -140),
+        new THREE.Vector3(350, 0.12, -380),
+        new THREE.Vector3(120, 0.12, -480),
+        new THREE.Vector3(-140, 0.12, -440),
+        new THREE.Vector3(-360, 0.12, -320),
+        new THREE.Vector3(-450, 0.12, -100),
+        new THREE.Vector3(-320, 0.12, 140),
+        new THREE.Vector3(-420, 0.12, 340),
+        new THREE.Vector3(-220, 0.12, 420),
+        new THREE.Vector3(-70, 0.12, -180),
+      ];
+    } else if (this.trackIndex === 2) {
+      // 🌴 3. MIAMI VICE COASTLINE (Fast ocean sweeps)
+      trackPoints = [
+        new THREE.Vector3(0, 0.12, 0),
+        new THREE.Vector3(0, 0.12, 450),
+        new THREE.Vector3(180, 0.12, 620),
+        new THREE.Vector3(480, 0.12, 540),
+        new THREE.Vector3(560, 0.12, 220),
+        new THREE.Vector3(460, 0.12, -120),
+        new THREE.Vector3(300, 0.12, -450),
+        new THREE.Vector3(-50, 0.12, -580),
+        new THREE.Vector3(-380, 0.12, -440),
+        new THREE.Vector3(-540, 0.12, -150),
+        new THREE.Vector3(-480, 0.12, 220),
+        new THREE.Vector3(-280, 0.12, 420),
+        new THREE.Vector3(-60, 0.12, -160),
+      ];
+    } else {
+      // 🏎️ 1. F1 AUTODROME (Monza / Singapore Grand Prix)
+      trackPoints = [
+        new THREE.Vector3(0, 0.12, 0),
+        new THREE.Vector3(0, 0.12, 380),
+        new THREE.Vector3(90, 0.12, 560),
+        new THREE.Vector3(260, 0.12, 540),
+        new THREE.Vector3(460, 0.12, 340),
+        new THREE.Vector3(520, 0.12, 60),
+        new THREE.Vector3(420, 0.12, -220),
+        new THREE.Vector3(220, 0.12, -440),
+        new THREE.Vector3(-40, 0.12, -540),
+        new THREE.Vector3(-320, 0.12, -460),
+        new THREE.Vector3(-480, 0.12, -220),
+        new THREE.Vector3(-520, 0.12, 40),
+        new THREE.Vector3(-420, 0.12, 280),
+        new THREE.Vector3(-220, 0.12, 340),
+        new THREE.Vector3(-70, 0.12, -180),
+      ];
+    }
+
+    this.trackCurve = new THREE.CatmullRomCurve3(trackPoints, true, "catmullrom", 0.35);
+    const divisions = 300;
+    this.trackWidth = 36;
+    const halfWidth = this.trackWidth / 2;
+
+    this.trackSamplePoints = [];
+    for (let i = 0; i < divisions; i++) {
+      this.trackSamplePoints.push(this.trackCurve.getPointAt(i / divisions));
+    }
+
+    // Ground Plane
+    const groundGeom = new THREE.PlaneGeometry(3800, 3800);
+    groundGeom.rotateX(-Math.PI / 2);
+    const groundColor = this.trackIndex === 1 ? 0x142018 : (this.trackIndex === 2 ? 0x182438 : 0x1a2230);
+    const groundMat = new THREE.MeshStandardMaterial({
+      color: groundColor,
+      roughness: 0.7,
+      metalness: 0.1,
+    });
+    const ground = new THREE.Mesh(groundGeom, groundMat);
+    ground.receiveShadow = true;
+    this.trackWorldGroup.add(ground);
+
+    // Track Ribbon Mesh
+    const vertices = [];
+    const uvs = [];
+    const indices = [];
+
+    for (let i = 0; i <= divisions; i++) {
+      const p = this.trackCurve.getPointAt((i % divisions) / divisions);
+      const nextP = this.trackCurve.getPointAt(((i + 1) % divisions) / divisions);
+      const tangent = new THREE.Vector3().subVectors(nextP, p).normalize();
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+      const leftX = p.x - normal.x * halfWidth;
+      const leftZ = p.z - normal.z * halfWidth;
+      const rightX = p.x + normal.x * halfWidth;
+      const rightZ = p.z + normal.z * halfWidth;
+
+      vertices.push(leftX, 0.12, leftZ);
+      vertices.push(rightX, 0.12, rightZ);
+
+      const v = (i / divisions) * 70;
+      uvs.push(0, v);
+      uvs.push(1, v);
+
+      if (i < divisions) {
+        const base = i * 2;
+        indices.push(base, base + 1, base + 2);
+        indices.push(base + 1, base + 3, base + 2);
+      }
+    }
+
+    const roadGeom = new THREE.BufferGeometry();
+    roadGeom.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+    roadGeom.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+    roadGeom.setIndex(indices);
+    roadGeom.computeVertexNormals();
+
+    this.roadMesh = new THREE.Mesh(roadGeom, this.roadMat);
+    this.roadMesh.receiveShadow = true;
+    this.trackWorldGroup.add(this.roadMesh);
+
+    // Kerbs
+    const curbRedMat = new THREE.MeshBasicMaterial({ color: 0xe11d48 });
+    const curbWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+    for (let i = 0; i < this.trackSamplePoints.length; i += 2) {
+      const p1 = this.trackSamplePoints[i];
+      const p2 = this.trackSamplePoints[(i + 1) % this.trackSamplePoints.length];
+      const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+      const tangent = new THREE.Vector3().subVectors(p2, p1).normalize();
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+      const dist = p1.distanceTo(p2) * 2;
+
+      const curbMat = (i / 2) % 2 === 0 ? curbRedMat : curbWhiteMat;
+
+      const curb1 = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.1, dist), curbMat);
+      curb1.position.set(mid.x + normal.x * (halfWidth + 1.0), 0.16, mid.z + normal.z * (halfWidth + 1.0));
+      curb1.lookAt(mid.x + normal.x * (halfWidth + 1.0) + tangent.x, 0.16, mid.z + normal.z * (halfWidth + 1.0) + tangent.z);
+
+      const curb2 = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.1, dist), curbMat);
+      curb2.position.set(mid.x - normal.x * (halfWidth + 1.0), 0.16, mid.z - normal.z * (halfWidth + 1.0));
+      curb2.lookAt(mid.x - normal.x * (halfWidth + 1.0) + tangent.x, 0.16, mid.z - normal.z * (halfWidth + 1.0) + tangent.z);
+
+      this.trackWorldGroup.add(curb1, curb2);
+    }
+
+    // Build Props, Buildings / Trees, Lights, Rivals
+    this.buildGTAPalmTrees();
+    this.buildGTANeonBillboards();
+    this.buildF1GrandstandsAndPits();
+    this.buildStartFinishGantryAndGrid();
+    this.buildRoadsideStreetlights();
+    this.buildDiverseSkyscrapers();
+    this.buildSpeedTrapCameras();
+    this.buildDestructibleProps();
+    this.buildCityFurniture();
+    this.buildNitroPickups();
+    this.buildAnimatedPedestrians();
+    this.buildAIRivals();
+    this.buildPoliceFleet();
+    this.buildPoliceHelicopter();
+    this.buildDetailedTraffic();
+  }
+
   buildForzaHorizonStudioGarage() {
     this.garageGroup = new THREE.Group();
 
@@ -341,7 +565,7 @@ export class CityTrackManager {
       palmGroup.add(makePalmTree(45, z));
       palmGroup.add(makePalmTree(-45, z));
     }
-    this.scene.add(palmGroup);
+    this.trackWorldGroup.add(palmGroup);
   }
 
   buildGTANeonBillboards() {
@@ -373,116 +597,7 @@ export class CityTrackManager {
     billGroup.add(makeBoard("MAZE BANK", "INVEST IN YOUR DREAMS", "#dc2626", "#ffffff", -380, 110, -280, 1.2));
     billGroup.add(makeBoard("CYBER DRIFT", "HIGH OCTANE ADRENALINE", "#0284c7", "#38bdf8", -450, 95, 220, 2.1));
 
-    this.scene.add(billGroup);
-  }
-
-  buildSmoothF1CircuitAndKerbs() {
-    const groundGroup = new THREE.Group();
-
-    const groundGeom = new THREE.PlaneGeometry(3600, 3600);
-    groundGeom.rotateX(-Math.PI / 2);
-    const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x1a2230,
-      roughness: 0.6,
-      metalness: 0.15,
-    });
-    const ground = new THREE.Mesh(groundGeom, groundMat);
-    ground.position.y = 0.0;
-    ground.receiveShadow = true;
-    groundGroup.add(ground);
-
-    const trackPoints = [
-      new THREE.Vector3(0, 0.12, 0),
-      new THREE.Vector3(0, 0.12, 380),
-      new THREE.Vector3(90, 0.12, 560),
-      new THREE.Vector3(260, 0.12, 540),
-      new THREE.Vector3(460, 0.12, 340),
-      new THREE.Vector3(520, 0.12, 60),
-      new THREE.Vector3(420, 0.12, -220),
-      new THREE.Vector3(220, 0.12, -440),
-      new THREE.Vector3(-40, 0.12, -540),
-      new THREE.Vector3(-320, 0.12, -460),
-      new THREE.Vector3(-480, 0.12, -220),
-      new THREE.Vector3(-520, 0.12, 40),
-      new THREE.Vector3(-420, 0.12, 280),
-      new THREE.Vector3(-220, 0.12, 340),
-      new THREE.Vector3(-70, 0.12, -180),
-    ];
-
-    this.trackCurve = new THREE.CatmullRomCurve3(trackPoints, true, "catmullrom", 0.35);
-    const divisions = 300;
-    this.trackWidth = 36;
-    const halfWidth = this.trackWidth / 2;
-
-    this.trackSamplePoints = [];
-    for (let i = 0; i < divisions; i++) {
-      this.trackSamplePoints.push(this.trackCurve.getPointAt(i / divisions));
-    }
-
-    const vertices = [];
-    const uvs = [];
-    const indices = [];
-
-    for (let i = 0; i <= divisions; i++) {
-      const p = this.trackCurve.getPointAt((i % divisions) / divisions);
-      const nextP = this.trackCurve.getPointAt(((i + 1) % divisions) / divisions);
-      const tangent = new THREE.Vector3().subVectors(nextP, p).normalize();
-      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-
-      const leftX = p.x - normal.x * halfWidth;
-      const leftZ = p.z - normal.z * halfWidth;
-      const rightX = p.x + normal.x * halfWidth;
-      const rightZ = p.z + normal.z * halfWidth;
-
-      vertices.push(leftX, 0.12, leftZ);
-      vertices.push(rightX, 0.12, rightZ);
-
-      const v = (i / divisions) * 70;
-      uvs.push(0, v);
-      uvs.push(1, v);
-
-      if (i < divisions) {
-        const base = i * 2;
-        indices.push(base, base + 1, base + 2);
-        indices.push(base + 1, base + 3, base + 2);
-      }
-    }
-
-    const roadGeom = new THREE.BufferGeometry();
-    roadGeom.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
-    roadGeom.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
-    roadGeom.setIndex(indices);
-    roadGeom.computeVertexNormals();
-
-    this.roadMesh = new THREE.Mesh(roadGeom, this.roadMat);
-    this.roadMesh.receiveShadow = true;
-    groundGroup.add(this.roadMesh);
-
-    const curbRedMat = new THREE.MeshBasicMaterial({ color: 0xe11d48 });
-    const curbWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-
-    for (let i = 0; i < this.trackSamplePoints.length; i += 2) {
-      const p1 = this.trackSamplePoints[i];
-      const p2 = this.trackSamplePoints[(i + 1) % this.trackSamplePoints.length];
-      const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
-      const tangent = new THREE.Vector3().subVectors(p2, p1).normalize();
-      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-      const dist = p1.distanceTo(p2) * 2;
-
-      const curbMat = (i / 2) % 2 === 0 ? curbRedMat : curbWhiteMat;
-
-      const curb1 = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.1, dist), curbMat);
-      curb1.position.set(mid.x + normal.x * (halfWidth + 1.0), 0.16, mid.z + normal.z * (halfWidth + 1.0));
-      curb1.lookAt(mid.x + normal.x * (halfWidth + 1.0) + tangent.x, 0.16, mid.z + normal.z * (halfWidth + 1.0) + tangent.z);
-
-      const curb2 = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.1, dist), curbMat);
-      curb2.position.set(mid.x - normal.x * (halfWidth + 1.0), 0.16, mid.z - normal.z * (halfWidth + 1.0));
-      curb2.lookAt(mid.x - normal.x * (halfWidth + 1.0) + tangent.x, 0.16, mid.z - normal.z * (halfWidth + 1.0) + tangent.z);
-
-      groundGroup.add(curb1, curb2);
-    }
-
-    this.scene.add(groundGroup);
+    this.trackWorldGroup.add(billGroup);
   }
 
   buildF1GrandstandsAndPits() {
@@ -519,7 +634,7 @@ export class CityTrackManager {
     standsGroup.add(makeGrandstand(-32, 100, -Math.PI / 2));
     standsGroup.add(makeGrandstand(-32, 220, -Math.PI / 2));
 
-    this.scene.add(standsGroup);
+    this.trackWorldGroup.add(standsGroup);
   }
 
   buildStartFinishGantryAndGrid() {
@@ -545,10 +660,12 @@ export class CityTrackManager {
     bCtx.fillStyle = "#0f172a";
     bCtx.fillRect(140, 36, 744, 184);
 
+    const titleText = this.trackIndex === 1 ? "🏔️ TOUGE MOUNTAIN PASS" : (this.trackIndex === 2 ? "🌴 MIAMI VICE COASTLINE" : "🏁 F1 GRAND PRIX AUTODROME");
+
     bCtx.fillStyle = "#38bdf8";
-    bCtx.font = "900 64px Segoe UI, sans-serif";
+    bCtx.font = "900 60px Segoe UI, sans-serif";
     bCtx.textAlign = "center";
-    bCtx.fillText("🏁 F1 GRAND PRIX AUTODROME", 512, 120);
+    bCtx.fillText(titleText, 512, 120);
 
     bCtx.fillStyle = "#f59e0b";
     bCtx.font = "800 34px Segoe UI, sans-serif";
@@ -596,7 +713,7 @@ export class CityTrackManager {
     });
 
     g.position.set(0, 0, 0);
-    this.scene.add(g);
+    this.trackWorldGroup.add(g);
   }
 
   buildRoadsideStreetlights() {
@@ -628,7 +745,7 @@ export class CityTrackManager {
       railGroup.add(pole, lampHead, lampLight);
     }
 
-    this.scene.add(railGroup);
+    this.trackWorldGroup.add(railGroup);
   }
 
   buildDiverseSkyscrapers() {
@@ -691,7 +808,7 @@ export class CityTrackManager {
       }
     }
 
-    this.scene.add(cityGroup);
+    this.trackWorldGroup.add(cityGroup);
   }
 
   buildSpeedTrapCameras() {
@@ -718,7 +835,7 @@ export class CityTrackManager {
       g.add(pole, arm, camBox, lens);
       g.position.set(pt.x, 0, pt.z);
       g.lookAt(pt.x + tangent.x, 0, pt.z + tangent.z);
-      this.scene.add(g);
+      this.trackWorldGroup.add(g);
 
       this.speedCameras.push({ pos: pt, u: u, lastTriggerTime: 0 });
     }
@@ -757,7 +874,7 @@ export class CityTrackManager {
       const offset = (i % 4 === 0 ? halfWidth - 2.5 : -(halfWidth - 2.5));
       const pos = pt.clone().addScaledVector(normal, offset);
       g.position.set(pos.x, 0.12, pos.z);
-      this.scene.add(g);
+      this.trackWorldGroup.add(g);
 
       this.destructibleProps.push({
         group: g,
@@ -795,7 +912,7 @@ export class CityTrackManager {
 
       g.position.set(pos.x, 0.12, pos.z);
       g.lookAt(pt.x, 0.12, pt.z);
-      this.scene.add(g);
+      this.trackWorldGroup.add(g);
     }
   }
 
@@ -835,7 +952,7 @@ export class CityTrackManager {
       g.position.copy(pt).addScaledVector(normal, sideOffset);
       g.position.y = 0.12;
 
-      this.scene.add(g);
+      this.trackWorldGroup.add(g);
       this.pedestrians.push({
         group: g,
         u: u,
@@ -904,7 +1021,7 @@ export class CityTrackManager {
 
       const pt = this.trackCurve.getPointAt(r.u);
       g.position.set(pt.x, 0.12, pt.z);
-      this.scene.add(g);
+      this.trackWorldGroup.add(g);
 
       this.aiRivals.push({
         name: r.name,
@@ -951,7 +1068,7 @@ export class CityTrackManager {
       g.add(light);
 
       g.position.set(pos.x, 1.2, pos.z);
-      this.scene.add(g);
+      this.trackWorldGroup.add(g);
 
       this.nitroPickups.push({
         group: g,
@@ -984,7 +1101,7 @@ export class CityTrackManager {
       const u = (i * 0.22 + 0.08) % 1.0;
       const pt = this.trackCurve.getPointAt(u);
       g.position.set(pt.x, 0.12, pt.z);
-      this.scene.add(g);
+      this.trackWorldGroup.add(g);
 
       this.policeUnits.push({
         group: g,
@@ -1025,7 +1142,7 @@ export class CityTrackManager {
     heliGroup.add(spotCone);
 
     heliGroup.position.set(0, 95, 0);
-    this.scene.add(heliGroup);
+    this.trackWorldGroup.add(heliGroup);
     this.helicopter = heliGroup;
   }
 
@@ -1093,7 +1210,7 @@ export class CityTrackManager {
       const u = (i / 8);
       const pt = this.trackCurve.getPointAt(u);
       g.position.set(pt.x + (i % 2 === 0 ? 6 : -6), 0.12, pt.z);
-      this.scene.add(g);
+      this.trackWorldGroup.add(g);
 
       this.trafficCars.push({
         mesh: g,
@@ -1125,21 +1242,8 @@ export class CityTrackManager {
     });
 
     this.rainParticles = new THREE.Points(this.rainGeom, rainMat);
-    this.rainParticles.visible = false;
+    this.rainParticles.visible = this.isRaining;
     this.scene.add(this.rainParticles);
-  }
-
-  toggleWeather() {
-    this.isRaining = !this.isRaining;
-    if (this.rainParticles) this.rainParticles.visible = this.isRaining;
-    cyberAudio.setRainActive(this.isRaining);
-
-    if (this.roadMat) {
-      this.roadMat.roughness = this.isRaining ? 0.08 : 0.4;
-      this.roadMat.metalness = this.isRaining ? 0.65 : 0.15;
-    }
-
-    return this.isRaining ? "🌧️ ДОЖДЬ" : "☀️ ЯСНАЯ НОЧЬ";
   }
 
   getClosestU(pos) {
@@ -1160,7 +1264,6 @@ export class CityTrackManager {
     return closestU;
   }
 
-  // ⏪ RECORD HISTORY FOR FORZA REWIND
   recordAIRivalsHistory() {
     const frame = this.aiRivals.map((r) => ({
       u: r.u,
@@ -1198,9 +1301,7 @@ export class CityTrackManager {
     return true;
   }
 
-  // ⭐ INCREASE WANTED LEVEL
   addWantedStars(stars = 1) {
-    const prev = this.wantedLevel;
     this.wantedLevel = Math.min(3, this.wantedLevel + stars);
     this.evasionTimer = 8.0;
     this.isEvasionFlashing = false;
@@ -1213,6 +1314,18 @@ export class CityTrackManager {
     const px = car.position.x;
     const pz = car.position.z;
     const carRadius = 2.6;
+
+    // 📳 KERB RUMBLE DETECTION (Distance to track edge ~ 18m)
+    const closestU = this.getClosestU(car.position);
+    const pt = this.trackCurve.getPointAt(closestU);
+    const distToCenter = Math.hypot(px - pt.x, pz - pt.z);
+    if (distToCenter > 16.5 && distToCenter < 19.5 && Math.abs(car.speed) > 40) {
+      const now = Date.now();
+      if (now - this.lastKerbRumbleTime > 80) {
+        this.lastKerbRumbleTime = now;
+        cyberAudio.playKerbRumble(Math.abs(car.speed));
+      }
+    }
 
     for (const b of this.colliders) {
       const cx = Math.max(b.minX, Math.min(b.maxX, px));
@@ -1293,7 +1406,7 @@ export class CityTrackManager {
       posAttr.needsUpdate = true;
     }
 
-    // 2. Helicopter (Active at 3 Stars Wanted)
+    // 2. Helicopter
     if (this.helicopter) {
       const isHeliWanted = this.wantedLevel >= 3 || (this.wantedLevel >= 2 && Math.random() > 0.4);
       if (this.heliRotor) this.heliRotor.rotation.y += delta * 25;
@@ -1303,7 +1416,7 @@ export class CityTrackManager {
         this.helicopter.position.z = THREE.MathUtils.lerp(this.helicopter.position.z, playerPos.z, delta * 2.0);
         this.helicopter.position.y = 85;
       } else {
-        this.helicopter.position.y = 200; // flies away
+        this.helicopter.position.y = 200;
       }
     }
 
@@ -1422,7 +1535,7 @@ export class CityTrackManager {
       }
     }
 
-    // 7. Police Pursuits & Wanted Aggression
+    // 7. Police Pursuits
     let nearestPoliceDist = 999999;
     const isBlink = Math.sin(now * 0.025) > 0;
 
@@ -1490,7 +1603,6 @@ export class CityTrackManager {
     this.isPoliceNearby = nearestPoliceDist < 120;
     if (playerSpeed > 35) this.bustedTimer = Math.max(0, this.bustedTimer - delta * 2);
 
-    // ⭐ GTA LOSE THE COPS EVASION LOGIC
     if (this.wantedLevel > 0) {
       if (nearestPoliceDist > 140) {
         this.evasionTimer -= delta;
