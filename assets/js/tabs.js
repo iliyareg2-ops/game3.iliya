@@ -1,6 +1,6 @@
 (function () {
   let activeTab = "gallery";
-  let galleryEl, comicEl, gameEl, jet3dEl, siteEl, btns;
+  let galleryEl, comicEl, gameEl, jet3dEl, drift3dEl, siteEl, btns;
 
   // ленивые src для iframe-проектов: проставляем при первом открытии таба,
   // чтобы не дёргать projects/, которых ещё может не быть.
@@ -8,6 +8,7 @@
     comic: { id: "comic-frame", src: "projects/comics/index.html" },
     game: { id: "game-frame", src: "projects/game/index.html" },
     jet3d: { id: "jet3d-frame", src: "projects/sky-jet-3d/index.html" },
+    drift3d: { id: "drift3d-frame", src: "projects/cyber-drift-3d/index.html" },
     site: { id: "site-frame", src: "projects/site/index.html" },
   };
 
@@ -16,6 +17,7 @@
     comicEl = document.getElementById("tab-comic");
     gameEl = document.getElementById("tab-game");
     jet3dEl = document.getElementById("tab-jet3d");
+    drift3dEl = document.getElementById("tab-drift3d");
     siteEl = document.getElementById("tab-site");
     btns = Array.from(document.querySelectorAll(".tab-btn"));
 
@@ -48,6 +50,7 @@
     comicEl.hidden = (activeTab !== "comic");
     if (gameEl) gameEl.hidden = (activeTab !== "game");
     if (jet3dEl) jet3dEl.hidden = (activeTab !== "jet3d");
+    if (drift3dEl) drift3dEl.hidden = (activeTab !== "drift3d");
     if (siteEl) siteEl.hidden = (activeTab !== "site");
   }
 

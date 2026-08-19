@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Cyber Drift 3D: Ночной Киберпанк Дрифт</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #050811;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color: #fff;
+    }
+
+    #canvas-container {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+    }
+
+    /* HUD Overlay */
+    #hud {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px;
+    }
+
+    /* Top HUD */
+    .hud-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .hud-pill {
+      background: rgba(10, 16, 28, 0.85);
+      border: 1px solid rgba(0, 240, 255, 0.4);
+      border-radius: 12px;
+      padding: 8px 16px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(0, 240, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .hud-label {
+      font-size: 9px;
+      font-weight: 900;
+      color: #8da4be;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .hud-val {
+      font-size: 24px;
+      font-weight: 900;
+      color: #00f0ff;
+      letter-spacing: 0.04em;
+      text-shadow: 0 0 12px rgba(0, 240, 255, 0.7);
+    }
+
+    .wanted-stars {
+      color: #ff3b30;
+      font-size: 18px;
+      text-shadow: 0 0 10px #ff3b30;
+      letter-spacing: 2px;
+    }
+
+    /* Drift Box */
+    #hud-drift-box {
+      position: absolute;
+      top: 18%;
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      background: rgba(8, 12, 22, 0.9);
+      border: 2px solid #ff007f;
+      border-radius: 16px;
+      padding: 10px 24px;
+      box-shadow: 0 0 25px rgba(255, 0, 127, 0.5);
+    }
+
+    #hud-drift-pts {
+      font-size: 32px;
+      font-weight: 900;
+      color: #ff007f;
+      text-shadow: 0 0 15px #ff007f;
+    }
+
+    #hud-drift-mult {
+      font-size: 14px;
+      font-weight: 900;
+      color: #00f0ff;
+      background: rgba(0, 240, 255, 0.15);
+      border: 1px solid #00f0ff;
+      border-radius: 8px;
+      padding: 2px 10px;
+      margin-top: 4px;
+    }
+
+    /* Center Notification Banner */
+    #hud-banner {
+      position: absolute;
+      top: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 18, 30, 0.92);
+      border: 1px solid #00f0ff;
+      border-radius: 12px;
+      padding: 10px 22px;
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      color: #fff;
+      text-shadow: 0 0 10px #00f0ff;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    /* Bottom HUD (Speedometer, RPM & Nitro) */
+    .hud-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 16px;
+    }
+
+    .speedo-cluster {
+      display: flex;
+      align-items: flex-end;
+      gap: 12px;
+    }
+
+    .speedo-box {
+      background: rgba(10, 16, 28, 0.85);
+      border: 2px solid rgba(0, 240, 255, 0.5);
+      border-radius: 16px;
+      padding: 12px 20px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 0 25px rgba(0, 240, 255, 0.25);
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .speedo-val {
+      font-size: 48px;
+      font-weight: 900;
+      color: #00f0ff;
+      line-height: 1;
+      text-shadow: 0 0 15px #00f0ff;
+    }
+
+    .speedo-unit {
+      font-size: 14px;
+      font-weight: 900;
+      color: #8da4be;
+    }
+
+    .gear-box {
+      background: rgba(10, 16, 28, 0.85);
+      border: 2px solid #ff7700;
+      border-radius: 14px;
+      padding: 12px 18px;
+      font-size: 32px;
+      font-weight: 900;
+      color: #ffaa00;
+      text-shadow: 0 0 12px #ff7700;
+      line-height: 1;
+    }
+
+    /* Bars */
+    .bars-col {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 180px;
+    }
+
+    .bar-pill {
+      background: rgba(10, 16, 28, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 5px 10px;
+    }
+
+    .bar-track {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      margin-top: 3px;
+      overflow: hidden;
+    }
+
+    #hud-nitro-bar {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, #0088ff, #00f0ff);
+      box-shadow: 0 0 10px #00f0ff;
+      transition: width 0.1s linear;
+    }
+
+    #hud-rpm-bar {
+      width: 20%;
+      height: 100%;
+      background: linear-gradient(90deg, #38b000, #ffaa00, #ff0044);
+      transition: width 0.05s linear;
+    }
+
+    .quick-actions {
+      display: flex;
+      gap: 6px;
+      pointer-events: auto;
+    }
+
+    .hud-btn {
+      background: rgba(12, 20, 32, 0.85);
+      border: 1px solid rgba(0, 240, 255, 0.5);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: #00f0ff;
+      font-weight: 900;
+      font-size: 11px;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: all 0.15s ease;
+    }
+
+    .hud-btn:hover {
+      background: rgba(0, 240, 255, 0.25);
+      color: #fff;
+      box-shadow: 0 0 12px #00f0ff;
+    }
+
+    /* Touch Controls */
+    #touch-controls {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 15;
+      pointer-events: none;
+    }
+
+    .touch-left {
+      position: absolute;
+      bottom: 20px;
+      left: 16px;
+      display: flex;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .touch-right {
+      position: absolute;
+      bottom: 20px;
+      right: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      pointer-events: auto;
+    }
+
+    .touch-btn {
+      background: rgba(10, 18, 30, 0.75);
+      border: 2px solid rgba(0, 240, 255, 0.6);
+      border-radius: 12px;
+      color: #00f0ff;
+      font-size: 20px;
+      font-weight: 900;
+      width: 64px;
+      height: 64px;
+      display: grid;
+      place-items: center;
+      backdrop-filter: blur(8px);
+    }
+
+    .touch-btn:active {
+      background: rgba(0, 240, 255, 0.45);
+      color: #fff;
+    }
+
+    @media (max-width: 860px) {
+      #touch-controls { display: block; }
+    }
+
+    /* Garage Modal */
+    .screen-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at center, rgba(14, 22, 38, 0.94) 0%, rgba(5, 8, 14, 0.98) 100%);
+      backdrop-filter: blur(14px);
+      padding: 16px;
+    }
+
+    .modal-card {
+      width: min(640px, 94vw);
+      max-height: 90vh;
+      overflow-y: auto;
+      background: linear-gradient(145deg, #101626 0%, #182236 100%);
+      border: 2px solid rgba(0, 240, 255, 0.5);
+      border-radius: 20px;
+      padding: 24px 24px 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(0, 240, 255, 0.25);
+      text-align: center;
+    }
+
+    .modal-tag {
+      color: #00f0ff;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .modal-card h1 {
+      font-size: clamp(28px, 5vw, 40px);
+      font-weight: 900;
+      line-height: 1.1;
+      margin-bottom: 12px;
+      background: linear-gradient(90deg, #ffffff 0%, #00f0ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .car-selector {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .car-select-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 12px 8px;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 800;
+      font-size: 13px;
+      transition: all 0.15s ease;
+    }
+
+    .car-select-btn.active {
+      border-color: #00f0ff;
+      background: rgba(0, 240, 255, 0.2);
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+    }
+
+    .custom-row {
+      margin-bottom: 14px;
+      text-align: left;
+    }
+
+    .custom-row-title {
+      font-size: 11px;
+      font-weight: 800;
+      color: #8da4be;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .swatches {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .color-swatch, .neon-swatch {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid #fff;
+      transition: transform 0.15s ease;
+    }
+
+    .color-swatch:hover, .neon-swatch:hover {
+      transform: scale(1.15);
+    }
+
+    .btn-main {
+      width: 100%;
+      background: linear-gradient(135deg, #00f0ff 0%, #0077cc 100%);
+      border: none;
+      border-radius: 12px;
+      padding: 15px 20px;
+      color: #031020;
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      box-shadow: 0 8px 25px rgba(0, 240, 255, 0.4);
+      margin-top: 10px;
+    }
+
+    .btn-main:hover {
+      filter: brightness(1.1);
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <!-- Drift Floating Score -->
+  <div id="hud-drift-box">
+    <span id="hud-drift-pts">+0</span>
+    <span id="hud-drift-mult">x1.0</span>
+  </div>
+
+  <!-- HUD Overlay -->
+  <div id="hud">
+    <!-- Top Bar -->
+    <div class="hud-top">
+      <div style="display: flex; gap: 10px;">
+        <div class="hud-pill">
+          <span class="hud-label">ОЧКИ ДРИФТА</span>
+          <span class="hud-val" id="hud-score">0</span>
+        </div>
+        <div class="hud-pill">
+          <span class="hud-label">РОЗЫСК ПОЛИЦИИ</span>
+          <span class="wanted-stars" id="hud-wanted">☆☆☆☆☆</span>
+        </div>
+      </div>
+
+      <div class="quick-actions">
+        <button class="hud-btn" id="btn-cam-switch"><span id="hud-cam-mode">ОБЗОР (3P)</span></button>
+        <button class="hud-btn" id="btn-reset-car">🔄 РЕСТАРТ (R)</button>
+        <button class="hud-btn" id="btn-sound-toggle">🔊</button>
+      </div>
+    </div>
+
+    <!-- Notification Banner -->
+    <div id="hud-banner">ГОТОВ К СТАРТУ</div>
+
+    <!-- Bottom Bar -->
+    <div class="hud-bottom">
+      <div class="speedo-cluster">
+        <div class="gear-box" id="hud-gear">1</div>
+        <div class="speedo-box">
+          <span class="speedo-val" id="hud-speed">0</span>
+          <span class="speedo-unit">КМ/Ч</span>
+        </div>
+        <div class="bars-col">
+          <div class="bar-pill">
+            <span class="hud-label" style="color: #00f0ff;">⚡ N2O НИТРО (SHIFT)</span>
+            <div class="bar-track">
+              <div id="hud-nitro-bar"></div>
+            </div>
+          </div>
+          <div class="bar-pill">
+            <span class="hud-label" style="color: #ffaa00;">RPM ТАХОМЕТР</span>
+            <div class="bar-track">
+              <div id="hud-rpm-bar"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Touch Controls -->
+  <div id="touch-controls">
+    <div class="touch-left">
+      <button class="touch-btn" id="btn-steer-left">◀</button>
+      <button class="touch-btn" id="btn-steer-right">▶</button>
+    </div>
+    <div class="touch-right">
+      <button class="touch-btn" id="btn-nitro" style="border-color:#00f0ff; color:#00f0ff; height: 50px;">⚡ N2O</button>
+      <button class="touch-btn" id="btn-gas" style="border-color:#38b000; color:#38b000;">▲ ГАЗ</button>
+      <button class="touch-btn" id="btn-handbrake" style="border-color:#ff007f; color:#ff007f; height: 44px; font-size:12px;">РУЧНИК</button>
+      <button class="touch-btn" id="btn-brake" style="border-color:#ff3344; color:#ff3344; height: 50px;">▼ ТОРМОЗ</button>
+    </div>
+  </div>
+
+  <!-- Garage Customization Screen -->
+  <div class="screen-overlay" id="garage-screen">
+    <div class="modal-card">
+      <div class="modal-tag">ГАРАЖ КАСТОМИЗАЦИИ &bull; КИБЕРПАНК СУПЕРКАРЫ</div>
+      <h1>Cyber Drift 3D</h1>
+
+      <div class="car-selector">
+        <button class="car-select-btn active" data-car="0">
+          🏎️ Apex GT-R<br><small style="color:#00f0ff;">Сбалансирован</small>
+        </button>
+        <button class="car-select-btn" data-car="1">
+          👾 Phantom Drift<br><small style="color:#ff007f;">Widebody Монстр</small>
+        </button>
+        <button class="car-select-btn" data-car="2">
+          🚀 Hyperion X<br><small style="color:#ffaa00;">Сверхзвуковой</small>
+        </button>
+      </div>
+
+      <div class="custom-row">
+        <div class="custom-row-title">Цвет кузова:</div>
+        <div class="swatches">
+          <div class="color-swatch" style="background:#e11d48;" data-color="e11d48"></div>
+          <div class="color-swatch" style="background:#7c3aed;" data-color="7c3aed"></div>
+          <div class="color-swatch" style="background:#0ea5e9;" data-color="0ea5e9"></div>
+          <div class="color-swatch" style="background:#10b981;" data-color="10b981"></div>
+          <div class="color-swatch" style="background:#f59e0b;" data-color="f59e0b"></div>
+          <div class="color-swatch" style="background:#18181b;" data-color="18181b"></div>
+        </div>
+      </div>
+
+      <div class="custom-row">
+        <div class="custom-row-title">Неон днища (Underglow):</div>
+        <div class="swatches">
+          <div class="neon-swatch" style="background:#00f0ff; box-shadow:0 0 10px #00f0ff;" data-neon="00f0ff"></div>
+          <div class="neon-swatch" style="background:#ff007f; box-shadow:0 0 10px #ff007f;" data-neon="ff007f"></div>
+          <div class="neon-swatch" style="background:#39ff14; box-shadow:0 0 10px #39ff14;" data-neon="39ff14"></div>
+          <div class="neon-swatch" style="background:#ffaa00; box-shadow:0 0 10px #ffaa00;" data-neon="ffaa00"></div>
+        </div>
+      </div>
+
+      <button class="btn-main" id="btn-start-race">ВЫЕХАТЬ НА ТРАССУ (ENTER / SPACE)</button>
+    </div>
+  </div>
+
+  <script type="module" src="game.js"></script>
+</body>
+</html>

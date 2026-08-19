@@ -67,6 +67,7 @@ html, body {
 #tab-comic,
 #tab-game,
 #tab-jet3d,
+#tab-drift3d,
 #tab-site {
   flex: 1;
   min-height: 0;
@@ -78,6 +79,7 @@ html, body {
 #tab-comic[hidden],
 #tab-game[hidden],
 #tab-jet3d[hidden],
+#tab-drift3d[hidden],
 #tab-site[hidden] {
   display: none;
 }
