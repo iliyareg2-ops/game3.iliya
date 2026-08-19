@@ -705,9 +705,11 @@ export class CyberDriftGame {
 
     const isWarp = this.car.isWarpSpeed && (Math.abs(this.car.speed) > 15 || this.keys.forward || this.keys.nitro);
     const isNitro = (this.car.nitroActive && this.car.nitroFuel > 0) || isWarp;
-    const targetFov = isWarp ? 112 : (isNitro ? 78 : (this.car.isDrafting ? 68 : 60));
-    this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFov, delta * 4);
-    this.camera.updateProjectionMatrix();
+    const targetFov = isWarp ? 88 : (isNitro ? 76 : (this.car.isDrafting ? 68 : 60));
+    if (Math.abs(this.camera.fov - targetFov) > 0.05) {
+      this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFov, delta * 4);
+      this.camera.updateProjectionMatrix();
+    }
 
     const carPos = this.car.mesh.position;
     const carHeading = this.car.heading;

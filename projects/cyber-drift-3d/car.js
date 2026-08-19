@@ -867,13 +867,17 @@ export class CyberCar {
   }
 
   emitBackfirePop() {
+    const now = Date.now();
+    if (now - this.lastBackfireTime < 220) return;
+    this.lastBackfireTime = now;
+
     const pipeLPos = new THREE.Vector3(0.95, 0.45, -4.9).applyMatrix4(this.mesh.matrixWorld);
     const pipeRPos = new THREE.Vector3(-0.95, 0.45, -4.9).applyMatrix4(this.mesh.matrixWorld);
     const forwardX = Math.sin(this.heading);
     const forwardZ = Math.cos(this.heading);
 
     [pipeLPos, pipeRPos].forEach((pipePos) => {
-      for (let k = 0; k < 3; k++) {
+      for (let k = 0; k < 2; k++) {
         const p = this.backfirePool.find((s) => s.life <= 0);
         if (p) {
           p.pos.copy(pipePos);
@@ -927,19 +931,26 @@ export class CyberCar {
   updatePhysics(delta, trackManager) {
     this.recordHistoryState();
 
-    const stageSpeedBonus = [0, 22, 44, 70][this.stage || 0];
-    const stageAccelBonus = [0, 25, 55, 90][this.stage || 0];
+    const stageSpeedBonus = [0, 22, 44, 70][this.stage || 0] || 0;
+    const stageAccelBonus = [0, 25, 55, 90][this.stage || 0] || 0;
 
-    const isNitroFiring = this.nitroActive && this.nitroFuel > 0;
+    const isNitroFiring = (this.nitroActive && this.nitroFuel > 0) || this.isWarpSpeed;
     let maxForwardSpeed = (isNitroFiring ? 360 : 255) + stageSpeedBonus;
     if (this.isDrafting) maxForwardSpeed += 25;
 
+    let accelRate = (isNitroFiring ? (190 + stageAccelBonus) : (this.isDrafting ? 140 : (110 + stageAccelBonus))) * delta;
+
+    if (this.isWarpSpeed) {
+      maxForwardSpeed = 480;
+      accelRate = 380 * delta;
+      this.nitroFuel = 100;
+    }
+
     const maxReverseSpeed = -75;
-    const accelRate = (isNitroFiring ? (190 + stageAccelBonus) : (this.isDrafting ? 140 : (110 + stageAccelBonus))) * delta;
     const brakeRate = 230 * delta;
     const coastDrag = 38 * delta;
 
-    if (isNitroFiring) {
+    if (isNitroFiring && !this.isWarpSpeed) {
       const nitroBurnRate = this.stage === 3 ? 14 : 24;
       this.nitroFuel = Math.max(0, this.nitroFuel - delta * nitroBurnRate);
     }
@@ -958,6 +969,7 @@ export class CyberCar {
     if (this.throttleInput > 0) {
       this.speed = Math.min(maxForwardSpeed, this.speed + accelRate);
       this.brakeHeat = Math.max(0, this.brakeHeat - delta * 0.8);
+      if (this.isWarpSpeed && Math.random() > 0.9) this.emitBackfirePop();
     } else if (this.throttleInput < 0) {
       if (this.speed > 5) {
         this.speed = Math.max(0, this.speed - brakeRate);
