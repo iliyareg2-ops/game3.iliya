@@ -207,7 +207,7 @@ export class CyberDriftGame {
     this.skillBadgeEl = document.getElementById("hud-skill-badge");
 
     this.svgRpmArc = document.getElementById("svg-rpm-arc");
-    this.svgNitroArc = document.getElementById("svg-nitro-arc");
+    this.nitroPctEl = document.getElementById("hud-nitro-pct");
     this.hudPosBadge = document.getElementById("hud-pos-badge");
     this.rpmValEl = document.getElementById("hud-rpm-val");
     this.shiftFlashEl = document.getElementById("hud-shift-flash");
@@ -676,7 +676,12 @@ export class CyberDriftGame {
     if (this.gearEl) this.gearEl.textContent = gear;
     if (this.scoreEl) this.scoreEl.textContent = this.car.totalScore;
 
-    // 🔘 SVG CIRCULAR TACHOMETER & NITRO GAUGE (Forza Horizon 5 Style)
+    // ⚡ Горизонтальная шкала нитро
+    const nitroVal = Math.round(this.car.nitroFuel);
+    if (this.nitroBarEl) this.nitroBarEl.style.width = `${nitroVal}%`;
+    if (this.nitroPctEl) this.nitroPctEl.textContent = `${nitroVal}%`;
+
+    // 🔘 SVG CIRCULAR TACHOMETER (Forza Horizon 5 Style)
     const rpm = Math.floor(1200 + ((spd % 65) / 65) * 7200 + (this.car.throttleInput > 0 ? 800 : 0));
     const rpmRatio = Math.min(1.0, Math.max(0, (rpm - 1000) / 8000));
     if (this.svgRpmArc) {
@@ -685,13 +690,6 @@ export class CyberDriftGame {
       this.svgRpmArc.style.strokeDashoffset = targetRpmOffset;
     }
     if (this.rpmValEl) this.rpmValEl.textContent = `${rpm} RPM`;
-
-    // Nitro Gauge: 452 when 0% (depleted) -> 0 when 100% (full)
-    const nitroRatio = Math.max(0, Math.min(1, this.car.nitroFuel / 100));
-    if (this.svgNitroArc) {
-      const targetNitroOffset = (1.0 - nitroRatio) * 452;
-      this.svgNitroArc.style.strokeDashoffset = targetNitroOffset;
-    }
 
     if (this.shiftFlashEl) {
       this.shiftFlashEl.style.opacity = (rpmRatio > 0.88 && spd > 30) ? "0.9" : "0.0";
