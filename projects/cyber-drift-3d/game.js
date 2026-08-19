@@ -1,4 +1,4 @@
-// game.js - Cyber Drift 3D Main Director, Rendering Pipeline, Customization Garage, Dynamic Cameras & HUD
+// game.js - Cyber Drift 3D Main Director, 3D Garage Showroom, Dynamic Cameras & Real-Time Customization
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { CyberCar } from "./car.js";
 import { CityTrackManager } from "./city.js";
@@ -16,7 +16,8 @@ export class CyberDriftGame {
 
     this.clock = new THREE.Clock();
     this.cameraMode = "CHASE"; // 'CHASE', 'HOOD', 'COCKPIT'
-    this.gameState = "GARAGE"; // 'GARAGE', 'RACING', 'PAUSED'
+    this.gameState = "GARAGE"; // 'GARAGE', 'RACING'
+    this.garageOrbitAngle = 0;
 
     this.keys = {
       forward: false,
@@ -39,16 +40,16 @@ export class CyberDriftGame {
 
   initThree() {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x060914);
+    this.scene.background = new THREE.Color(0x0a1020);
 
     this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.2, 5000);
-    this.camera.position.set(0, 5, -14);
+    this.camera.position.set(0, 4, 12);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.25;
+    this.renderer.toneMappingExposure = 1.35;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -57,7 +58,7 @@ export class CyberDriftGame {
 
   initWorld() {
     this.trackManager = new CityTrackManager(this.scene);
-    this.car = new CyberCar(this.scene, 0); // Start with Apex GT
+    this.car = new CyberCar(this.scene, 0); // Apex GT
   }
 
   initInputs() {
@@ -75,7 +76,9 @@ export class CyberDriftGame {
       if (e.code === "KeyC") this.toggleCamera();
       if (e.code === "KeyR") this.resetCar();
 
-      if (this.gameState === "GARAGE") this.startRace();
+      if (this.gameState === "GARAGE" && (e.code === "Enter" || e.code === "Space")) {
+        this.startRace();
+      }
     });
 
     window.addEventListener("keyup", (e) => {
@@ -144,9 +147,9 @@ export class CyberDriftGame {
     this.camModeEl = document.getElementById("hud-cam-mode");
     this.bannerEl = document.getElementById("hud-banner");
 
-    // Garage Customization Buttons
+    // Garage Car Selector
     document.querySelectorAll(".car-select-btn").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
+      btn.addEventListener("click", () => {
         document.querySelectorAll(".car-select-btn").forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
         const type = parseInt(btn.dataset.car);
@@ -154,15 +157,21 @@ export class CyberDriftGame {
       });
     });
 
+    // Garage Body Color Swatches
     document.querySelectorAll(".color-swatch").forEach((swatch) => {
       swatch.addEventListener("click", () => {
+        document.querySelectorAll(".color-swatch").forEach((s) => s.classList.remove("active"));
+        swatch.classList.add("active");
         const hex = parseInt(swatch.dataset.color, 16);
         this.car.setBodyColor(hex);
       });
     });
 
+    // Garage Underglow Neon Swatches
     document.querySelectorAll(".neon-swatch").forEach((swatch) => {
       swatch.addEventListener("click", () => {
+        document.querySelectorAll(".neon-swatch").forEach((s) => s.classList.remove("active"));
+        swatch.classList.add("active");
         const hex = parseInt(swatch.dataset.neon, 16);
         this.car.setUnderglowColor(hex);
       });
@@ -185,6 +194,7 @@ export class CyberDriftGame {
   startRace() {
     this.gameState = "RACING";
     document.getElementById("garage-screen").style.display = "none";
+    document.getElementById("hud").style.display = "flex";
     this.showBanner("🔥 СТАРТ! ВЫХОДИТЕ В ЗАНОС С ПОМОЩЬЮ ПРОБЕЛА (SPACE)");
   }
 
@@ -222,6 +232,17 @@ export class CyberDriftGame {
   }
 
   updateCamera(delta) {
+    if (this.gameState === "GARAGE") {
+      // Smooth 3D Showroom Camera Orbit
+      this.garageOrbitAngle += delta * 0.65;
+      const radius = 12.5;
+      const camX = Math.sin(this.garageOrbitAngle) * radius;
+      const camZ = Math.cos(this.garageOrbitAngle) * radius;
+      this.camera.position.set(camX, 3.2, camZ);
+      this.camera.lookAt(0, 0.8, 0);
+      return;
+    }
+
     const isNitro = this.car.nitroActive && this.car.nitroFuel > 0;
     const targetFov = isNitro ? 80 : 60;
     this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFov, delta * 4);
@@ -231,7 +252,6 @@ export class CyberDriftGame {
     const carHeading = this.car.heading;
 
     if (this.cameraMode === "CHASE") {
-      // Third Person Chase Cam
       const chaseDist = isNitro ? 16.5 : 13.5;
       const chaseHeight = 4.2;
 
@@ -244,14 +264,12 @@ export class CyberDriftGame {
       const lookTarget = carPos.clone().add(new THREE.Vector3(0, 1.2, 8).applyAxisAngle(new THREE.Vector3(0, 1, 0), carHeading));
       this.camera.lookAt(lookTarget);
     } else if (this.cameraMode === "HOOD") {
-      // Hood Cam
       const hoodPos = carPos.clone().add(new THREE.Vector3(0, 1.2, 1.8).applyAxisAngle(new THREE.Vector3(0, 1, 0), carHeading));
       this.camera.position.copy(hoodPos);
 
       const lookTarget = carPos.clone().add(new THREE.Vector3(0, 1.2, 30).applyAxisAngle(new THREE.Vector3(0, 1, 0), carHeading));
       this.camera.lookAt(lookTarget);
     } else {
-      // Cockpit View
       const cockpitPos = carPos.clone().add(new THREE.Vector3(0.4, 1.45, -0.4).applyAxisAngle(new THREE.Vector3(0, 1, 0), carHeading));
       this.camera.position.copy(cockpitPos);
 
@@ -264,7 +282,6 @@ export class CyberDriftGame {
     const spd = Math.round(Math.abs(this.car.speed));
     if (this.speedEl) this.speedEl.textContent = spd;
 
-    // Calculate gear
     let gear = "1";
     if (this.car.speed < -1) gear = "R";
     else if (spd < 5) gear = "N";
@@ -282,7 +299,6 @@ export class CyberDriftGame {
     const rpmRatio = Math.min(100, ((this.car.rpm - 800) / 7500) * 100);
     if (this.rpmBarEl) this.rpmBarEl.style.width = `${rpmRatio}%`;
 
-    // Drift popup UI
     if (this.driftBoxEl && this.driftPtsEl && this.driftMultEl) {
       if (this.car.isDrifting && this.car.currentDriftScore > 50) {
         this.driftBoxEl.style.display = "flex";
@@ -293,7 +309,6 @@ export class CyberDriftGame {
       }
     }
 
-    // Wanted Level Stars
     if (this.wantedEl) {
       let stars = "☆☆☆☆☆";
       if (this.car.totalScore > 10000 || spd > 260) stars = "★★★★★";
@@ -309,7 +324,7 @@ export class CyberDriftGame {
     requestAnimationFrame(this.animate);
     const delta = Math.min(this.clock.getDelta(), 0.1);
 
-    if (this.gameState === "RACING" || this.gameState === "GARAGE") {
+    if (this.gameState === "RACING") {
       this.car.throttleInput = (this.keys.forward ? 1 : 0) - (this.keys.backward ? 1 : 0);
       this.car.steerInput = (this.keys.left ? 1 : 0) - (this.keys.right ? 1 : 0);
       this.car.handbrake = this.keys.handbrake;
@@ -318,10 +333,10 @@ export class CyberDriftGame {
       this.car.updatePhysics(delta, this.trackManager);
       this.trackManager.update(delta, this.car);
 
-      this.updateCamera(delta);
       this.updateHUD();
     }
 
+    this.updateCamera(delta);
     this.renderer.render(this.scene, this.camera);
   }
 }

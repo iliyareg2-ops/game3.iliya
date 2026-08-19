@@ -1,4 +1,4 @@
-// city.js - Cyberpunk Night Track, Wet Asphalt, Skyscraper Neon Skyline, Stunt Ramps, Police Interceptor & Traffic
+// city.js - Cyberpunk Night Track, Streetlights, Skyscraper Skyline, Stunt Ramps, Police Interceptor & Traffic
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -14,6 +14,7 @@ export class CityTrackManager {
 
     this.initLighting();
     this.buildTrackAndGround();
+    this.buildStreetlights();
     this.buildSkyscraperSkyline();
     this.buildRampsAndBarriers();
     this.buildTraffic();
@@ -21,22 +22,25 @@ export class CityTrackManager {
   }
 
   initLighting() {
-    this.scene.fog = new THREE.FogExp2(0x060914, 0.0012);
+    this.scene.fog = new THREE.FogExp2(0x0a1020, 0.00065); // Clear, atmospheric night fog
 
-    // Night Sky Ambient & Hemisphere
-    const hemiLight = new THREE.HemisphereLight(0x1a2c4e, 0x050811, 0.85);
+    // Bright Ambient Lighting so all car surfaces & details are fully visible
+    const ambLight = new THREE.AmbientLight(0x283b5e, 1.2);
+    this.scene.add(ambLight);
+
+    const hemiLight = new THREE.HemisphereLight(0x4068a5, 0x141e30, 1.4);
     hemiLight.position.set(0, 500, 0);
     this.scene.add(hemiLight);
 
     // Cyberpunk Moon Light
-    this.moonLight = new THREE.DirectionalLight(0x7da4d9, 1.4);
+    this.moonLight = new THREE.DirectionalLight(0x90b8f8, 2.2);
     this.moonLight.position.set(400, 700, 300);
     this.moonLight.castShadow = true;
     this.moonLight.shadow.mapSize.width = 2048;
     this.moonLight.shadow.mapSize.height = 2048;
     this.moonLight.shadow.camera.near = 50;
     this.moonLight.shadow.camera.far = 2500;
-    const d = 500;
+    const d = 600;
     this.moonLight.shadow.camera.left = -d;
     this.moonLight.shadow.camera.right = d;
     this.moonLight.shadow.camera.top = d;
@@ -47,19 +51,19 @@ export class CityTrackManager {
   buildTrackAndGround() {
     const groundGroup = new THREE.Group();
 
-    // 1. Wet Reflective Asphalt Ground Plane (2000m x 2000m)
+    // 1. Wet Asphalt Ground
     const groundGeom = new THREE.PlaneGeometry(2200, 2200);
     groundGeom.rotateX(-Math.PI / 2);
     const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x0c0f16,
-      roughness: 0.22,
-      metalness: 0.85,
+      color: 0x141824,
+      roughness: 0.35,
+      metalness: 0.6,
     });
     const ground = new THREE.Mesh(groundGeom, groundMat);
     ground.receiveShadow = true;
     groundGroup.add(ground);
 
-    // 2. Race Track Circuit Ribbon (Grand 8-loop with Hairpins, Straights & Flyovers)
+    // 2. Race Track Circuit Ribbon
     const trackPoints = [
       new THREE.Vector3(0, 0.1, 0), // Start Line
       new THREE.Vector3(0, 0.1, 280), // Main Straight
@@ -78,28 +82,28 @@ export class CityTrackManager {
       new THREE.Vector3(0, 0.1, 280), // Return to main straight
     ];
 
-    const curve = new THREE.CatmullRomCurve3(trackPoints, true);
-    const trackWidth = 32;
-    const trackGeom = new THREE.TubeGeometry(curve, 240, trackWidth / 2, 4, true);
+    this.trackCurve = new THREE.CatmullRomCurve3(trackPoints, true);
+    const trackWidth = 34;
+    const trackGeom = new THREE.TubeGeometry(this.trackCurve, 240, trackWidth / 2, 4, true);
 
     const trackMat = new THREE.MeshStandardMaterial({
-      color: 0x161b24,
-      roughness: 0.35,
-      metalness: 0.75,
+      color: 0x1c2333,
+      roughness: 0.4,
+      metalness: 0.5,
     });
     const trackMesh = new THREE.Mesh(trackGeom, trackMat);
-    trackMesh.scale.set(1, 0.05, 1);
+    trackMesh.scale.set(1, 0.04, 1);
     trackMesh.receiveShadow = true;
     groundGroup.add(trackMesh);
 
-    // Track Center Dashed Neon Line
+    // Center Dashed Neon Line
     const lineMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
-    const points = curve.getPoints(120);
+    const points = this.trackCurve.getPoints(120);
     for (let i = 0; i < points.length; i += 2) {
       const p1 = points[i];
       const p2 = points[(i + 1) % points.length];
       const dist = p1.distanceTo(p2);
-      const dashGeom = new THREE.BoxGeometry(1.2, 0.06, dist * 0.7);
+      const dashGeom = new THREE.BoxGeometry(1.2, 0.08, dist * 0.7);
       const dash = new THREE.Mesh(dashGeom, lineMat);
       dash.position.set((p1.x + p2.x) / 2, 0.15, (p1.z + p2.z) / 2);
       dash.lookAt(p2.x, 0.15, p2.z);
@@ -108,7 +112,7 @@ export class CityTrackManager {
 
     // Start / Finish Line Grid Gantry
     const gantryGeom = new THREE.BoxGeometry(trackWidth + 6, 2.5, 3.0);
-    const gantryMat = new THREE.MeshStandardMaterial({ color: 0x222936, metalness: 0.9 });
+    const gantryMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9 });
     const gantry = new THREE.Mesh(gantryGeom, gantryMat);
     gantry.position.set(0, 11, 0);
 
@@ -127,23 +131,48 @@ export class CityTrackManager {
     this.scene.add(groundGroup);
   }
 
+  buildStreetlights() {
+    const lightGroup = new THREE.Group();
+    const poleGeom = new THREE.CylinderGeometry(0.3, 0.4, 14, 8);
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.8 });
+    const lampHeadGeom = new THREE.BoxGeometry(1.8, 0.4, 3.2);
+    const lampGlowMat = new THREE.MeshBasicMaterial({ color: 0xfff0aa });
+
+    const points = this.trackCurve.getPoints(24);
+    for (let i = 0; i < points.length; i++) {
+      const pt = points[i];
+      const pole = new THREE.Mesh(poleGeom, poleMat);
+      pole.position.set(pt.x + 20, 7, pt.z);
+
+      const lampHead = new THREE.Mesh(lampHeadGeom, lampGlowMat);
+      lampHead.position.set(pt.x + 18, 13.8, pt.z);
+
+      // Real PointLight illuminating track
+      const lampLight = new THREE.PointLight(0xfff0aa, 2.5, 45);
+      lampLight.position.set(pt.x + 18, 13, pt.z);
+
+      lightGroup.add(pole, lampHead, lampLight);
+    }
+
+    this.scene.add(lightGroup);
+  }
+
   buildSkyscraperSkyline() {
     const cityGroup = new THREE.Group();
 
-    // 1. Facade Textures
     const blueCanvas = document.createElement("canvas");
     blueCanvas.width = 512;
     blueCanvas.height = 1024;
     const bCtx = blueCanvas.getContext("2d");
-    bCtx.fillStyle = "#0c131f";
+    bCtx.fillStyle = "#121d30";
     bCtx.fillRect(0, 0, 512, 1024);
 
     for (let y = 14; y < 1024; y += 28) {
-      bCtx.fillStyle = "#1e2c3f";
+      bCtx.fillStyle = "#22354e";
       bCtx.fillRect(0, y, 512, 4);
       for (let x = 12; x < 512; x += 26) {
         const isLit = Math.random() > 0.35;
-        bCtx.fillStyle = isLit ? (Math.random() > 0.6 ? "#ffd166" : "#00f0ff") : "#060a12";
+        bCtx.fillStyle = isLit ? (Math.random() > 0.6 ? "#ffd166" : "#00f0ff") : "#091220";
         bCtx.fillRect(x, y + 5, 18, 18);
       }
     }
@@ -153,27 +182,24 @@ export class CityTrackManager {
 
     const bldgMat = new THREE.MeshStandardMaterial({
       map: blueTex,
-      metalness: 0.9,
-      roughness: 0.15,
-      emissive: 0x002b44,
-      emissiveIntensity: 0.5,
+      metalness: 0.85,
+      roughness: 0.2,
+      emissive: 0x003355,
+      emissiveIntensity: 0.55,
     });
 
     const neonMat1 = new THREE.MeshBasicMaterial({ color: 0xff007f });
     const neonMat2 = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
-    const neonMat3 = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
 
-    // Grid of skyscrapers surrounding the circuit
     for (let x = -600; x <= 600; x += 120) {
       for (let z = -600; z <= 600; z += 120) {
-        // Keep track corridor clear
         if (Math.abs(x) < 50 && Math.abs(z) < 320) continue;
         if (Math.abs(x - 220) < 60 && Math.abs(z - 280) < 140) continue;
         if (Math.abs(x + 180) < 60 && Math.abs(z + 280) < 140) continue;
 
         const width = 45 + Math.random() * 35;
         const depth = 45 + Math.random() * 35;
-        const height = 90 + Math.random() * 260; // 90m to 350m tall
+        const height = 90 + Math.random() * 260;
 
         const bldgGeom = new THREE.BoxGeometry(width, height, depth);
         const bldg = new THREE.Mesh(bldgGeom, bldgMat);
@@ -182,7 +208,6 @@ export class CityTrackManager {
         bldg.receiveShadow = true;
         cityGroup.add(bldg);
 
-        // Store building collider
         this.colliders.push({
           minX: x - width / 2,
           maxX: x + width / 2,
@@ -190,7 +215,6 @@ export class CityTrackManager {
           maxZ: z + depth / 2,
         });
 
-        // Add Neon Billboard or Rooftop Spire
         if (height > 180 && Math.random() > 0.4) {
           const boardGeom = new THREE.PlaneGeometry(36, 18);
           const boardMat = Math.random() > 0.5 ? neonMat1 : neonMat2;
@@ -207,7 +231,6 @@ export class CityTrackManager {
   buildRampsAndBarriers() {
     const rampGroup = new THREE.Group();
 
-    // Stunt Jump Ramp 1 (Over the river canal)
     const rampGeom = new THREE.BoxGeometry(22, 5, 28);
     rampGeom.rotateX(0.22);
     const rampMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, metalness: 0.8, roughness: 0.3 });
@@ -223,7 +246,6 @@ export class CityTrackManager {
       boostSpeed: 45,
     });
 
-    // Stunt Jump Ramp 2
     const ramp2 = new THREE.Mesh(rampGeom, rampMat);
     ramp2.position.set(-180, 1.8, -260);
     ramp2.rotation.y = Math.PI * 0.8;
@@ -240,7 +262,6 @@ export class CityTrackManager {
   }
 
   buildTraffic() {
-    // 8 Civil Traffic Cars cruising along track sectors
     const carMat1 = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3 });
     const carMat2 = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.3 });
     const carMat3 = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4 });
@@ -255,7 +276,6 @@ export class CityTrackManager {
       body.position.y = 0.6;
       g.add(body);
 
-      // Headlights & Taillights
       const hl = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.2, 0.1), new THREE.MeshBasicMaterial({ color: 0xffffff }));
       hl.position.set(0, 0.6, 3.51);
       const tl = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.2, 0.1), new THREE.MeshBasicMaterial({ color: 0xff0022 }));
@@ -280,7 +300,6 @@ export class CityTrackManager {
   buildPoliceInterceptor() {
     const policeGroup = new THREE.Group();
 
-    // Black & White Pursuit Cruiser Body
     const bodyMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.2, metalness: 0.8 });
     const whiteDoorMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3 });
 
@@ -292,7 +311,6 @@ export class CityTrackManager {
     doors.position.set(0, 0.5, 0);
     policeGroup.add(doors);
 
-    // Flashing Emergency Siren Lightbar
     const lightbarGeom = new THREE.BoxGeometry(2.4, 0.25, 0.6);
     this.sirenBlueMat = new THREE.MeshBasicMaterial({ color: 0x0066ff });
     this.sirenRedMat = new THREE.MeshBasicMaterial({ color: 0xff0022 });
@@ -315,10 +333,8 @@ export class CityTrackManager {
     const px = car.mesh.position.x;
     const pz = car.mesh.position.z;
 
-    // 1. Skyscraper Building Collisions
     for (const b of this.colliders) {
       if (px > b.minX - 2.2 && px < b.maxX + 2.2 && pz > b.minZ - 2.2 && pz < b.maxZ + 2.2) {
-        // Bounce off building
         car.speed *= -0.45;
         cyberAudio.playCrash();
         const pushDir = new THREE.Vector3(px - (b.minX + b.maxX) / 2, 0, pz - (b.minZ + b.maxZ) / 2).normalize();
@@ -327,7 +343,6 @@ export class CityTrackManager {
       }
     }
 
-    // 2. Stunt Jump Ramps
     for (const ramp of this.ramps) {
       const d = Math.hypot(px - ramp.x, pz - ramp.z);
       if (d < ramp.radius && car.speed > 80) {
@@ -337,21 +352,17 @@ export class CityTrackManager {
   }
 
   update(delta, playerCar) {
-    // 1. Move Civilian Traffic
     for (const car of this.trafficCars) {
       car.mesh.position.z += car.speed * car.dir * delta * 0.3;
       if (car.mesh.position.z > 450) car.mesh.position.z = -450;
       if (car.mesh.position.z < -450) car.mesh.position.z = 450;
 
-      // Near miss bonus check
       const d = car.mesh.position.distanceTo(playerCar.mesh.position);
       if (d < 5.5 && Math.abs(playerCar.speed) > 90) {
         playerCar.totalScore += 250;
-        playerCar.addBoost?.(15);
       }
     }
 
-    // 2. Police Pursuit AI Logic
     const playerSpeed = Math.abs(playerCar.speed);
     if (playerCar.totalScore > 1500 || playerSpeed > 170) {
       this.policeActive = true;
@@ -359,7 +370,6 @@ export class CityTrackManager {
     }
 
     if (this.policeActive && this.policeCar) {
-      // Police pursues player car
       const targetPos = playerCar.mesh.position;
       const policeDir = new THREE.Vector3().subVectors(targetPos, this.policeCar.position).normalize();
 
@@ -367,7 +377,6 @@ export class CityTrackManager {
       this.policeCar.position.addScaledVector(policeDir, (policeSpeed * 1000 * delta) / 3600);
       this.policeCar.lookAt(targetPos.x, 0.45, targetPos.z);
 
-      // Flash Police Siren Lightbars
       const isBlue = Math.sin(Date.now() * 0.015) > 0;
       this.sirenBlueMat.color.setHex(isBlue ? 0x00f0ff : 0x001144);
       this.sirenRedMat.color.setHex(!isBlue ? 0xff0033 : 0x330008);

@@ -17,7 +17,7 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #050811;
+      background: #080d1a;
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       color: #fff;
     }
@@ -34,7 +34,7 @@
       inset: 0;
       z-index: 10;
       pointer-events: none;
-      display: flex;
+      display: none;
       flex-direction: column;
       justify-content: space-between;
       padding: 16px;
@@ -49,8 +49,8 @@
     }
 
     .hud-pill {
-      background: rgba(10, 16, 28, 0.85);
-      border: 1px solid rgba(0, 240, 255, 0.4);
+      background: rgba(10, 16, 28, 0.88);
+      border: 1px solid rgba(0, 240, 255, 0.45);
       border-radius: 12px;
       padding: 8px 16px;
       backdrop-filter: blur(12px);
@@ -91,7 +91,7 @@
       display: none;
       flex-direction: column;
       align-items: center;
-      background: rgba(8, 12, 22, 0.9);
+      background: rgba(8, 12, 22, 0.92);
       border: 2px solid #ff007f;
       border-radius: 16px;
       padding: 10px 24px;
@@ -153,10 +153,10 @@
     }
 
     .speedo-box {
-      background: rgba(10, 16, 28, 0.85);
+      background: rgba(10, 16, 28, 0.88);
       border: 2px solid rgba(0, 240, 255, 0.5);
       border-radius: 16px;
-      padding: 12px 20px;
+      padding: 10px 18px;
       backdrop-filter: blur(12px);
       box-shadow: 0 0 25px rgba(0, 240, 255, 0.25);
       display: flex;
@@ -165,7 +165,7 @@
     }
 
     .speedo-val {
-      font-size: 48px;
+      font-size: 44px;
       font-weight: 900;
       color: #00f0ff;
       line-height: 1;
@@ -173,17 +173,17 @@
     }
 
     .speedo-unit {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 900;
       color: #8da4be;
     }
 
     .gear-box {
-      background: rgba(10, 16, 28, 0.85);
+      background: rgba(10, 16, 28, 0.88);
       border: 2px solid #ff7700;
       border-radius: 14px;
-      padding: 12px 18px;
-      font-size: 32px;
+      padding: 10px 16px;
+      font-size: 28px;
       font-weight: 900;
       color: #ffaa00;
       text-shadow: 0 0 12px #ff7700;
@@ -195,11 +195,11 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
-      width: 180px;
+      width: 170px;
     }
 
     .bar-pill {
-      background: rgba(10, 16, 28, 0.85);
+      background: rgba(10, 16, 28, 0.88);
       border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 8px;
       padding: 5px 10px;
@@ -236,7 +236,7 @@
     }
 
     .hud-btn {
-      background: rgba(12, 20, 32, 0.85);
+      background: rgba(12, 20, 32, 0.88);
       border: 1px solid rgba(0, 240, 255, 0.5);
       border-radius: 8px;
       padding: 8px 12px;
@@ -289,8 +289,8 @@
       color: #00f0ff;
       font-size: 20px;
       font-weight: 900;
-      width: 64px;
-      height: 64px;
+      width: 60px;
+      height: 60px;
       display: grid;
       place-items: center;
       backdrop-filter: blur(8px);
@@ -305,41 +305,41 @@
       #touch-controls { display: block; }
     }
 
-    /* Garage Modal */
-    .screen-overlay {
+    /* Garage Customization HUD Card (Anchored to Left, so 3D Car is 100% visible on Screen!) */
+    #garage-screen {
       position: fixed;
       inset: 0;
       z-index: 50;
-      display: grid;
-      place-items: center;
-      background: radial-gradient(circle at center, rgba(14, 22, 38, 0.94) 0%, rgba(5, 8, 14, 0.98) 100%);
-      backdrop-filter: blur(14px);
-      padding: 16px;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 24px 32px;
     }
 
-    .modal-card {
-      width: min(640px, 94vw);
-      max-height: 90vh;
-      overflow-y: auto;
-      background: linear-gradient(145deg, #101626 0%, #182236 100%);
-      border: 2px solid rgba(0, 240, 255, 0.5);
+    .garage-card {
+      pointer-events: auto;
+      width: min(390px, 94vw);
+      background: rgba(10, 16, 28, 0.88);
+      border: 2px solid rgba(0, 240, 255, 0.55);
       border-radius: 20px;
-      padding: 24px 24px 20px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(0, 240, 255, 0.25);
-      text-align: center;
+      padding: 22px 20px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 240, 255, 0.25);
+      text-align: left;
     }
 
     .modal-tag {
       color: #00f0ff;
       font-size: 11px;
       font-weight: 900;
-      letter-spacing: 0.2em;
+      letter-spacing: 0.18em;
       text-transform: uppercase;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
 
-    .modal-card h1 {
-      font-size: clamp(28px, 5vw, 40px);
+    .garage-card h1 {
+      font-size: 26px;
       font-weight: 900;
       line-height: 1.1;
       margin-bottom: 12px;
@@ -351,39 +351,40 @@
     .car-selector {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-bottom: 16px;
+      gap: 6px;
+      margin-bottom: 14px;
     }
 
     .car-select-btn {
-      background: rgba(255, 255, 255, 0.05);
-      border: 2px solid rgba(255, 255, 255, 0.15);
-      border-radius: 12px;
-      padding: 12px 8px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      padding: 10px 4px;
       color: #fff;
       cursor: pointer;
       font-weight: 800;
-      font-size: 13px;
+      font-size: 11px;
+      text-align: center;
       transition: all 0.15s ease;
     }
 
     .car-select-btn.active {
       border-color: #00f0ff;
-      background: rgba(0, 240, 255, 0.2);
-      box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+      background: rgba(0, 240, 255, 0.25);
+      box-shadow: 0 0 14px rgba(0, 240, 255, 0.4);
     }
 
     .custom-row {
-      margin-bottom: 14px;
-      text-align: left;
+      margin-bottom: 12px;
     }
 
     .custom-row-title {
-      font-size: 11px;
-      font-weight: 800;
+      font-size: 10px;
+      font-weight: 900;
       color: #8da4be;
       margin-bottom: 6px;
       text-transform: uppercase;
+      letter-spacing: 0.08em;
     }
 
     .swatches {
@@ -393,16 +394,19 @@
     }
 
     .color-swatch, .neon-swatch {
-      width: 32px;
-      height: 32px;
+      width: 30px;
+      height: 30px;
       border-radius: 50%;
       cursor: pointer;
-      border: 2px solid #fff;
-      transition: transform 0.15s ease;
+      border: 2px solid rgba(255, 255, 255, 0.5);
+      transition: transform 0.15s ease, border-color 0.15s ease;
     }
 
-    .color-swatch:hover, .neon-swatch:hover {
-      transform: scale(1.15);
+    .color-swatch:hover, .neon-swatch:hover,
+    .color-swatch.active, .neon-swatch.active {
+      transform: scale(1.2);
+      border-color: #fff;
+      box-shadow: 0 0 12px #fff;
     }
 
     .btn-main {
@@ -410,14 +414,14 @@
       background: linear-gradient(135deg, #00f0ff 0%, #0077cc 100%);
       border: none;
       border-radius: 12px;
-      padding: 15px 20px;
+      padding: 14px 18px;
       color: #031020;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 900;
       letter-spacing: 0.06em;
       cursor: pointer;
       box-shadow: 0 8px 25px rgba(0, 240, 255, 0.4);
-      margin-top: 10px;
+      margin-top: 8px;
     }
 
     .btn-main:hover {
@@ -436,7 +440,6 @@
 
   <!-- HUD Overlay -->
   <div id="hud">
-    <!-- Top Bar -->
     <div class="hud-top">
       <div style="display: flex; gap: 10px;">
         <div class="hud-pill">
@@ -456,10 +459,8 @@
       </div>
     </div>
 
-    <!-- Notification Banner -->
     <div id="hud-banner">ГОТОВ К СТАРТУ</div>
 
-    <!-- Bottom Bar -->
     <div class="hud-bottom">
       <div class="speedo-cluster">
         <div class="gear-box" id="hud-gear">1</div>
@@ -499,28 +500,28 @@
     </div>
   </div>
 
-  <!-- Garage Customization Screen -->
-  <div class="screen-overlay" id="garage-screen">
-    <div class="modal-card">
-      <div class="modal-tag">ГАРАЖ КАСТОМИЗАЦИИ &bull; КИБЕРПАНК СУПЕРКАРЫ</div>
+  <!-- Garage Showroom Screen -->
+  <div id="garage-screen">
+    <div class="garage-card">
+      <div class="modal-tag">3D ГАРАЖ ТЮНИНГА &bull; КИБЕРПАНК</div>
       <h1>Cyber Drift 3D</h1>
 
       <div class="car-selector">
         <button class="car-select-btn active" data-car="0">
-          🏎️ Apex GT-R<br><small style="color:#00f0ff;">Сбалансирован</small>
+          🏎️ Apex GT<br><small style="color:#00f0ff;">Спорт</small>
         </button>
         <button class="car-select-btn" data-car="1">
-          👾 Phantom Drift<br><small style="color:#ff007f;">Widebody Монстр</small>
+          👾 Phantom<br><small style="color:#ff007f;">Дрифт</small>
         </button>
         <button class="car-select-btn" data-car="2">
-          🚀 Hyperion X<br><small style="color:#ffaa00;">Сверхзвуковой</small>
+          🚀 Hyperion<br><small style="color:#ffaa00;">Гиперкар</small>
         </button>
       </div>
 
       <div class="custom-row">
-        <div class="custom-row-title">Цвет кузова:</div>
+        <div class="custom-row-title">Цвет кузова (лак / металлик):</div>
         <div class="swatches">
-          <div class="color-swatch" style="background:#e11d48;" data-color="e11d48"></div>
+          <div class="color-swatch active" style="background:#e11d48;" data-color="e11d48"></div>
           <div class="color-swatch" style="background:#7c3aed;" data-color="7c3aed"></div>
           <div class="color-swatch" style="background:#0ea5e9;" data-color="0ea5e9"></div>
           <div class="color-swatch" style="background:#10b981;" data-color="10b981"></div>
@@ -532,14 +533,14 @@
       <div class="custom-row">
         <div class="custom-row-title">Неон днища (Underglow):</div>
         <div class="swatches">
-          <div class="neon-swatch" style="background:#00f0ff; box-shadow:0 0 10px #00f0ff;" data-neon="00f0ff"></div>
+          <div class="neon-swatch active" style="background:#00f0ff; box-shadow:0 0 10px #00f0ff;" data-neon="00f0ff"></div>
           <div class="neon-swatch" style="background:#ff007f; box-shadow:0 0 10px #ff007f;" data-neon="ff007f"></div>
           <div class="neon-swatch" style="background:#39ff14; box-shadow:0 0 10px #39ff14;" data-neon="39ff14"></div>
           <div class="neon-swatch" style="background:#ffaa00; box-shadow:0 0 10px #ffaa00;" data-neon="ffaa00"></div>
         </div>
       </div>
 
-      <button class="btn-main" id="btn-start-race">ВЫЕХАТЬ НА ТРАССУ (ENTER / SPACE)</button>
+      <button class="btn-main" id="btn-start-race">ВЫЕХАТЬ НА ТРАССУ (SPACE)</button>
     </div>
   </div>
 

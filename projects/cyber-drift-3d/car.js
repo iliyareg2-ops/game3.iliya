@@ -1,4 +1,4 @@
-// car.js - 3D Supercars, Raycast Drift Physics Model, Tire Smoke, Exhaust Backfire, and Customization
+// car.js - 3D Supercars, Vibrant Automotive Paint Shader, Dynamic Headlights & Neon Underglow
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -12,8 +12,14 @@ export class CyberCar {
     this.bodyColor = 0xe11d48; // Candy Red
     this.underglowColor = 0x00f0ff; // Neon Cyan
     this.carMaterials = [];
+
+    // Real Dynamic Lights attached to car
     this.underglowLight = null;
     this.underglowMesh = null;
+    this.headlightLeft = null;
+    this.headlightRight = null;
+    this.taillightLeft = null;
+    this.taillightRight = null;
 
     // Wheels & Mechanical Parts
     this.wheels = [];
@@ -26,19 +32,18 @@ export class CyberCar {
 
     // Particle Systems (Tire Smoke & Sparks)
     this.smokeParticles = [];
-    this.sparkParticles = [];
 
     // Physics Dynamics
     this.position = new THREE.Vector3(0, 0.45, 0);
     this.velocity = new THREE.Vector3();
-    this.heading = 0; // Yaw angle in radians
-    this.speed = 0; // km/h
+    this.heading = 0;
+    this.speed = 0;
     this.maxSpeed = 280;
     this.maxReverseSpeed = 60;
     this.nitroMaxSpeed = 380;
-    this.acceleration = 120;
-    this.braking = 220;
-    this.turnSpeed = 2.4;
+    this.acceleration = 125;
+    this.braking = 240;
+    this.turnSpeed = 2.5;
 
     this.throttleInput = 0;
     this.steerInput = 0;
@@ -53,69 +58,73 @@ export class CyberCar {
     // Drift Dynamics
     this.driftAngle = 0;
     this.isDrifting = false;
-    this.driftPoints = 0;
     this.driftMultiplier = 1.0;
     this.currentDriftScore = 0;
     this.totalScore = 0;
-    this.onScoreUpdateCallback = null;
 
     this.buildCarModel();
-    this.createUnderglow();
+    this.createCarLights();
     this.createExhaustFlames();
     this.createSmokeParticles();
     this.scene.add(this.mesh);
   }
 
   buildCarModel() {
-    // Clear existing meshes
     while (this.mesh.children.length > 0) {
       this.mesh.remove(this.mesh.children[0]);
     }
     this.wheels = [];
     this.exhaustTips = [];
     this.flameCones = [];
+    this.carMaterials = [];
 
-    // Common Materials
-    this.bodyMat = new THREE.MeshStandardMaterial({
+    // Vibrant Automotive Clearcoat Paint Shader (Never turns pitch black!)
+    this.bodyMat = new THREE.MeshPhysicalMaterial({
       color: this.bodyColor,
-      metalness: 0.88,
-      roughness: 0.18,
+      metalness: 0.35,
+      roughness: 0.15,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.08,
+      emissive: this.bodyColor,
+      emissiveIntensity: 0.18,
     });
     this.carMaterials.push(this.bodyMat);
 
     this.carbonMat = new THREE.MeshStandardMaterial({
-      color: 0x111317,
-      metalness: 0.7,
-      roughness: 0.4,
+      color: 0x1e2229,
+      metalness: 0.6,
+      roughness: 0.35,
     });
 
     this.glassMat = new THREE.MeshStandardMaterial({
-      color: 0x051525,
-      metalness: 0.95,
+      color: 0x11283d,
+      metalness: 0.9,
       roughness: 0.05,
       transparent: true,
-      opacity: 0.7,
+      opacity: 0.75,
     });
 
     this.chromeMat = new THREE.MeshStandardMaterial({
-      color: 0xeeeeee,
+      color: 0xffffff,
       metalness: 0.95,
       roughness: 0.1,
     });
 
     this.tireMat = new THREE.MeshStandardMaterial({
-      color: 0x181818,
-      roughness: 0.9,
+      color: 0x222226,
+      roughness: 0.85,
     });
 
     this.rimMat = new THREE.MeshStandardMaterial({
-      color: 0xd4d4d8,
+      color: 0xf1f5f9,
       metalness: 0.9,
       roughness: 0.2,
+      emissive: 0x334155,
+      emissiveIntensity: 0.2,
     });
 
     this.headlightMat = new THREE.MeshBasicMaterial({ color: 0xeeffff });
-    this.taillightMat = new THREE.MeshBasicMaterial({ color: 0xff0022 });
+    this.taillightMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
 
     if (this.carType === 0) {
       this._buildApexGT();
@@ -126,6 +135,7 @@ export class CyberCar {
     }
 
     this._buildWheels();
+    this.createCarLights();
   }
 
   _buildApexGT() {
@@ -171,12 +181,12 @@ export class CyberCar {
     this.mesh.add(wing, stand1, stand2);
 
     // Lights
-    const hLight1 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 0.1), this.headlightMat);
+    const hLight1 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.25, 0.15), this.headlightMat);
     hLight1.position.set(1.6, 0.65, 4.71);
     const hLight2 = hLight1.clone();
     hLight2.position.x = -1.6;
 
-    const tLight1 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.2, 0.1), this.taillightMat);
+    const tLight1 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.25, 0.15), this.taillightMat);
     tLight1.position.set(1.4, 0.65, -4.71);
     const tLight2 = tLight1.clone();
     tLight2.position.x = -1.4;
@@ -218,6 +228,19 @@ export class CyberCar {
     const stand2 = stand1.clone();
     stand2.position.x = -1.5;
     this.mesh.add(wing, stand1, stand2);
+
+    // Lights
+    const hLight1 = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.25, 0.15), this.headlightMat);
+    hLight1.position.set(1.7, 0.65, 4.81);
+    const hLight2 = hLight1.clone();
+    hLight2.position.x = -1.7;
+
+    const tLight1 = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.25, 0.15), this.taillightMat);
+    tLight1.position.set(1.5, 0.65, -4.81);
+    const tLight2 = tLight1.clone();
+    tLight2.position.x = -1.5;
+
+    this.mesh.add(hLight1, hLight2, tLight1, tLight2);
 
     // Exhausts
     this.exhaustTips.push(new THREE.Vector3(0.8, 0.32, -4.85), new THREE.Vector3(-0.8, 0.32, -4.85));
@@ -263,6 +286,13 @@ export class CyberCar {
     const ex2 = ex1.clone();
     ex2.position.x = -0.9;
     this.mesh.add(ex1, ex2);
+
+    // Futuristic Light Strip
+    const hStrip = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.15, 0.1), this.headlightMat);
+    hStrip.position.set(0, 0.65, 4.8);
+    const tStrip = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.15, 0.1), this.taillightMat);
+    tStrip.position.set(0, 0.65, -4.8);
+    this.mesh.add(hStrip, tStrip);
 
     this.exhaustTips.push(new THREE.Vector3(0.9, 0.45, -5.1), new THREE.Vector3(-0.9, 0.45, -5.1));
   }
@@ -311,18 +341,41 @@ export class CyberCar {
     );
   }
 
-  createUnderglow() {
-    const planeGeom = new THREE.PlaneGeometry(3.6, 7.5);
+  createCarLights() {
+    // 1. Dynamic Underglow Light (Physically illuminates ground and wheels)
+    this.underglowLight = new THREE.PointLight(this.underglowColor, 3.8, 14);
+    this.underglowLight.position.set(0, 0.35, 0);
+    this.mesh.add(this.underglowLight);
+
+    // Underglow Neon Glow Plane on the ground (Elevated at y=0.22 so it NEVER gets occluded by asphalt)
+    const planeGeom = new THREE.PlaneGeometry(5.2, 9.8);
     planeGeom.rotateX(-Math.PI / 2);
     this.underglowMat = new THREE.MeshBasicMaterial({
       color: this.underglowColor,
       transparent: true,
-      opacity: 0.65,
+      opacity: 0.85,
       side: THREE.DoubleSide,
+      depthWrite: false,
     });
     this.underglowMesh = new THREE.Mesh(planeGeom, this.underglowMat);
-    this.underglowMesh.position.y = 0.08;
+    this.underglowMesh.position.y = 0.22;
     this.mesh.add(this.underglowMesh);
+
+    // 2. Front Headlight Beams (Projecting bright cones onto the asphalt)
+    this.headlightLeft = new THREE.SpotLight(0xeeffff, 4.5, 60, Math.PI / 5, 0.4);
+    this.headlightLeft.position.set(1.5, 0.7, 4.5);
+    this.headlightLeft.target.position.set(1.5, 0.1, 28);
+
+    this.headlightRight = new THREE.SpotLight(0xeeffff, 4.5, 60, Math.PI / 5, 0.4);
+    this.headlightRight.position.set(-1.5, 0.7, 4.5);
+    this.headlightRight.target.position.set(-1.5, 0.1, 28);
+
+    this.mesh.add(this.headlightLeft, this.headlightLeft.target, this.headlightRight, this.headlightRight.target);
+
+    // 3. Taillight Red Glow
+    this.tailPointLight = new THREE.PointLight(0xff0022, 2.0, 8);
+    this.tailPointLight.position.set(0, 0.7, -4.8);
+    this.mesh.add(this.tailPointLight);
   }
 
   createExhaustFlames() {
@@ -391,23 +444,26 @@ export class CyberCar {
 
   setBodyColor(hex) {
     this.bodyColor = hex;
-    if (this.bodyMat) this.bodyMat.color.setHex(hex);
+    if (this.bodyMat) {
+      this.bodyMat.color.setHex(hex);
+      this.bodyMat.emissive.setHex(hex);
+      this.bodyMat.emissiveIntensity = 0.18;
+    }
   }
 
   setUnderglowColor(hex) {
     this.underglowColor = hex;
     if (this.underglowMat) this.underglowMat.color.setHex(hex);
+    if (this.underglowLight) this.underglowLight.color.setHex(hex);
   }
 
   setCarType(typeIdx) {
     this.carType = typeIdx;
     this.buildCarModel();
-    this.createUnderglow();
     this.createExhaustFlames();
   }
 
   updatePhysics(delta, trackManager) {
-    // 1. Acceleration & Top Speed
     let topSpd = this.nitroActive && this.nitroFuel > 0 ? this.nitroMaxSpeed : this.maxSpeed;
     let accel = this.acceleration;
 
@@ -425,47 +481,36 @@ export class CyberCar {
       this.speed = Math.min(topSpd, this.speed + accel * this.throttleInput * delta);
     } else if (this.throttleInput < 0) {
       if (this.speed > 5) {
-        // Foot brake
         this.speed = Math.max(0, this.speed - this.braking * delta);
       } else {
-        // Reverse
         this.speed = Math.max(-this.maxReverseSpeed, this.speed - this.acceleration * 0.6 * delta);
       }
     } else {
-      // Natural rolling friction
       if (this.speed > 0) this.speed = Math.max(0, this.speed - delta * 35);
       if (this.speed < 0) this.speed = Math.min(0, this.speed + delta * 35);
     }
 
-    // 2. Handbrake & Drift Mechanics
-    const speedRatio = Math.abs(this.speed) / this.maxSpeed;
     this.steerAngle = THREE.MathUtils.lerp(this.steerAngle, this.steerInput * 0.55, delta * 8);
-
-    // Front wheels visual steer
     this.frontLeftWheelGroup.rotation.y = this.steerAngle;
     this.frontRightWheelGroup.rotation.y = this.steerAngle;
 
-    // Rotate wheels with speed
     const wheelRot = (this.speed * delta * 4) / 0.52;
     this.wheelFL.rotation.x += wheelRot;
     this.wheelFR.rotation.x += wheelRot;
     this.wheelRL.rotation.x += wheelRot;
     this.wheelRR.rotation.x += wheelRot;
 
-    // Handbrake trigger
     if (this.handbrake && Math.abs(this.speed) > 35) {
       this.isDrifting = true;
-      this.speed = Math.max(0, this.speed - delta * 50); // Slight drift scrub
+      this.speed = Math.max(0, this.speed - delta * 50);
       this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, -this.steerInput * 0.75, delta * 6);
     } else if (Math.abs(this.steerInput) > 0.4 && Math.abs(this.speed) > 95) {
-      // Power slide drift
       this.isDrifting = true;
       this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, -this.steerInput * 0.48, delta * 4);
     } else {
       this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, 0, delta * 5);
       if (Math.abs(this.driftAngle) < 0.08) {
         if (this.isDrifting && this.currentDriftScore > 0) {
-          // Cash in drift score
           this.totalScore += Math.round(this.currentDriftScore);
           cyberAudio.playScoreChime();
           this.currentDriftScore = 0;
@@ -475,20 +520,17 @@ export class CyberCar {
       }
     }
 
-    // 3. Drift Points & Multiplier Calculation
     if (this.isDrifting && Math.abs(this.speed) > 40) {
       const angleWeight = Math.abs(this.driftAngle) * 2.2;
       this.driftMultiplier = Math.min(8.0, this.driftMultiplier + delta * 0.8);
       const pointsDelta = this.speed * angleWeight * this.driftMultiplier * delta * 12;
       this.currentDriftScore += pointsDelta;
-      this.nitroFuel = Math.min(100, this.nitroFuel + delta * 8); // Refill nitro on drift!
+      this.nitroFuel = Math.min(100, this.nitroFuel + delta * 8);
 
-      // Emit tire smoke from rear wheels
       if (Math.random() < 0.9) this.emitTireSmoke(true);
       if (Math.random() < 0.9) this.emitTireSmoke(false);
     }
 
-    // 4. Heading & Movement
     const effectiveSteer = this.steerInput * (this.isDrifting ? 1.4 : 1.0);
     this.heading -= effectiveSteer * this.turnSpeed * (this.speed / this.maxSpeed) * delta;
     this.mesh.rotation.y = this.heading + this.driftAngle;
@@ -497,18 +539,15 @@ export class CyberCar {
     const forward = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.heading);
     this.mesh.position.addScaledVector(forward, speedMs * delta);
 
-    // 5. Track Boundary & Ramp Physics
     if (trackManager) {
       trackManager.handleCarTrackCollision(this);
     }
 
-    // 6. Audio updates
     this.rpm = 800 + (Math.abs(this.speed) % 55) * 140 + (this.throttleInput > 0 ? 1200 : 0);
     const rpmRatio = Math.min(1.0, (this.rpm - 800) / 7500);
     const driftRatio = Math.abs(this.driftAngle);
     cyberAudio.update(rpmRatio, this.speed, driftRatio, this.nitroActive, false);
 
-    // Update active smoke particles
     for (const p of this.smokeParticles) {
       if (!p.mesh.visible) continue;
       p.life += delta;
