@@ -1,4 +1,4 @@
-// audio.js - Web Audio API Sound Engine for Sky Jet 3D
+// audio.js - Web Audio API Sound Engine for Sky Jet 3D (Turbines, Sonic Booms, Radio Chatter & Shield)
 
 class FlightAudioEngine {
   constructor() {
@@ -6,7 +6,6 @@ class FlightAudioEngine {
     this.isInitialized = false;
     this.isMuted = false;
 
-    // Nodes
     this.masterGain = null;
     this.engineGain = null;
     this.engineOsc1 = null;
@@ -58,7 +57,6 @@ class FlightAudioEngine {
   }
 
   _setupEngineSound() {
-    // Jet Turbine: Low humming oscillators + Bandpass filtered noise
     this.engineGain = this.ctx.createGain();
     this.engineGain.gain.setValueAtTime(0.01, this.ctx.currentTime);
 
@@ -75,7 +73,6 @@ class FlightAudioEngine {
     this.engineOsc1.connect(oscGain);
     this.engineOsc2.connect(oscGain);
 
-    // Jet roar noise
     const noiseBuffer = this._createNoiseBuffer();
     this.engineNoiseNode = this.ctx.createBufferSource();
     this.engineNoiseNode.buffer = noiseBuffer;
@@ -111,8 +108,8 @@ class FlightAudioEngine {
 
     this.boostFilter = this.ctx.createBiquadFilter();
     this.boostFilter.type = "bandpass";
-    this.boostFilter.frequency.setValueAtTime(800, this.ctx.currentTime);
-    this.boostFilter.Q.setValueAtTime(1.5, this.ctx.currentTime);
+    this.boostFilter.frequency.setValueAtTime(850, this.ctx.currentTime);
+    this.boostFilter.Q.setValueAtTime(1.8, this.ctx.currentTime);
 
     boostNoise.connect(this.boostFilter);
     this.boostFilter.connect(this.boostGain);
@@ -145,51 +142,64 @@ class FlightAudioEngine {
     if (!this.isInitialized || this.isMuted) return;
     const t = this.ctx.currentTime;
 
-    // Pitch & Volume based on throttle and speed
-    const baseFreq = 50 + throttle * 120 + (speedKmH / 900) * 80;
+    const baseFreq = 50 + throttle * 120 + (speedKmH / 1200) * 90;
     this.engineOsc1.frequency.setTargetAtTime(baseFreq, t, 0.08);
     this.engineOsc2.frequency.setTargetAtTime(baseFreq * 2.1, t, 0.08);
 
-    const filterFreq = 300 + throttle * 1200 + (speedKmH / 900) * 800;
+    const filterFreq = 300 + throttle * 1400 + (speedKmH / 1200) * 900;
     this.engineFilter.frequency.setTargetAtTime(filterFreq, t, 0.08);
 
     const targetEngineVol = 0.2 + throttle * 0.45;
     this.engineGain.gain.setTargetAtTime(targetEngineVol, t, 0.08);
 
-    // Wind speed sound
-    const windVol = Math.min(0.6, (speedKmH / 900) * 0.5);
-    const windCutoff = 200 + (speedKmH / 900) * 1400;
+    const windVol = Math.min(0.65, (speedKmH / 1200) * 0.55);
+    const windCutoff = 200 + (speedKmH / 1200) * 1600;
     this.windGain.gain.setTargetAtTime(windVol, t, 0.1);
     this.windFilter.frequency.setTargetAtTime(windCutoff, t, 0.1);
 
-    // Boost effect
-    const boostVol = isBoosting ? 0.65 : 0.0;
+    const boostVol = isBoosting ? 0.7 : 0.0;
     this.boostGain.gain.setTargetAtTime(boostVol, t, 0.06);
     if (isBoosting) {
-      this.boostFilter.frequency.setTargetAtTime(1200 + Math.random() * 200, t, 0.05);
+      this.boostFilter.frequency.setTargetAtTime(1300 + Math.random() * 200, t, 0.05);
     }
   }
 
-  playCollectSound() {
+  playCollectSound(type = "normal") {
     if (!this.isInitialized || this.isMuted) return;
     const t = this.ctx.currentTime;
 
-    // Futuristic synth chime (2 harmonious tones)
     const osc1 = this.ctx.createOscillator();
     const osc2 = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
 
-    osc1.type = "sine";
-    osc2.type = "triangle";
+    if (type === "gold") {
+      // Epic fanfare chord
+      osc1.type = "sine";
+      osc2.type = "triangle";
+      osc1.frequency.setValueAtTime(659.25, t); // E5
+      osc1.frequency.exponentialRampToValueAtTime(1318.51, t + 0.3); // E6
+      osc2.frequency.setValueAtTime(1046.50, t); // C6
+      osc2.frequency.exponentialRampToValueAtTime(2093.00, t + 0.4); // C7
+    } else if (type === "plasma") {
+      // Sci-fi shield charge sound
+      osc1.type = "sawtooth";
+      osc2.type = "sine";
+      osc1.frequency.setValueAtTime(300, t);
+      osc1.frequency.exponentialRampToValueAtTime(1400, t + 0.35);
+      osc2.frequency.setValueAtTime(600, t);
+      osc2.frequency.exponentialRampToValueAtTime(1800, t + 0.35);
+    } else {
+      // Standard Turbo Chime
+      osc1.type = "sine";
+      osc2.type = "triangle";
+      osc1.frequency.setValueAtTime(587.33, t);
+      osc1.frequency.exponentialRampToValueAtTime(1174.66, t + 0.18);
+      osc2.frequency.setValueAtTime(880, t);
+      osc2.frequency.exponentialRampToValueAtTime(1760, t + 0.25);
+    }
 
-    osc1.frequency.setValueAtTime(587.33, t); // D5
-    osc1.frequency.exponentialRampToValueAtTime(1174.66, t + 0.18); // D6
-
-    osc2.frequency.setValueAtTime(880, t); // A5
-    osc2.frequency.exponentialRampToValueAtTime(1760, t + 0.25); // A6
-
-    gain.gain.setValueAtTime(0.4, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+    gain.gain.setValueAtTime(0.45, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
 
     osc1.connect(gain);
     osc2.connect(gain);
@@ -197,8 +207,47 @@ class FlightAudioEngine {
 
     osc1.start(t);
     osc2.start(t);
-    osc1.stop(t + 0.5);
-    osc2.stop(t + 0.5);
+    osc1.stop(t + 0.55);
+    osc2.stop(t + 0.55);
+  }
+
+  playRadioChatter() {
+    if (!this.isInitialized || this.isMuted) return;
+    const t = this.ctx.currentTime;
+    
+    // Quick dual-tone military radio squelch
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(1400, t);
+    osc.frequency.setValueAtTime(900, t + 0.06);
+
+    gain.gain.setValueAtTime(0.12, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.16);
+  }
+
+  playShieldDeflect() {
+    if (!this.isInitialized || this.isMuted) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(450, t);
+    osc.frequency.exponentialRampToValueAtTime(90, t + 0.25);
+
+    gain.gain.setValueAtTime(0.4, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.3);
   }
 
   playTakeoffAlert() {
@@ -206,36 +255,15 @@ class FlightAudioEngine {
     const t = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
-
     osc.type = "sine";
     osc.frequency.setValueAtTime(800, t);
     osc.frequency.setValueAtTime(1200, t + 0.12);
-
     gain.gain.setValueAtTime(0.25, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-
     osc.connect(gain);
     gain.connect(this.masterGain);
     osc.start(t);
     osc.stop(t + 0.32);
-  }
-
-  playWarningBeep() {
-    if (!this.isInitialized || this.isMuted) return;
-    const t = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-
-    osc.type = "square";
-    osc.frequency.setValueAtTime(950, t);
-
-    gain.gain.setValueAtTime(0.2, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-
-    osc.connect(gain);
-    gain.connect(this.masterGain);
-    osc.start(t);
-    osc.stop(t + 0.16);
   }
 
   playCrashSound() {

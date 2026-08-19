@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Sky Jet 3D: Альпийский Перехватчик</title>
+  <title>Sky Jet 3D: Бесконечный Полёт</title>
   <style>
     * {
       box-sizing: border-box;
@@ -28,7 +28,7 @@
       z-index: 1;
     }
 
-    /* HUD Overlay Layer */
+    /* HUD Overlay */
     #hud {
       position: absolute;
       inset: 0;
@@ -37,37 +37,37 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 20px;
+      padding: 16px;
     }
 
-    /* Top Status Bar */
+    /* Top HUD */
     .hud-top {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      gap: 12px;
+      gap: 10px;
     }
 
     .hud-cluster {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
     }
 
     .hud-pill {
-      background: rgba(10, 16, 26, 0.82);
+      background: rgba(10, 16, 26, 0.85);
       border: 1px solid rgba(0, 240, 255, 0.45);
       border-radius: 10px;
-      padding: 8px 14px;
+      padding: 6px 12px;
       backdrop-filter: blur(10px);
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 0 10px rgba(0, 240, 255, 0.1);
       display: flex;
       flex-direction: column;
-      min-width: 90px;
+      min-width: 80px;
     }
 
     .hud-label {
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 800;
       color: #8da4be;
       letter-spacing: 0.12em;
@@ -75,27 +75,28 @@
     }
 
     .hud-val {
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 900;
       color: #00f0ff;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.04em;
       text-shadow: 0 0 10px rgba(0, 240, 255, 0.6);
     }
 
     .hud-val.alt { color: #55ff99; text-shadow: 0 0 10px rgba(85, 255, 153, 0.6); }
     .hud-val.gold { color: #ffcc00; text-shadow: 0 0 10px rgba(255, 204, 0, 0.6); }
+    .hud-val.dist { color: #ff88ff; text-shadow: 0 0 10px rgba(255, 136, 255, 0.6); }
 
-    /* Nitro Fuel Bar */
-    .nitro-box {
-      width: 140px;
+    /* Nitro & Shield Bars */
+    .bar-box {
+      width: 130px;
     }
 
-    .nitro-track {
+    .bar-track {
       width: 100%;
       height: 8px;
       background: rgba(255, 255, 255, 0.12);
       border-radius: 4px;
-      margin-top: 6px;
+      margin-top: 4px;
       overflow: hidden;
       border: 1px solid rgba(255, 120, 0, 0.4);
     }
@@ -108,14 +109,39 @@
       transition: width 0.1s linear;
     }
 
-    /* Central Crosshair & Reticle */
+    #hud-shield-bar {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, #0088ff, #00f0ff, #ffffff);
+      box-shadow: 0 0 10px #00f0ff;
+      transition: width 0.1s linear;
+    }
+
+    /* Biome Pill */
+    #biome-pill {
+      background: rgba(14, 24, 38, 0.9);
+      border: 1px solid #00f0ff;
+      border-radius: 12px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 900;
+      color: #00f0ff;
+      letter-spacing: 0.08em;
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.7);
+      box-shadow: 0 0 14px rgba(0, 240, 255, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Crosshair */
     #crosshair {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 48px;
-      height: 48px;
+      width: 44px;
+      height: 44px;
       pointer-events: none;
       opacity: 0.75;
     }
@@ -145,7 +171,7 @@
 
     .reticle-bracket {
       position: absolute;
-      inset: 6px;
+      inset: 5px;
       border: 2px solid #00f0ff;
       border-radius: 50%;
     }
@@ -153,14 +179,14 @@
     /* Notification Banner */
     #hud-banner {
       position: absolute;
-      top: 18%;
+      top: 17%;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(8, 14, 24, 0.88);
+      background: rgba(8, 14, 24, 0.9);
       border: 1px solid #00f0ff;
       border-radius: 12px;
-      padding: 10px 24px;
-      font-size: 15px;
+      padding: 10px 22px;
+      font-size: 14px;
       font-weight: 800;
       letter-spacing: 0.08em;
       color: #fff;
@@ -173,7 +199,7 @@
       pointer-events: none;
     }
 
-    /* Bottom Status & Radar */
+    /* Bottom Info & Radar */
     .hud-bottom {
       display: flex;
       justify-content: space-between;
@@ -181,13 +207,13 @@
     }
 
     .controls-hint {
-      background: rgba(10, 16, 26, 0.75);
+      background: rgba(10, 16, 26, 0.8);
       border: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: 10px;
-      padding: 10px 14px;
-      font-size: 12px;
+      padding: 8px 12px;
+      font-size: 11px;
       color: #9ab0c7;
-      line-height: 1.5;
+      line-height: 1.45;
     }
 
     .controls-hint b {
@@ -196,8 +222,8 @@
 
     .radar-wrapper {
       position: relative;
-      width: 140px;
-      height: 140px;
+      width: 130px;
+      height: 130px;
       background: rgba(8, 12, 18, 0.85);
       border-radius: 50%;
       border: 2px solid rgba(0, 240, 255, 0.5);
@@ -210,10 +236,10 @@
       height: 100%;
     }
 
-    /* Quick Action Buttons */
+    /* Quick Buttons */
     .quick-actions {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       pointer-events: auto;
     }
 
@@ -221,10 +247,10 @@
       background: rgba(12, 20, 32, 0.85);
       border: 1px solid rgba(0, 240, 255, 0.5);
       border-radius: 8px;
-      padding: 8px 12px;
+      padding: 6px 10px;
       color: #00f0ff;
       font-weight: 800;
-      font-size: 12px;
+      font-size: 11px;
       cursor: pointer;
       backdrop-filter: blur(8px);
       transition: all 0.15s ease;
@@ -236,7 +262,7 @@
       box-shadow: 0 0 12px #00f0ff;
     }
 
-    /* Touch Controls for Mobile/Tablets */
+    /* Touch Controls */
     #touch-controls {
       display: none;
       position: absolute;
@@ -247,36 +273,35 @@
 
     .touch-pad-left {
       position: absolute;
-      bottom: 24px;
-      left: 20px;
+      bottom: 20px;
+      left: 16px;
       display: grid;
-      grid-template-columns: repeat(3, 56px);
-      grid-template-rows: repeat(3, 56px);
-      gap: 6px;
+      grid-template-columns: repeat(3, 52px);
+      grid-template-rows: repeat(3, 52px);
+      gap: 5px;
       pointer-events: auto;
     }
 
     .touch-pad-right {
       position: absolute;
-      bottom: 24px;
-      right: 170px;
+      bottom: 20px;
+      right: 150px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
       pointer-events: auto;
     }
 
     .touch-btn {
       background: rgba(10, 18, 30, 0.7);
       border: 2px solid rgba(0, 240, 255, 0.6);
-      border-radius: 12px;
+      border-radius: 10px;
       color: #00f0ff;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 900;
       display: grid;
       place-items: center;
       backdrop-filter: blur(6px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     }
 
     .touch-btn:active {
@@ -289,16 +314,16 @@
       .controls-hint { display: none; }
     }
 
-    /* Modal Screens (Intro, Over, Victory) */
+    /* Modal Screens */
     .screen-overlay {
       position: fixed;
       inset: 0;
       z-index: 50;
       display: grid;
       place-items: center;
-      background: radial-gradient(circle at center, rgba(14, 22, 34, 0.92) 0%, rgba(5, 8, 14, 0.98) 100%);
+      background: radial-gradient(circle at center, rgba(14, 22, 34, 0.94) 0%, rgba(5, 8, 14, 0.98) 100%);
       backdrop-filter: blur(12px);
-      padding: 20px;
+      padding: 16px;
     }
 
     .modal-card {
@@ -316,7 +341,7 @@
 
     .modal-tag {
       color: #00f0ff;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 900;
       letter-spacing: 0.18em;
       text-transform: uppercase;
@@ -324,27 +349,45 @@
     }
 
     .modal-card h1 {
-      font-size: clamp(28px, 5vw, 42px);
+      font-size: clamp(26px, 5vw, 38px);
       font-weight: 900;
       line-height: 1.1;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
       background: linear-gradient(90deg, #ffffff 0%, #a5e9ff 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
     .modal-desc {
-      font-size: 15px;
+      font-size: 14px;
       color: #b0c4de;
-      line-height: 1.6;
-      margin-bottom: 24px;
+      line-height: 1.55;
+      margin-bottom: 20px;
+    }
+
+    .biome-badges {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    .biome-badge {
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #a5ebff;
     }
 
     .key-table {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-      margin-bottom: 26px;
+      gap: 8px;
+      margin-bottom: 22px;
       text-align: left;
     }
 
@@ -352,20 +395,20 @@
       background: rgba(255, 255, 255, 0.04);
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 8px;
-      padding: 8px 12px;
+      padding: 7px 10px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 13px;
+      font-size: 12px;
     }
 
     .key-row kbd {
       background: #00f0ff;
       color: #050c18;
       font-weight: 900;
-      padding: 3px 8px;
+      padding: 2px 7px;
       border-radius: 4px;
-      font-size: 11px;
+      font-size: 10px;
     }
 
     .btn-main {
@@ -373,9 +416,9 @@
       background: linear-gradient(135deg, #00f0ff 0%, #0088cc 100%);
       border: none;
       border-radius: 12px;
-      padding: 16px 24px;
+      padding: 14px 20px;
       color: #031020;
-      font-size: 18px;
+      font-size: 17px;
       font-weight: 900;
       letter-spacing: 0.06em;
       cursor: pointer;
@@ -387,32 +430,31 @@
       transform: translateY(-2px);
       filter: brightness(1.1);
     }
-
-    .btn-main:active {
-      transform: translateY(1px);
-    }
   </style>
 </head>
 <body>
-  <!-- 3D Canvas -->
   <div id="canvas-container"></div>
 
-  <!-- HUD Flight Overlay -->
+  <!-- HUD -->
   <div id="hud">
-    <!-- Top Stats -->
+    <!-- Top Bar -->
     <div class="hud-top">
       <div class="hud-cluster">
         <div class="hud-pill">
           <span class="hud-label">СКОРОСТЬ</span>
-          <span class="hud-val"><span id="hud-speed">0</span> <small style="font-size:12px">КМ/Ч</small></span>
+          <span class="hud-val"><span id="hud-speed">0</span> <small style="font-size:11px">КМ/Ч</small></span>
         </div>
         <div class="hud-pill">
           <span class="hud-label">ВЫСОТА</span>
-          <span class="hud-val alt"><span id="hud-altitude">0</span> <small style="font-size:12px">М</small></span>
+          <span class="hud-val alt"><span id="hud-altitude">0</span> <small style="font-size:11px">М</small></span>
         </div>
         <div class="hud-pill">
-          <span class="hud-label">ЯЩИКИ</span>
-          <span class="hud-val gold" id="hud-crates">0/14</span>
+          <span class="hud-label">ДИСТАНЦИЯ</span>
+          <span class="hud-val dist"><span id="hud-distance">0.0</span> <small style="font-size:11px">КМ</small></span>
+        </div>
+        <div class="hud-pill">
+          <span class="hud-label">СОБРАНО</span>
+          <span class="hud-val gold" id="hud-crates">0</span>
         </div>
         <div class="hud-pill">
           <span class="hud-label">ОЧКИ</span>
@@ -421,9 +463,18 @@
       </div>
 
       <div class="hud-cluster">
-        <div class="hud-pill nitro-box">
+        <div id="biome-pill"><span id="hud-biome">🛫 ГЛАВНЫЙ АЭРОПОРТ</span></div>
+
+        <div class="hud-pill bar-box" id="hud-shield-pill" style="display: none; border-color: #00ffff;">
+          <span class="hud-label" style="color: #00ffff;">🛡️ ЭНЕРГО-ЩИТ</span>
+          <div class="bar-track" style="border-color: #00ffff;">
+            <div id="hud-shield-bar"></div>
+          </div>
+        </div>
+
+        <div class="hud-pill bar-box">
           <span class="hud-label">ФОРСАЖ / НИТРО</span>
-          <div class="nitro-track">
+          <div class="bar-track">
             <div id="hud-nitro-bar"></div>
           </div>
         </div>
@@ -440,25 +491,25 @@
       <div class="reticle-bracket"></div>
     </div>
 
-    <!-- Banner Alerts -->
+    <!-- Banner -->
     <div id="hud-banner">ВЗЛЁТНАЯ ПОЛОСА ГОТОВА</div>
 
-    <!-- Bottom Flight Info & Radar -->
+    <!-- Bottom -->
     <div class="hud-bottom">
       <div class="controls-hint">
         <b>W / S:</b> Тангаж (Тянуть на себя / От себя)<br>
         <b>A / D:</b> Крен влево / вправо<br>
-        <b>SHIFT:</b> Форсаж (Nitro Boost) &bull; <b>SPACE:</b> Тормоз<br>
-        <b>C:</b> Переключить камеру в кабину &bull; <b>R:</b> Рестарт
+        <b>SHIFT:</b> Форсаж (Boost) &bull; <b>SPACE:</b> Тормоз<br>
+        <b>C:</b> Переключить в кабину &bull; <b>R:</b> Рестарт
       </div>
 
       <div class="radar-wrapper">
-        <canvas id="radar-canvas" width="140" height="140"></canvas>
+        <canvas id="radar-canvas" width="130" height="130"></canvas>
       </div>
     </div>
   </div>
 
-  <!-- Mobile Touch Controls -->
+  <!-- Touch Controls -->
   <div id="touch-controls">
     <div class="touch-pad-left">
       <div></div>
@@ -473,26 +524,33 @@
     </div>
 
     <div class="touch-pad-right">
-      <button class="touch-btn" id="btn-boost" style="height: 60px; width: 68px; border-color:#ff7700; color:#ffaa00;">🔥 БУСТ</button>
-      <button class="touch-btn" id="btn-brake" style="height: 50px; width: 68px;">🛑 ТОРМОЗ</button>
+      <button class="touch-btn" id="btn-boost" style="height: 54px; width: 64px; border-color:#ff7700; color:#ffaa00;">🔥 БУСТ</button>
+      <button class="touch-btn" id="btn-brake" style="height: 44px; width: 64px;">🛑 ТОРМОЗ</button>
     </div>
   </div>
 
-  <!-- Screen: Intro / Briefing -->
+  <!-- Intro Screen -->
   <div class="screen-overlay" id="intro-screen">
     <div class="modal-card">
-      <div class="modal-tag">СИМУЛЯТОР ПОЛЁТА 3D &bull; АЛЬПЫ</div>
+      <div class="modal-tag">БЕСКОНЕЧНЫЙ 3D МИР &bull; СИМУЛЯТОР ДЖЕТА</div>
       <h1>Sky Jet 3D</h1>
       <p class="modal-desc">
-        Взлетайте с горного аэродрома на сверхзвуковом реактивном джете. Собирайте сброшенные на парашютах ящики снабжения в ущельях, над горными дорогами и снежными вершинами!
+        Летайте в бесконечном открытом 3D-мире! Исследуйте 4 уникальных биома, пролетайте между небоскрёбами мегаполиса, над полями цветов, океанами и альпийскими горами. Собирайте ящики припасов на парашютах!
       </p>
 
+      <div class="biome-badges">
+        <span class="biome-badge">🏔️ Альпы и Каньоны</span>
+        <span class="biome-badge">🏙️ 3D Мегаполис</span>
+        <span class="biome-badge">🌸 Цветочные Луга</span>
+        <span class="biome-badge">🌊 Океан и Острова</span>
+      </div>
+
       <div class="key-table">
-        <div class="key-row"><span>Взлёт / Подъём (Тянуть штурвал):</span><kbd>W / ↓</kbd></div>
+        <div class="key-row"><span>Взлёт / Подъём:</span><kbd>W / ↓</kbd></div>
         <div class="key-row"><span>Нырок / Снижение:</span><kbd>S / ↑</kbd></div>
-        <div class="key-row"><span>Крен (Поворот в вираже):</span><kbd>A / D</kbd></div>
-        <div class="key-row"><span>Форсаж (Сверхзвуковой буст):</span><kbd>SHIFT</kbd></div>
-        <div class="key-row"><span>Вид из кабины / 3-е лицо:</span><kbd>C</kbd></div>
+        <div class="key-row"><span>Крен (Поворот):</span><kbd>A / D</kbd></div>
+        <div class="key-row"><span>Форсаж (Сверхзвук):</span><kbd>SHIFT</kbd></div>
+        <div class="key-row"><span>Вид из кабины:</span><kbd>C</kbd></div>
         <div class="key-row"><span>Тормоз / Рестарт:</span><kbd>SPACE / R</kbd></div>
       </div>
 
@@ -500,31 +558,20 @@
     </div>
   </div>
 
-  <!-- Screen: Crash / Game Over -->
+  <!-- Crash Screen -->
   <div class="screen-overlay" id="game-over-screen" style="display: none;">
     <div class="modal-card" style="border-color: #ff3344; box-shadow: 0 0 35px rgba(255, 51, 68, 0.4);">
       <div class="modal-tag" style="color: #ff4455;">КРУШЕНИЕ САМОЛЁТА</div>
       <h1 style="background: linear-gradient(90deg, #ff4455, #ffa8b0); -webkit-background-clip: text;">Столкновение!</h1>
       <p class="modal-desc">
-        Джет задел скалы. Ваш итоговый счёт: <b id="game-over-score" style="color:#00f0ff;">0</b> очков.
+        Джет задел препятствие.<br>
+        Пройдено расстояние: <b id="game-over-distance" style="color:#ff88ff;">0.0</b> км.<br>
+        Итоговый счёт: <b id="game-over-score" style="color:#00f0ff;">0</b> очков.
       </p>
       <button class="btn-main" id="btn-restart-game" style="background: linear-gradient(135deg, #ff4455, #990011); color: #fff;">ПОВТОРИТЬ ВЫЛЕТ (R)</button>
     </div>
   </div>
 
-  <!-- Screen: Victory -->
-  <div class="screen-overlay" id="victory-screen" style="display: none;">
-    <div class="modal-card" style="border-color: #ffd700; box-shadow: 0 0 35px rgba(255, 215, 0, 0.4);">
-      <div class="modal-tag" style="color: #ffd700;">МИССИЯ ВЫПОЛНЕНА!</div>
-      <h1 style="background: linear-gradient(90deg, #ffd700, #fff); -webkit-background-clip: text;">Все ящики собраны!</h1>
-      <p class="modal-desc">
-        Превосходный пилотаж в горах! Вы собрали все контейнеры припасов. Итоговый счёт: <b id="victory-score" style="color:#ffd700;">0</b> очков.
-      </p>
-      <button class="btn-main" id="btn-victory-again" style="background: linear-gradient(135deg, #ffd700, #ff8800); color: #1a0f00;">ЛЕТАТЬ ЕЩЁ РАЗ</button>
-    </div>
-  </div>
-
-  <!-- Scripts -->
   <script type="module" src="game.js"></script>
 </body>
 </html>

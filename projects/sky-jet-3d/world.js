@@ -1,226 +1,150 @@
-// world.js - Realistic Alpine Mountains, Runway, Mountain Highway, and Airport for Sky Jet 3D
+// world.js - Infinite Multi-Biome Procedural World (Mountains, Megacity, Flower Meadows, Ocean Archipelago)
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 
 export class WorldManager {
   constructor(scene) {
     this.scene = scene;
-    this.terrainMesh = null;
+    this.chunks = new Map(); // key: "cx,cz" -> ChunkObject
+    this.chunkSize = 900;
+    this.viewDistance = 2; // radius of chunks around player (5x5 grid = 25 chunks)
+
+    this.windmills = [];
+    this.lighthouses = [];
+    this.trafficCars = [];
     this.clouds = [];
     this.radarDish = null;
     this.windsock = null;
-    this.runwayBounds = {
-      minX: -40,
-      maxX: 40,
-      minZ: -600,
-      maxZ: 600,
-      height: 0.1,
-    };
+
+    this.currentBiome = "AIRPORT";
+    this.onBiomeChangeCallback = null;
 
     this.initLighting();
-    this.createTerrain();
-    this.createRunway();
-    this.createAirportBuildings();
-    this.createHighway();
-    this.createPineTrees();
-    this.createClouds();
+    this.initAirportBase();
+    this.initClouds();
   }
 
   initLighting() {
-    // Atmospheric Morning Fog
-    this.scene.fog = new THREE.FogExp2(0xcfe2f3, 0.00038);
+    this.scene.fog = new THREE.FogExp2(0xcfe2f3, 0.00032);
 
-    // Ambient & Hemisphere Lights (Sky bounce + terrain warm bounce)
-    const hemiLight = new THREE.HemisphereLight(0xbde0fe, 0x485635, 0.85);
-    hemiLight.position.set(0, 500, 0);
+    const hemiLight = new THREE.HemisphereLight(0xbde0fe, 0x485635, 0.9);
+    hemiLight.position.set(0, 800, 0);
     this.scene.add(hemiLight);
 
-    // Warm Alpine Morning Sun
-    this.sunLight = new THREE.DirectionalLight(0xfffaea, 1.7);
-    this.sunLight.position.set(800, 900, 600);
+    this.sunLight = new THREE.DirectionalLight(0xfffaea, 1.8);
+    this.sunLight.position.set(900, 1000, 700);
     this.sunLight.castShadow = true;
     this.sunLight.shadow.mapSize.width = 2048;
     this.sunLight.shadow.mapSize.height = 2048;
     this.sunLight.shadow.camera.near = 100;
-    this.sunLight.shadow.camera.far = 3000;
+    this.sunLight.shadow.camera.far = 4500;
 
-    const d = 900;
+    const d = 1100;
     this.sunLight.shadow.camera.left = -d;
     this.sunLight.shadow.camera.right = d;
     this.sunLight.shadow.camera.top = d;
     this.sunLight.shadow.camera.bottom = -d;
-    this.sunLight.shadow.bias = -0.0005;
+    this.sunLight.shadow.bias = -0.0004;
     this.scene.add(this.sunLight);
 
     // Sun Visual Billboard
-    const sunGeom = new THREE.SphereGeometry(60, 16, 16);
+    const sunGeom = new THREE.SphereGeometry(70, 16, 16);
     const sunMat = new THREE.MeshBasicMaterial({ color: 0xfff3aa });
     const sunMesh = new THREE.Mesh(sunGeom, sunMat);
-    sunMesh.position.copy(this.sunLight.position).multiplyScalar(2.5);
+    sunMesh.position.copy(this.sunLight.position).multiplyScalar(3.0);
     this.scene.add(sunMesh);
   }
 
-  // Multi-frequency noise approximation for mountain peaks & valleys
-  getTerrainHeight(x, z) {
-    // Runway and airport flat zone
-    const distToRunwayX = Math.abs(x);
-    const distToRunwayZ = Math.abs(z);
-    
-    // Flat airport plateau around (0,0)
-    if (distToRunwayX < 140 && distToRunwayZ < 750) {
-      return 0;
-    }
-    
-    let blend = 1.0;
-    if (distToRunwayX < 260 && distToRunwayZ < 850) {
-      const fx = Math.max(0, (distToRunwayX - 140) / 120);
-      const fz = Math.max(0, (distToRunwayZ - 750) / 100);
-      blend = Math.max(fx, fz);
+  getBiomeAt(x, z) {
+    // Starting runway area
+    if (Math.abs(x) < 550 && Math.abs(z) < 700) {
+      return "AIRPORT";
     }
 
-    // Mountain ridges and dramatic peaks
+    // Biome distribution based on world regions
+    if (z > 950) {
+      return "CITY"; // 🏙️ Megacity Skyline
+    } else if (z < -950 && x > 200) {
+      return "FLOWERS"; // 🌸 Flower Meadows & Windmills
+    } else if (x < -950) {
+      return "OCEAN"; // 🌊 Ocean & Islands
+    } else {
+      return "MOUNTAINS"; // 🏔️ Alpine Mountains
+    }
+  }
+
+  getTerrainHeight(x, z) {
+    const biome = this.getBiomeAt(x, z);
+
+    // Flat airport zone
+    if (biome === "AIRPORT") {
+      const distToRunwayX = Math.abs(x);
+      const distToRunwayZ = Math.abs(z);
+      if (distToRunwayX < 140 && distToRunwayZ < 750) return 0;
+      return Math.min(25, (distToRunwayX - 140) * 0.15);
+    }
+
+    if (biome === "CITY") {
+      // City ground is mostly flat with slight terraces
+      return 1.5;
+    }
+
+    if (biome === "OCEAN") {
+      // Ocean water level is 0, rocky islands rise up
+      const islandNoise = Math.sin(x * 0.004) * Math.cos(z * 0.004);
+      if (islandNoise > 0.45) {
+        return (islandNoise - 0.45) * 220; // Island hills
+      }
+      return 0; // Water
+    }
+
+    if (biome === "FLOWERS") {
+      // Smooth rolling green hills
+      const h1 = Math.sin(x * 0.0025) * Math.cos(z * 0.0025) * 45;
+      const h2 = Math.sin(x * 0.006 + 1.2) * 15;
+      return Math.max(2, h1 + h2 + 18);
+    }
+
+    // Default: Alpine Mountains & Canyons
     const nx1 = x * 0.0007;
     const nz1 = z * 0.0007;
-    const nx2 = x * 0.002;
-    const nz2 = z * 0.002;
-    const nx3 = x * 0.006;
-    const nz3 = z * 0.006;
+    const nx2 = x * 0.0022;
+    const nz2 = z * 0.0022;
+    const nx3 = x * 0.0065;
+    const nz3 = z * 0.0065;
 
-    let h1 = Math.sin(nx1 * 2.1) * Math.cos(nz1 * 1.8) * 350;
+    let h1 = Math.sin(nx1 * 2.1) * Math.cos(nz1 * 1.8) * 360;
     let h2 = (Math.sin(nx2 * 3.4 + 1.2) + Math.cos(nz2 * 2.9 + 0.8)) * 140;
-    let h3 = (Math.sin(nx3 * 5.0) * Math.cos(nz3 * 4.2)) * 40;
+    let h3 = (Math.sin(nx3 * 5.0) * Math.cos(nz3 * 4.2)) * 35;
 
-    // Peak sharpening (ridge effect)
-    let rawHeight = Math.abs(h1 + h2) * 1.25 + h3;
-    
-    // Valley smoothing
-    if (rawHeight < 20) rawHeight = 20;
-
-    return rawHeight * blend;
+    let rawHeight = Math.abs(h1 + h2) * 1.2 + h3;
+    return Math.max(15, rawHeight);
   }
 
-  createTerrain() {
-    const size = 6000;
-    const segments = 160;
-    const geometry = new THREE.PlaneGeometry(size, size, segments, segments);
-    geometry.rotateX(-Math.PI / 2);
-
-    const pos = geometry.attributes.position;
-    const count = pos.count;
-
-    // Color vertices based on height and slope
-    const colors = new Float32Array(count * 3);
-    const color = new THREE.Color();
-
-    const snowColor = new THREE.Color(0xf5f8fc); // Alpine snow
-    const rockColor = new THREE.Color(0x565c63); // Granite rock
-    const grassColor = new THREE.Color(0x2f4c24); // Alpine valley grass
-    const sandColor = new THREE.Color(0x736c57); // Foothills soil
-
-    for (let i = 0; i < count; i++) {
-      const vx = pos.getX(i);
-      const vz = pos.getZ(i);
-      const vy = this.getTerrainHeight(vx, vz);
-      pos.setY(i, vy);
-
-      // Color mapping
-      if (vy > 340) {
-        // High snow peak
-        color.copy(snowColor);
-      } else if (vy > 210) {
-        // Rock transitioning to snow
-        const t = (vy - 210) / 130;
-        color.lerpColors(rockColor, snowColor, t);
-      } else if (vy > 70) {
-        // Pine hills & rocky grass
-        const t = (vy - 70) / 140;
-        color.lerpColors(grassColor, rockColor, t);
-      } else if (vy > 10) {
-        // Lush green valley
-        const t = (vy - 10) / 60;
-        color.lerpColors(sandColor, grassColor, t);
-      } else {
-        // Airport flat grass
-        color.copy(grassColor).multiplyScalar(0.9);
-      }
-
-      colors[i * 3] = color.r;
-      colors[i * 3 + 1] = color.g;
-      colors[i * 3 + 2] = color.b;
-    }
-
-    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-    geometry.computeVertexNormals();
-
-    const material = new THREE.MeshStandardMaterial({
-      vertexColors: true,
-      roughness: 0.88,
-      metalness: 0.05,
-      flatShading: false,
-    });
-
-    this.terrainMesh = new THREE.Mesh(geometry, material);
-    this.terrainMesh.receiveShadow = true;
-    this.scene.add(this.terrainMesh);
-  }
-
-  createRunway() {
+  initAirportBase() {
     const group = new THREE.Group();
 
-    // Asphalt Main Strip
+    // Runway
     const rwLength = 1200;
-    const rwWidth = 52;
+    const rwWidth = 54;
     const rwGeom = new THREE.PlaneGeometry(rwWidth, rwLength);
     rwGeom.rotateX(-Math.PI / 2);
-
-    const rwMat = new THREE.MeshStandardMaterial({
-      color: 0x1c1e22,
-      roughness: 0.85,
-      metalness: 0.1,
-    });
-
+    const rwMat = new THREE.MeshStandardMaterial({ color: 0x1a1d22, roughness: 0.85 });
     const runway = new THREE.Mesh(rwGeom, rwMat);
     runway.position.set(0, 0.2, 0);
     runway.receiveShadow = true;
     group.add(runway);
 
-    // Runway Center Dashed Line
-    const dashLength = 24;
-    const dashWidth = 2.4;
-    const dashGap = 16;
-    const dashGeom = new THREE.PlaneGeometry(dashWidth, dashLength);
+    // Dashed center line
+    const dashGeom = new THREE.PlaneGeometry(2.4, 24);
     dashGeom.rotateX(-Math.PI / 2);
     const dashMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-
-    for (let z = -rwLength / 2 + 60; z < rwLength / 2 - 60; z += dashLength + dashGap) {
+    for (let z = -rwLength / 2 + 50; z < rwLength / 2 - 50; z += 40) {
       const dash = new THREE.Mesh(dashGeom, dashMat);
       dash.position.set(0, 0.25, z);
       group.add(dash);
     }
 
-    // Threshold Markings (Piano Keys at both ends)
-    const keyWidth = 1.8;
-    const keyLength = 36;
-    const keyGeom = new THREE.PlaneGeometry(keyWidth, keyLength);
-    keyGeom.rotateX(-Math.PI / 2);
-
-    [-rwLength / 2 + 30, rwLength / 2 - 30].forEach((endZ) => {
-      for (let x = -rwWidth / 2 + 6; x <= rwWidth / 2 - 6; x += 4.5) {
-        const key = new THREE.Mesh(keyGeom, dashMat);
-        key.position.set(x, 0.25, endZ);
-        group.add(key);
-      }
-    });
-
-    // Touchdown zone solid side stripes
-    const sideStripeGeom = new THREE.PlaneGeometry(1.6, rwLength - 40);
-    sideStripeGeom.rotateX(-Math.PI / 2);
-    const leftStripe = new THREE.Mesh(sideStripeGeom, dashMat);
-    leftStripe.position.set(-rwWidth / 2 + 3, 0.25, 0);
-    const rightStripe = new THREE.Mesh(sideStripeGeom, dashMat);
-    rightStripe.position.set(rwWidth / 2 - 3, 0.25, 0);
-    group.add(leftStripe, rightStripe);
-
-    // Glowing Runway Edge & Threshold Lights
+    // Runway Edge Lights
     const lightGeom = new THREE.CylinderGeometry(0.2, 0.2, 0.8, 8);
     const whiteGlowMat = new THREE.MeshBasicMaterial({ color: 0xeeffff });
     const greenGlowMat = new THREE.MeshBasicMaterial({ color: 0x00ff66 });
@@ -228,8 +152,8 @@ export class WorldManager {
 
     for (let z = -rwLength / 2; z <= rwLength / 2; z += 40) {
       let mat = whiteGlowMat;
-      if (z === -rwLength / 2) mat = greenGlowMat; // Takeoff threshold
-      if (z === rwLength / 2) mat = redGlowMat; // End of runway
+      if (z === -rwLength / 2) mat = greenGlowMat;
+      if (z === rwLength / 2) mat = redGlowMat;
 
       const leftLight = new THREE.Mesh(lightGeom, mat);
       leftLight.position.set(-rwWidth / 2 - 2, 0.4, z);
@@ -238,22 +162,13 @@ export class WorldManager {
       group.add(leftLight, rightLight);
     }
 
-    this.scene.add(group);
-  }
-
-  createAirportBuildings() {
-    const airportGroup = new THREE.Group();
-
     // Control Tower
     const towerBaseGeom = new THREE.CylinderGeometry(6, 9, 45, 12);
     const concreteMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.7 });
     const towerBase = new THREE.Mesh(towerBaseGeom, concreteMat);
     towerBase.position.set(80, 22.5, -200);
-    towerBase.castShadow = true;
-    towerBase.receiveShadow = true;
-    airportGroup.add(towerBase);
+    group.add(towerBase);
 
-    // Control Tower Observation Deck (Glass cab)
     const cabGeom = new THREE.CylinderGeometry(11, 7, 10, 12);
     const glassMat = new THREE.MeshStandardMaterial({
       color: 0x113355,
@@ -264,10 +179,9 @@ export class WorldManager {
     });
     const cab = new THREE.Mesh(cabGeom, glassMat);
     cab.position.set(80, 50, -200);
-    cab.castShadow = true;
-    airportGroup.add(cab);
+    group.add(cab);
 
-    // Rotating Radar Dish on top
+    // Radar dish
     const dishGroup = new THREE.Group();
     const dishGeom = new THREE.SphereGeometry(4, 12, 12, 0, Math.PI * 2, 0, Math.PI / 2);
     const dishMat = new THREE.MeshStandardMaterial({ color: 0xff3300, roughness: 0.4 });
@@ -275,190 +189,416 @@ export class WorldManager {
     dish.rotation.x = Math.PI / 3;
     dishGroup.add(dish);
     dishGroup.position.set(80, 56, -200);
-    airportGroup.add(dishGroup);
+    group.add(dishGroup);
     this.radarDish = dishGroup;
 
-    // Aircraft Hangars
+    // Hangars
     const hangarGeom = new THREE.CylinderGeometry(28, 28, 70, 16, 1, false, 0, Math.PI);
     hangarGeom.rotateZ(Math.PI / 2);
-    const hangarMat = new THREE.MeshStandardMaterial({
-      color: 0x485260,
-      metalness: 0.7,
-      roughness: 0.4,
-    });
-
+    const hangarMat = new THREE.MeshStandardMaterial({ color: 0x485260, metalness: 0.7, roughness: 0.4 });
     const hangar1 = new THREE.Mesh(hangarGeom, hangarMat);
     hangar1.position.set(95, 0, -50);
-    hangar1.castShadow = true;
-    hangar1.receiveShadow = true;
-
     const hangar2 = new THREE.Mesh(hangarGeom, hangarMat);
     hangar2.position.set(95, 0, 80);
-    hangar2.castShadow = true;
-    hangar2.receiveShadow = true;
+    group.add(hangar1, hangar2);
 
-    airportGroup.add(hangar1, hangar2);
-
-    // Windsock
-    const poleGeom = new THREE.CylinderGeometry(0.3, 0.3, 14, 8);
-    const pole = new THREE.Mesh(poleGeom, concreteMat);
-    pole.position.set(-50, 7, -350);
-    pole.castShadow = true;
-    airportGroup.add(pole);
-
-    const sockGeom = new THREE.ConeGeometry(1.8, 6, 8, 1, true);
-    sockGeom.rotateZ(-Math.PI / 2);
-    const sockMat = new THREE.MeshStandardMaterial({ color: 0xff5500, roughness: 0.6 });
-    this.windsock = new THREE.Mesh(sockGeom, sockMat);
-    this.windsock.position.set(-50, 14, -350);
-    airportGroup.add(this.windsock);
-
-    this.scene.add(airportGroup);
+    this.scene.add(group);
   }
 
-  createHighway() {
-    // Winding Alpine Road snaking around the valley and mountains
-    const points = [];
-    for (let t = -1200; t <= 1200; t += 40) {
-      const x = 160 + Math.sin(t * 0.003) * 220 + Math.cos(t * 0.008) * 80;
-      const z = t;
-      const y = Math.max(0.3, this.getTerrainHeight(x, z) + 0.5);
-      points.push(new THREE.Vector3(x, y, z));
+  // Create a Chunk Mesh based on its Biome
+  createChunk(cx, cz) {
+    const chunkGroup = new THREE.Group();
+    const startX = cx * this.chunkSize;
+    const startZ = cz * this.chunkSize;
+    const centerX = startX + this.chunkSize / 2;
+    const centerZ = startZ + this.chunkSize / 2;
+    const biome = this.getBiomeAt(centerX, centerZ);
+
+    const segs = 32;
+    const geom = new THREE.PlaneGeometry(this.chunkSize, this.chunkSize, segs, segs);
+    geom.rotateX(-Math.PI / 2);
+
+    const pos = geom.attributes.position;
+    const colors = new Float32Array(pos.count * 3);
+    const color = new THREE.Color();
+
+    const snowColor = new THREE.Color(0xf5f8fc);
+    const rockColor = new THREE.Color(0x565c63);
+    const grassColor = new THREE.Color(0x2f4c24);
+    const meadowColor = new THREE.Color(0x458532);
+    const cityRoadColor = new THREE.Color(0x181c22);
+    const sandColor = new THREE.Color(0xdfc999);
+    const oceanColor = new THREE.Color(0x106090);
+
+    for (let i = 0; i < pos.count; i++) {
+      const vx = pos.getX(i) + centerX;
+      const vz = pos.getZ(i) + centerZ;
+      const vy = this.getTerrainHeight(vx, vz);
+      pos.setY(i, vy);
+
+      if (biome === "CITY") {
+        color.copy(cityRoadColor);
+      } else if (biome === "OCEAN") {
+        if (vy > 4) color.copy(sandColor);
+        else color.copy(oceanColor);
+      } else if (biome === "FLOWERS") {
+        // Multi-color flower field patches
+        const flowerNoise = Math.sin(vx * 0.02) * Math.cos(vz * 0.02);
+        if (flowerNoise > 0.45) {
+          color.setHex(0xe63946); // Red Poppy
+        } else if (flowerNoise > 0.15) {
+          color.setHex(0x9d4edd); // Lavender
+        } else if (flowerNoise < -0.3) {
+          color.setHex(0xffb703); // Golden Sunflower
+        } else {
+          color.copy(meadowColor);
+        }
+      } else {
+        // Mountains
+        if (vy > 320) color.copy(snowColor);
+        else if (vy > 180) color.lerpColors(rockColor, snowColor, (vy - 180) / 140);
+        else if (vy > 60) color.lerpColors(grassColor, rockColor, (vy - 60) / 120);
+        else color.copy(grassColor);
+      }
+
+      colors[i * 3] = color.r;
+      colors[i * 3 + 1] = color.g;
+      colors[i * 3 + 2] = color.b;
     }
 
-    const curve = new THREE.CatmullRomCurve3(points);
-    const roadWidth = 14;
-    const roadGeom = new THREE.TubeGeometry(curve, 180, roadWidth / 2, 4, false);
+    geom.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    geom.computeVertexNormals();
 
-    const roadMat = new THREE.MeshStandardMaterial({
-      color: 0x24282e,
-      roughness: 0.9,
-      metalness: 0.1,
+    const mat = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      roughness: biome === "OCEAN" ? 0.2 : 0.85,
+      metalness: biome === "OCEAN" ? 0.8 : 0.1,
     });
 
-    const road = new THREE.Mesh(roadGeom, roadMat);
-    road.scale.set(1, 0.1, 1);
-    road.receiveShadow = true;
-    this.scene.add(road);
+    const terrain = new THREE.Mesh(geom, mat);
+    terrain.position.set(centerX, 0, centerZ);
+    terrain.receiveShadow = true;
+    chunkGroup.add(terrain);
+
+    // Populate Biome-Specific Features
+    if (biome === "CITY") {
+      this.populateCity(chunkGroup, centerX, centerZ);
+    } else if (biome === "FLOWERS") {
+      this.populateFlowerMeadow(chunkGroup, centerX, centerZ);
+    } else if (biome === "OCEAN") {
+      this.populateOceanIslands(chunkGroup, centerX, centerZ);
+    } else if (biome === "MOUNTAINS" && Math.abs(centerX) > 300) {
+      this.populateMountainPines(chunkGroup, centerX, centerZ);
+    }
+
+    this.scene.add(chunkGroup);
+    return { group: chunkGroup, cx, cz, biome };
   }
 
-  createPineTrees() {
-    // InstancedMesh for optimized alpine forest (Trunks and Foliage)
-    const treeCount = 650;
-    
-    // Pine Foliage geometry (Cone)
-    const coneGeom = new THREE.ConeGeometry(5.5, 16, 6);
-    coneGeom.translate(0, 10, 0);
-    const pineMat = new THREE.MeshStandardMaterial({
-      color: 0x1f3c1d,
-      roughness: 0.9,
-      metalness: 0.0,
-      flatShading: true,
+  // 🏙️ 3D Megacity with Skyscrapers, Neon Spires & Moving Traffic
+  populateCity(group, cx, cz) {
+    const bldgCount = 28;
+    const bldgMat = new THREE.MeshStandardMaterial({
+      color: 0x222a36,
+      metalness: 0.85,
+      roughness: 0.25,
     });
-    const pineInstanced = new THREE.InstancedMesh(coneGeom, pineMat, treeCount);
-    pineInstanced.castShadow = true;
-    pineInstanced.receiveShadow = true;
 
-    // Pine Trunk geometry (Cylinder)
-    const trunkGeom = new THREE.CylinderGeometry(0.8, 1.2, 4, 5);
-    trunkGeom.translate(0, 2, 0);
-    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3d2817, roughness: 0.95 });
-    const trunkInstanced = new THREE.InstancedMesh(trunkGeom, trunkMat, treeCount);
-    trunkInstanced.castShadow = true;
+    const neonMat = new THREE.MeshStandardMaterial({
+      color: 0x00f0ff,
+      emissive: 0x00e1ff,
+      emissiveIntensity: 0.9,
+    });
+
+    const goldNeonMat = new THREE.MeshStandardMaterial({
+      color: 0xffa500,
+      emissive: 0xff8800,
+      emissiveIntensity: 0.9,
+    });
+
+    const gridStep = 120;
+    for (let x = cx - this.chunkSize / 2 + 70; x < cx + this.chunkSize / 2 - 70; x += gridStep) {
+      for (let z = cz - this.chunkSize / 2 + 70; z < cz + this.chunkSize / 2 - 70; z += gridStep) {
+        if (Math.random() < 0.25) continue; // Street intersection
+
+        const width = 45 + Math.random() * 30;
+        const depth = 45 + Math.random() * 30;
+        const height = 80 + Math.random() * 220; // 80m to 300m tall skyscrapers!
+
+        const bldgGeom = new THREE.BoxGeometry(width, height, depth);
+        const bldg = new THREE.Mesh(bldgGeom, bldgMat);
+        bldg.position.set(x, height / 2 + 1.5, z);
+        bldg.castShadow = true;
+        bldg.receiveShadow = true;
+        group.add(bldg);
+
+        // Rooftop glowing spire or helipad
+        if (height > 180) {
+          const spireGeom = new THREE.CylinderGeometry(0.5, 2.0, 35, 8);
+          const spire = new THREE.Mesh(spireGeom, Math.random() > 0.5 ? neonMat : goldNeonMat);
+          spire.position.set(x, height + 17.5 + 1.5, z);
+          group.add(spire);
+        } else if (Math.random() > 0.6) {
+          // Helipad ring
+          const ringGeom = new THREE.RingGeometry(8, 10, 16);
+          ringGeom.rotateX(-Math.PI / 2);
+          const helipad = new THREE.Mesh(ringGeom, goldNeonMat);
+          helipad.position.set(x, height + 1.7, z);
+          group.add(helipad);
+        }
+      }
+    }
+
+    // Traffic lanes with moving glowing headlights
+    for (let i = 0; i < 14; i++) {
+      const carGeom = new THREE.BoxGeometry(2.5, 1.2, 5.0);
+      const isRed = Math.random() > 0.5;
+      const carMat = new THREE.MeshBasicMaterial({ color: isRed ? 0xff2222 : 0xffffaa });
+      const car = new THREE.Mesh(carGeom, carMat);
+
+      const isXAxis = Math.random() > 0.5;
+      car.position.set(
+        cx + (Math.random() - 0.5) * this.chunkSize * 0.8,
+        2.2,
+        cz + (Math.random() - 0.5) * this.chunkSize * 0.8
+      );
+
+      group.add(car);
+      this.trafficCars.push({
+        mesh: car,
+        axis: isXAxis ? "x" : "z",
+        speed: 35 + Math.random() * 45,
+        dir: Math.random() > 0.5 ? 1 : -1,
+        min: (isXAxis ? cx : cz) - this.chunkSize / 2,
+        max: (isXAxis ? cx : cz) + this.chunkSize / 2,
+      });
+    }
+  }
+
+  // 🌸 Flower Meadow with Windmills
+  populateFlowerMeadow(group, cx, cz) {
+    // Add 1-2 Windmills per chunk
+    for (let i = 0; i < 2; i++) {
+      const wx = cx + (Math.random() - 0.5) * (this.chunkSize - 200);
+      const wz = cz + (Math.random() - 0.5) * (this.chunkSize - 200);
+      const wy = this.getTerrainHeight(wx, wz);
+
+      const millGroup = new THREE.Group();
+      const towerGeom = new THREE.CylinderGeometry(5, 8, 30, 8);
+      const towerMat = new THREE.MeshStandardMaterial({ color: 0xeadbc8, roughness: 0.8 });
+      const tower = new THREE.Mesh(towerGeom, towerMat);
+      tower.position.y = 15;
+      millGroup.add(tower);
+
+      // Blades
+      const bladesGroup = new THREE.Group();
+      const bladeGeom = new THREE.BoxGeometry(1.8, 22, 0.4);
+      bladeGeom.translate(0, 11, 0);
+      const bladeMat = new THREE.MeshStandardMaterial({ color: 0x4a321a });
+
+      for (let b = 0; b < 4; b++) {
+        const blade = new THREE.Mesh(bladeGeom, bladeMat);
+        blade.rotation.z = (Math.PI / 2) * b;
+        bladesGroup.add(blade);
+      }
+
+      bladesGroup.position.set(0, 27, 5.5);
+      millGroup.add(bladesGroup);
+      millGroup.position.set(wx, wy, wz);
+      group.add(millGroup);
+
+      this.windmills.push(bladesGroup);
+    }
+  }
+
+  // 🌊 Ocean with Lighthouses
+  populateOceanIslands(group, cx, cz) {
+    // Water surface
+    const waterGeom = new THREE.PlaneGeometry(this.chunkSize, this.chunkSize);
+    waterGeom.rotateX(-Math.PI / 2);
+    const waterMat = new THREE.MeshStandardMaterial({
+      color: 0x006699,
+      metalness: 0.9,
+      roughness: 0.15,
+      transparent: true,
+      opacity: 0.88,
+    });
+    const water = new THREE.Mesh(waterGeom, waterMat);
+    water.position.set(cx, 0.8, cz);
+    group.add(water);
+
+    // Lighthouse on island
+    const lx = cx + 80;
+    const lz = cz + 80;
+    const ly = this.getTerrainHeight(lx, lz);
+    if (ly > 10) {
+      const lhGroup = new THREE.Group();
+      const lhGeom = new THREE.CylinderGeometry(3, 5, 36, 10);
+      const lhMat = new THREE.MeshStandardMaterial({ color: 0xdd2222 });
+      const lh = new THREE.Mesh(lhGeom, lhMat);
+      lh.position.y = 18;
+      lhGroup.add(lh);
+
+      // Light beam
+      const beamGeom = new THREE.ConeGeometry(12, 120, 16);
+      beamGeom.rotateX(Math.PI / 2);
+      beamGeom.translate(0, 0, 60);
+      const beamMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35 });
+      const beam = new THREE.Mesh(beamGeom, beamMat);
+      beam.position.y = 36;
+      lhGroup.add(beam);
+
+      lhGroup.position.set(lx, ly, lz);
+      group.add(lhGroup);
+      this.lighthouses.push(beam);
+    }
+  }
+
+  // 🏔️ Mountain Pine Trees
+  populateMountainPines(group, cx, cz) {
+    const treeCount = 45;
+    const coneGeom = new THREE.ConeGeometry(6, 18, 5);
+    coneGeom.translate(0, 9, 0);
+    const pineMat = new THREE.MeshStandardMaterial({ color: 0x1f3b1e, roughness: 0.9, flatShading: true });
+    const inst = new THREE.InstancedMesh(coneGeom, pineMat, treeCount);
+    inst.castShadow = true;
 
     const dummy = new THREE.Object3D();
     let placed = 0;
 
-    for (let i = 0; i < treeCount * 3 && placed < treeCount; i++) {
-      const radius = 250 + Math.random() * 1800;
-      const angle = Math.random() * Math.PI * 2;
-      const x = Math.cos(angle) * radius;
-      const z = Math.sin(angle) * radius;
+    for (let i = 0; i < treeCount; i++) {
+      const tx = cx + (Math.random() - 0.5) * (this.chunkSize - 100);
+      const tz = cz + (Math.random() - 0.5) * (this.chunkSize - 100);
+      const ty = this.getTerrainHeight(tx, tz);
+      if (ty > 240 || ty < 10) continue;
 
-      // Keep runway clear
-      if (Math.abs(x) < 70 && Math.abs(z) < 680) continue;
-
-      const y = this.getTerrainHeight(x, z);
-      // Place only on green valleys/hills (not high snowy peaks)
-      if (y > 240) continue;
-
-      const scale = 0.7 + Math.random() * 0.8;
-      dummy.position.set(x, y, z);
+      const scale = 0.8 + Math.random() * 0.8;
+      dummy.position.set(tx, ty, tz);
       dummy.scale.set(scale, scale, scale);
-      dummy.rotation.y = Math.random() * Math.PI * 2;
       dummy.updateMatrix();
-
-      pineInstanced.setMatrixAt(placed, dummy.matrix);
-      trunkInstanced.setMatrixAt(placed, dummy.matrix);
+      inst.setMatrixAt(placed, dummy.matrix);
       placed++;
     }
 
-    pineInstanced.instanceMatrix.needsUpdate = true;
-    trunkInstanced.instanceMatrix.needsUpdate = true;
-
-    this.scene.add(pineInstanced);
-    this.scene.add(trunkInstanced);
+    inst.instanceMatrix.needsUpdate = true;
+    group.add(inst);
   }
 
-  createClouds() {
-    // Volumetric fluffy cloud clusters
+  initClouds() {
     const cloudGeom = new THREE.DodecahedronGeometry(1, 1);
     const cloudMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
       roughness: 0.95,
-      metalness: 0.05,
       transparent: true,
-      opacity: 0.82,
+      opacity: 0.85,
       flatShading: true,
     });
 
-    const cloudClusterCount = 45;
-    for (let i = 0; i < cloudClusterCount; i++) {
+    for (let i = 0; i < 40; i++) {
       const cluster = new THREE.Group();
       const puffCount = 6 + Math.floor(Math.random() * 8);
 
       for (let j = 0; j < puffCount; j++) {
         const puff = new THREE.Mesh(cloudGeom, cloudMat);
-        const scale = 25 + Math.random() * 45;
-        puff.scale.set(scale, scale * 0.65, scale);
+        const scale = 30 + Math.random() * 50;
+        puff.scale.set(scale, scale * 0.6, scale);
         puff.position.set(
-          (Math.random() - 0.5) * 80,
-          (Math.random() - 0.5) * 20,
-          (Math.random() - 0.5) * 80
+          (Math.random() - 0.5) * 90,
+          (Math.random() - 0.5) * 25,
+          (Math.random() - 0.5) * 90
         );
         cluster.add(puff);
       }
 
-      const x = (Math.random() - 0.5) * 4500;
-      const y = 350 + Math.random() * 450; // Cloud altitude
-      const z = (Math.random() - 0.5) * 4500;
-      cluster.position.set(x, y, z);
+      cluster.position.set(
+        (Math.random() - 0.5) * 5000,
+        380 + Math.random() * 450,
+        (Math.random() - 0.5) * 5000
+      );
 
       this.clouds.push({
         group: cluster,
-        speedX: 1.5 + Math.random() * 2.0,
+        speedX: 2.0 + Math.random() * 2.5,
       });
 
       this.scene.add(cluster);
     }
   }
 
-  update(delta) {
-    // Rotate radar antenna
-    if (this.radarDish) {
-      this.radarDish.rotation.y += delta * 1.2;
+  // Stream chunks around player position
+  updateChunks(playerX, playerZ) {
+    const currentChunkX = Math.floor(playerX / this.chunkSize);
+    const currentChunkZ = Math.floor(playerZ / this.chunkSize);
+
+    // Track active chunk keys
+    const neededKeys = new Set();
+
+    for (let dx = -this.viewDistance; dx <= this.viewDistance; dx++) {
+      for (let dz = -this.viewDistance; dz <= this.viewDistance; dz++) {
+        const cx = currentChunkX + dx;
+        const cz = currentChunkZ + dz;
+        const key = `${cx},${cz}`;
+        neededKeys.add(key);
+
+        if (!this.chunks.has(key)) {
+          const chunkObj = this.createChunk(cx, cz);
+          this.chunks.set(key, chunkObj);
+        }
+      }
     }
 
-    // Sway windsock
-    if (this.windsock) {
-      this.windsock.rotation.y = Math.sin(Date.now() * 0.002) * 0.2 - Math.PI / 2;
+    // Unload distant chunks
+    for (const [key, chunk] of this.chunks.entries()) {
+      if (!neededKeys.has(key)) {
+        this.scene.remove(chunk.group);
+        this.chunks.delete(key);
+      }
     }
 
-    // Drift clouds across sky
+    // Check biome change
+    const newBiome = this.getBiomeAt(playerX, playerZ);
+    if (newBiome !== this.currentBiome) {
+      this.currentBiome = newBiome;
+      if (this.onBiomeChangeCallback) {
+        this.onBiomeChangeCallback(newBiome);
+      }
+    }
+  }
+
+  update(delta, playerPos) {
+    this.updateChunks(playerPos.x, playerPos.z);
+
+    // Rotate radar
+    if (this.radarDish) this.radarDish.rotation.y += delta * 1.2;
+
+    // Rotate windmill blades
+    for (const blades of this.windmills) {
+      blades.rotation.z += delta * 1.8;
+    }
+
+    // Sweep lighthouse beams
+    for (const beam of this.lighthouses) {
+      beam.rotation.y += delta * 1.4;
+    }
+
+    // Move traffic cars
+    for (const car of this.trafficCars) {
+      if (car.axis === "x") {
+        car.mesh.position.x += car.speed * car.dir * delta;
+        if (car.mesh.position.x > car.max) car.mesh.position.x = car.min;
+        if (car.mesh.position.x < car.min) car.mesh.position.x = car.max;
+      } else {
+        car.mesh.position.z += car.speed * car.dir * delta;
+        if (car.mesh.position.z > car.max) car.mesh.position.z = car.min;
+        if (car.mesh.position.z < car.min) car.mesh.position.z = car.max;
+      }
+    }
+
+    // Drift clouds
     for (const cloud of this.clouds) {
-      cloud.group.position.x += cloud.speedX * delta * 5;
-      if (cloud.group.position.x > 2500) {
-        cloud.group.position.x = -2500;
+      cloud.group.position.x += cloud.speedX * delta * 6;
+      if (cloud.group.position.x > playerPos.x + 3500) {
+        cloud.group.position.x = playerPos.x - 3500;
       }
     }
   }

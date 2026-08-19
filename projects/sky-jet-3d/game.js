@@ -1,4 +1,4 @@
-// game.js - Main Game Loop, Three.js Rendering Pipeline, Camera Director, Radar, and Input Controller
+// game.js - Main Game Loop, Infinite Biome Streaming, Radar, HUD and Flight Director
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { WorldManager } from "./world.js";
 import { Airplane } from "./airplane.js";
@@ -17,12 +17,9 @@ export class SkyJetGame {
     this.crateManager = null;
 
     this.clock = new THREE.Clock();
-    this.cameraMode = "THIRD_PERSON"; // 'THIRD_PERSON' or 'COCKPIT'
+    this.cameraMode = "THIRD_PERSON";
+    this.gameState = "READY";
 
-    this.gameState = "READY"; // 'READY', 'PLAYING', 'CRASHED', 'VICTORY', 'PAUSED'
-    this.targetCrates = 14;
-
-    // Keys State
     this.keys = {
       pitchUp: false,
       pitchDown: false,
@@ -69,6 +66,11 @@ export class SkyJetGame {
     this.worldManager = new WorldManager(this.scene);
     this.airplane = new Airplane(this.scene);
     this.crateManager = new SupplyCrateManager(this.scene, this.worldManager);
+
+    // Biome change dispatch
+    this.worldManager.onBiomeChangeCallback = (newBiome) => {
+      this.handleBiomeChange(newBiome);
+    };
   }
 
   initInputs() {
@@ -76,8 +78,8 @@ export class SkyJetGame {
       flightAudio.init();
       flightAudio.resume();
 
-      if (e.code === "KeyW" || e.code === "ArrowDown") this.keys.pitchUp = true; // Flight stick back -> Pitch Up
-      if (e.code === "KeyS" || e.code === "ArrowUp") this.keys.pitchDown = true; // Flight stick forward -> Pitch Down
+      if (e.code === "KeyW" || e.code === "ArrowDown") this.keys.pitchUp = true;
+      if (e.code === "KeyS" || e.code === "ArrowUp") this.keys.pitchDown = true;
       if (e.code === "KeyA" || e.code === "ArrowLeft") this.keys.rollLeft = true;
       if (e.code === "KeyD" || e.code === "ArrowRight") this.keys.rollRight = true;
       if (e.code === "KeyQ") this.keys.yawLeft = true;
@@ -85,20 +87,10 @@ export class SkyJetGame {
       if (e.code === "ShiftLeft" || e.code === "ShiftRight") this.keys.boost = true;
       if (e.code === "Space" || e.code === "KeyB") this.keys.brake = true;
 
-      // Camera Switch
-      if (e.code === "KeyC") {
-        this.toggleCamera();
-      }
+      if (e.code === "KeyC") this.toggleCamera();
+      if (e.code === "KeyR") this.restartMission();
 
-      // Quick restart
-      if (e.code === "KeyR") {
-        this.restartMission();
-      }
-
-      // Auto start on any flight input
-      if (this.gameState === "READY") {
-        this.startFlight();
-      }
+      if (this.gameState === "READY") this.startFlight();
     });
 
     window.addEventListener("keyup", (e) => {
@@ -112,7 +104,6 @@ export class SkyJetGame {
       if (e.code === "Space" || e.code === "KeyB") this.keys.brake = false;
     });
 
-    // Touch and on-screen button controls
     const bindBtn = (id, keyName) => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -146,9 +137,7 @@ export class SkyJetGame {
     bindBtn("btn-brake", "brake");
 
     const camBtn = document.getElementById("btn-cam-switch");
-    if (camBtn) {
-      camBtn.addEventListener("click", () => this.toggleCamera());
-    }
+    if (camBtn) camBtn.addEventListener("click", () => this.toggleCamera());
 
     const soundBtn = document.getElementById("btn-sound-toggle");
     if (soundBtn) {
@@ -164,6 +153,10 @@ export class SkyJetGame {
     this.altEl = document.getElementById("hud-altitude");
     this.scoreEl = document.getElementById("hud-score");
     this.cratesEl = document.getElementById("hud-crates");
+    this.distanceEl = document.getElementById("hud-distance");
+    this.biomeEl = document.getElementById("hud-biome");
+    this.shieldPillEl = document.getElementById("hud-shield-pill");
+    this.shieldBarEl = document.getElementById("hud-shield-bar");
     this.nitroBarEl = document.getElementById("hud-nitro-bar");
     this.camModeEl = document.getElementById("hud-cam-mode");
     this.bannerEl = document.getElementById("hud-banner");
@@ -180,21 +173,15 @@ export class SkyJetGame {
     if (restartBtn) {
       restartBtn.addEventListener("click", () => this.restartMission());
     }
-
-    const victoryAgainBtn = document.getElementById("btn-victory-again");
-    if (victoryAgainBtn) {
-      victoryAgainBtn.addEventListener("click", () => this.restartMission());
-    }
   }
 
   startFlight() {
     this.gameState = "PLAYING";
     document.getElementById("intro-screen").style.display = "none";
     document.getElementById("game-over-screen").style.display = "none";
-    document.getElementById("victory-screen").style.display = "none";
-    this.airplane.throttle = 1.0; // Spool up engine on takeoff
+    this.airplane.throttle = 1.0;
     flightAudio.playTakeoffAlert();
-    this.showBanner("ВЗЛЁТ! НАБЕРИТЕ СКОРОСТЬ 170 КМ/Ч И ТЯНИТЕ ШТУРВАЛ (W)");
+    this.showBanner("🛫 ВЗЛЁТ! НАБЕРИТЕ СКОРОСТЬ 170 КМ/Ч И ТЯНИТЕ ШТУРВАЛ (W / ↓)");
   }
 
   toggleCamera() {
@@ -202,6 +189,18 @@ export class SkyJetGame {
     if (this.camModeEl) {
       this.camModeEl.textContent = this.cameraMode === "COCKPIT" ? "КАБИНА (1P)" : "ОБЗОР (3P)";
     }
+  }
+
+  handleBiomeChange(biome) {
+    flightAudio.playRadioChatter();
+    let name = "🏔️ АЛЬПИЙСКИЕ ГОРЫ";
+    if (biome === "CITY") name = "🏙️ МЕГАПОЛИС НЕОН-СИТИ";
+    if (biome === "FLOWERS") name = "🌸 ДОЛИНА ЦВЕТОЧНЫХ ЛУГОВ";
+    if (biome === "OCEAN") name = "🌊 ТРОПИЧЕСКИЙ ОКЕАН И ОСТРОВА";
+    if (biome === "AIRPORT") name = "🛫 ГЛАВНЫЙ АЭРОПОРТ";
+
+    if (this.biomeEl) this.biomeEl.textContent = name;
+    this.showBanner(`📻 ДИСПЕТЧЕР: ВХОД В ЗОНУ [${name}]`, 3800);
   }
 
   showBanner(text, duration = 3200) {
@@ -227,37 +226,26 @@ export class SkyJetGame {
     this.camera.updateProjectionMatrix();
 
     if (this.cameraMode === "COCKPIT") {
-      // Cockpit View (inside pilot canopy looking forward)
       const mountPos = new THREE.Vector3();
       this.airplane.cockpitPoint.getWorldPosition(mountPos);
       this.camera.position.copy(mountPos);
-
-      // Camera orientation matches jet orientation
       this.camera.quaternion.copy(this.airplane.mesh.quaternion);
-
-      // Show/Hide inner cockpit ring
       if (this.airplane.hudRing) this.airplane.hudRing.visible = true;
     } else {
-      // Third Person Chase Camera
       if (this.airplane.hudRing) this.airplane.hudRing.visible = false;
-
       const chaseDist = isBoosting ? 26 : 22;
       const chaseHeight = 5.2;
 
-      // Position behind the jet in world space
       const offset = new THREE.Vector3(0, chaseHeight, -chaseDist);
       offset.applyQuaternion(this.airplane.mesh.quaternion);
 
       const targetCamPos = this.airplane.mesh.position.clone().add(offset);
       this.camera.position.lerp(targetCamPos, delta * 8.0);
 
-      // Look slightly ahead of jet nose
       const lookTarget = this.airplane.mesh.position.clone().add(
         new THREE.Vector3(0, 1.2, 18).applyQuaternion(this.airplane.mesh.quaternion)
       );
       this.camera.lookAt(lookTarget);
-
-      // Bank camera slightly with plane roll
       this.camera.up.set(0, 1, 0).applyQuaternion(this.airplane.mesh.quaternion);
     }
   }
@@ -269,12 +257,11 @@ export class SkyJetGame {
     const h = this.radarCanvas.height;
     const cx = w / 2;
     const cy = h / 2;
-    const scale = 0.085; // radar zoom scale
+    const scale = 0.08;
 
     ctx.clearRect(0, 0, w, h);
 
-    // Radar circular frame & rings
-    ctx.strokeStyle = "rgba(0, 240, 255, 0.35)";
+    ctx.strokeStyle = "rgba(0, 240, 255, 0.4)";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(cx, cy, cx - 4, 0, Math.PI * 2);
@@ -285,27 +272,9 @@ export class SkyJetGame {
     ctx.arc(cx, cy, (cx - 4) * 0.5, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Crosshairs
-    ctx.beginPath();
-    ctx.moveTo(cx, 4);
-    ctx.lineTo(cx, h - 4);
-    ctx.moveTo(4, cy);
-    ctx.lineTo(w - 4, cy);
-    ctx.stroke();
-
     const planePos = this.airplane.mesh.position;
     const planeForward = new THREE.Vector3(0, 0, 1).applyQuaternion(this.airplane.mesh.quaternion);
     const planeAngle = Math.atan2(planeForward.x, planeForward.z);
-
-    // Draw Runway on radar
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(-planeAngle);
-    ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
-    const rX = -planePos.x * scale;
-    const rZ = -planePos.z * scale;
-    ctx.fillRect(rX - 2, rZ - 50, 4, 100);
-    ctx.restore();
 
     // Draw Crates on radar
     for (const crate of this.crateManager.crates) {
@@ -313,14 +282,17 @@ export class SkyJetGame {
       const dx = (crate.group.position.x - planePos.x) * scale;
       const dz = (crate.group.position.z - planePos.z) * scale;
 
-      // Rotate relative to player heading
       const rx = dx * Math.cos(-planeAngle) - dz * Math.sin(-planeAngle);
       const ry = -(dx * Math.sin(-planeAngle) + dz * Math.cos(-planeAngle));
 
       const dist = Math.sqrt(rx * rx + ry * ry);
       if (dist < cx - 6) {
-        ctx.fillStyle = "#ffcc00";
-        ctx.shadowColor = "#ffcc00";
+        let color = "#ff7700";
+        if (crate.type === "gold") color = "#ffd700";
+        if (crate.type === "plasma") color = "#00f0ff";
+
+        ctx.fillStyle = color;
+        ctx.shadowColor = color;
         ctx.shadowBlur = 6;
         ctx.beginPath();
         ctx.arc(cx + rx, cy + ry, 3.5, 0, Math.PI * 2);
@@ -329,7 +301,7 @@ export class SkyJetGame {
       }
     }
 
-    // Player icon (Center triangle)
+    // Player arrow
     ctx.fillStyle = "#00ffff";
     ctx.beginPath();
     ctx.moveTo(cx, cy - 7);
@@ -339,22 +311,18 @@ export class SkyJetGame {
     ctx.fill();
   }
 
-  onCrateCollected(count, score) {
-    flightAudio.playCollectSound();
-    this.airplane.addBoost(35); // Add nitro fuel on pickup
-    this.showBanner(`📦 ЯЩИК ПРИПАСОВ СОБРАН! +500 ОЧКОВ | НИТРО +35% (${count}/${this.targetCrates})`);
+  onCrateCollected(type, points, count, score) {
+    flightAudio.playCollectSound(type);
 
-    if (count >= this.targetCrates) {
-      this.triggerVictory();
-    }
-  }
-
-  triggerVictory() {
-    this.gameState = "VICTORY";
-    const vicScreen = document.getElementById("victory-screen");
-    if (vicScreen) {
-      document.getElementById("victory-score").textContent = this.crateManager.score;
-      vicScreen.style.display = "grid";
+    if (type === "gold") {
+      this.airplane.addBoost(100);
+      this.showBanner(`🌟 ЗОЛОТОЙ СУПЕР-ЯЩИК! +${points} ОЧКОВ | 100% НИТРО!`);
+    } else if (type === "plasma") {
+      this.airplane.activateShield(12);
+      this.showBanner(`🛡️ ПЛАЗМЕННЫЙ ЩИТ АКТИВИРОВАН (12 СЕК) | +${points} ОЧКОВ`);
+    } else {
+      this.airplane.addBoost(40);
+      this.showBanner(`📦 ТУРБО-ПРИПАСЫ! +${points} ОЧКОВ | НИТРО +40%`);
     }
   }
 
@@ -364,6 +332,7 @@ export class SkyJetGame {
     const overScreen = document.getElementById("game-over-screen");
     if (overScreen) {
       document.getElementById("game-over-score").textContent = this.crateManager.score;
+      document.getElementById("game-over-distance").textContent = (this.airplane.distanceFlownMeters / 1000).toFixed(1);
       overScreen.style.display = "grid";
     }
   }
@@ -375,16 +344,29 @@ export class SkyJetGame {
     this.airplane.throttle = 1.0;
     document.getElementById("intro-screen").style.display = "none";
     document.getElementById("game-over-screen").style.display = "none";
-    document.getElementById("victory-screen").style.display = "none";
-    this.showBanner("ПОПЫТКА №2: ВЗЛЁТ! ТЯНИТЕ ШТУРВАЛ НА СЕБЯ (W)");
+    this.showBanner("🛫 ПОВТОРНЫЙ ВЗЛЁТ! ТЯНИТЕ ШТУРВАЛ (W / ↓)");
   }
 
   updateHUD() {
     if (this.speedEl) this.speedEl.textContent = Math.round(this.airplane.speed);
     if (this.altEl) this.altEl.textContent = Math.max(0, Math.round(this.airplane.mesh.position.y));
     if (this.scoreEl) this.scoreEl.textContent = this.crateManager.score;
-    if (this.cratesEl) this.cratesEl.textContent = `${this.crateManager.collectedCount}/${this.targetCrates}`;
+    if (this.cratesEl) this.cratesEl.textContent = this.crateManager.collectedCount;
+    if (this.distanceEl) this.distanceEl.textContent = (this.airplane.distanceFlownMeters / 1000).toFixed(1);
     if (this.nitroBarEl) this.nitroBarEl.style.width = `${Math.round(this.airplane.boostFuel)}%`;
+
+    // Shield UI
+    if (this.shieldPillEl) {
+      if (this.airplane.shieldTime > 0) {
+        this.shieldPillEl.style.display = "flex";
+        if (this.shieldBarEl) {
+          const pct = Math.min(100, (this.airplane.shieldTime / 12) * 100);
+          this.shieldBarEl.style.width = `${pct}%`;
+        }
+      } else {
+        this.shieldPillEl.style.display = "none";
+      }
+    }
   }
 
   animate() {
@@ -392,7 +374,6 @@ export class SkyJetGame {
     const delta = Math.min(this.clock.getDelta(), 0.1);
 
     if (this.gameState === "PLAYING" || this.gameState === "READY") {
-      // Map user inputs to flight controls
       this.airplane.pitchInput = (this.keys.pitchUp ? 1 : 0) - (this.keys.pitchDown ? 1 : 0);
       this.airplane.rollInput = (this.keys.rollRight ? 1 : 0) - (this.keys.rollLeft ? 1 : 0);
       this.airplane.yawInput = (this.keys.yawRight ? 1 : 0) - (this.keys.yawLeft ? 1 : 0);
@@ -400,17 +381,17 @@ export class SkyJetGame {
       this.airplane.isBraking = this.keys.brake;
 
       this.airplane.updatePhysics(delta, this.worldManager);
-      this.worldManager.update(delta);
-      this.crateManager.update(delta, this.airplane, (c, s) => this.onCrateCollected(c, s));
+      this.worldManager.update(delta, this.airplane.mesh.position);
+      this.crateManager.update(delta, this.airplane, (type, pts, count, score) =>
+        this.onCrateCollected(type, pts, count, score)
+      );
 
-      // Audio engine update
       flightAudio.update(
         this.airplane.throttle,
         this.airplane.speed,
         this.airplane.isBoosting && this.airplane.boostFuel > 0
       );
 
-      // Check crash condition
       if (this.airplane.isCrashed && this.gameState === "PLAYING") {
         this.triggerCrash();
       }

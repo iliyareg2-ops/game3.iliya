@@ -1,4 +1,4 @@
-// crates.js - Parachute Supply Crates, Floating Physics, Smoke Beacons, and Pickup Effects
+// crates.js - Infinite Dynamic Parachute Drops (Gold, Plasma Shield, and Turbo Boost Crates)
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 
 export class SupplyCrateManager {
@@ -9,116 +9,129 @@ export class SupplyCrateManager {
     this.burstParticles = [];
     this.collectedCount = 0;
     this.score = 0;
+    this.maxCrates = 18; // Keep 18 crates active around player at all times
 
-    this.crateGeom = null;
-    this.parachuteGeom = null;
     this.initGeometriesAndMaterials();
     this.initBurstParticles();
-    this.spawnInitialCrates(14);
   }
 
   initGeometriesAndMaterials() {
-    // 1. Cargo Box
-    this.boxGeom = new THREE.BoxGeometry(4.2, 4.2, 4.2);
-    this.boxMat = new THREE.MeshStandardMaterial({
-      color: 0xcc8800,
-      metalness: 0.6,
-      roughness: 0.35,
-    });
+    this.boxGeom = new THREE.BoxGeometry(4.4, 4.4, 4.4);
+    this.chuteGeom = new THREE.SphereGeometry(7.8, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2);
+    this.beaconGeom = new THREE.SphereGeometry(0.9, 8, 8);
 
-    // Crate corner brackets & hazard stripes
-    this.frameGeom = new THREE.BoxGeometry(4.4, 4.4, 4.4);
-    this.frameMat = new THREE.MeshStandardMaterial({
-      color: 0x22262c,
+    // 1. Gold Crate Material (Rare +1000 pts)
+    this.goldBoxMat = new THREE.MeshStandardMaterial({
+      color: 0xffbb00,
       metalness: 0.9,
-      roughness: 0.4,
-      wireframe: true,
+      roughness: 0.2,
+      emissive: 0xaa6600,
+      emissiveIntensity: 0.3,
     });
+    this.goldChuteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, side: THREE.DoubleSide, roughness: 0.6 });
 
-    // 2. Parachute Canopy (Hemisphere)
-    this.chuteGeom = new THREE.SphereGeometry(7.5, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2);
-    this.chuteMat = new THREE.MeshStandardMaterial({
+    // 2. Plasma Shield Crate Material (Energy Shield + 600 pts)
+    this.plasmaBoxMat = new THREE.MeshStandardMaterial({
+      color: 0x00d4ff,
+      metalness: 0.85,
+      roughness: 0.2,
+      emissive: 0x0099cc,
+      emissiveIntensity: 0.4,
+    });
+    this.plasmaChuteMat = new THREE.MeshStandardMaterial({ color: 0x00f0ff, side: THREE.DoubleSide, roughness: 0.6 });
+
+    // 3. Turbo Boost Crate Material (Super Nitro + 500 pts)
+    this.turboBoxMat = new THREE.MeshStandardMaterial({
       color: 0xff3b30,
-      roughness: 0.7,
-      metalness: 0.1,
-      side: THREE.DoubleSide,
+      metalness: 0.7,
+      roughness: 0.3,
+      emissive: 0xcc2200,
+      emissiveIntensity: 0.3,
     });
+    this.turboChuteMat = new THREE.MeshStandardMaterial({ color: 0xff9500, side: THREE.DoubleSide, roughness: 0.6 });
 
-    // 3. Glowing Beacon & Smoke Flare
-    this.beaconGeom = new THREE.SphereGeometry(0.8, 8, 8);
-    this.beaconMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+    this.frameGeom = new THREE.BoxGeometry(4.6, 4.6, 4.6);
+    this.frameMat = new THREE.MeshStandardMaterial({ color: 0x22262c, wireframe: true });
   }
 
   initBurstParticles() {
-    const pGeom = new THREE.SphereGeometry(0.4, 6, 6);
-    const pMat = new THREE.MeshBasicMaterial({
-      color: 0xffd700,
-      transparent: true,
-      opacity: 0.9,
-    });
+    const pGeom = new THREE.SphereGeometry(0.45, 6, 6);
+    const pMat = new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.9 });
 
-    for (let i = 0; i < 70; i++) {
+    for (let i = 0; i < 90; i++) {
       const mesh = new THREE.Mesh(pGeom, pMat.clone());
       mesh.visible = false;
       this.scene.add(mesh);
       this.burstParticles.push({
         mesh,
         life: 0,
-        maxLife: 0.6,
+        maxLife: 0.65,
         velocity: new THREE.Vector3(),
       });
     }
   }
 
-  createSingleCrate(x, y, z) {
+  createCrate(x, y, z, type = "turbo") {
     const group = new THREE.Group();
 
-    // Box
-    const box = new THREE.Mesh(this.boxGeom, this.boxMat);
+    let boxMat = this.turboBoxMat;
+    let chuteMat = this.turboChuteMat;
+    let beaconColor = 0xff5500;
+    let beamColor = 0xff5500;
+
+    if (type === "gold") {
+      boxMat = this.goldBoxMat;
+      chuteMat = this.goldChuteMat;
+      beaconColor = 0xffd700;
+      beamColor = 0xffd700;
+    } else if (type === "plasma") {
+      boxMat = this.plasmaBoxMat;
+      chuteMat = this.plasmaChuteMat;
+      beaconColor = 0x00ffff;
+      beamColor = 0x00f0ff;
+    }
+
+    const box = new THREE.Mesh(this.boxGeom, boxMat);
     box.castShadow = true;
-    box.receiveShadow = true;
     group.add(box);
 
     const frame = new THREE.Mesh(this.frameGeom, this.frameMat);
     group.add(frame);
 
-    // Blinking LED Beacon on top
-    const beacon = new THREE.Mesh(this.beaconGeom, this.beaconMat);
+    const beaconMat = new THREE.MeshBasicMaterial({ color: beaconColor });
+    const beacon = new THREE.Mesh(this.beaconGeom, beaconMat);
     beacon.position.y = 2.4;
     group.add(beacon);
 
-    // Parachute Canopy
-    const chute = new THREE.Mesh(this.chuteGeom, this.chuteMat);
-    chute.position.y = 11;
+    const chute = new THREE.Mesh(this.chuteGeom, chuteMat);
+    chute.position.y = 11.5;
     group.add(chute);
 
-    // Parachute Suspension Lines (Ropes)
-    const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 });
+    // Parachute lines
+    const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.65 });
     const corners = [
       new THREE.Vector3(-2, 2, -2),
       new THREE.Vector3(2, 2, -2),
       new THREE.Vector3(2, 2, 2),
       new THREE.Vector3(-2, 2, 2),
     ];
-
     corners.forEach((corner) => {
       const lineGeom = new THREE.BufferGeometry().setFromPoints([
         corner,
-        new THREE.Vector3(corner.x * 2.2, 11, corner.z * 2.2),
+        new THREE.Vector3(corner.x * 2.2, 11.5, corner.z * 2.2),
       ]);
-      const line = new THREE.Line(lineGeom, lineMat);
-      group.add(line);
+      group.add(new THREE.Line(lineGeom, lineMat));
     });
 
-    // Light Pillar / Beam for easy visual spotting across mountains
-    const beamGeom = new THREE.CylinderGeometry(0.3, 0.3, 160, 6);
+    // Light beacon column for spotting across landscape
+    const beamGeom = new THREE.CylinderGeometry(0.35, 0.35, 220, 6);
     const beamMat = new THREE.MeshBasicMaterial({
-      color: 0x00f0ff,
+      color: beamColor,
       transparent: true,
       opacity: 0.35,
     });
     const beam = new THREE.Mesh(beamGeom, beamMat);
-    beam.position.y = 80;
+    beam.position.y = 110;
     group.add(beam);
 
     group.position.set(x, y, z);
@@ -128,59 +141,63 @@ export class SupplyCrateManager {
       group,
       chute,
       beacon,
+      type,
       active: true,
       swayOffset: Math.random() * Math.PI * 2,
-      fallSpeed: 3.5 + Math.random() * 2.0,
-      initialY: y,
+      fallSpeed: 2.8 + Math.random() * 2.2,
     };
   }
 
-  spawnInitialCrates(count) {
-    // Clear old crates
-    for (const c of this.crates) {
-      this.scene.remove(c.group);
+  // Dynamic Infinite Spawner: ensures crates are always floating around player in new sectors
+  maintainCratesAroundPlayer(playerPos, playerForward) {
+    // Remove distant crates behind player (> 2200m)
+    for (let i = this.crates.length - 1; i >= 0; i--) {
+      const crate = this.crates[i];
+      const dist = crate.group.position.distanceTo(playerPos);
+      if (!crate.active || dist > 2400) {
+        this.scene.remove(crate.group);
+        this.crates.splice(i, 1);
+      }
     }
-    this.crates = [];
 
-    // Strategic scenic placements (approaches, valley rings, peaks)
-    const presetPositions = [
-      // Approach over runway
-      { x: 0, y: 120, z: 200 },
-      { x: 30, y: 180, z: 700 },
-      { x: -50, y: 220, z: 1100 },
-      // Mountain passes
-      { x: 280, y: 260, z: 400 },
-      { x: -320, y: 280, z: -200 },
-      { x: 450, y: 320, z: -600 },
-      { x: -400, y: 340, z: 650 },
-      // Highway curves
-      { x: 180, y: 160, z: -400 },
-      { x: 240, y: 190, z: -100 },
-      // High alpine ridges
-      { x: 600, y: 380, z: 200 },
-      { x: -550, y: 390, z: -500 },
-      { x: 0, y: 310, z: -900 },
-      { x: 350, y: 270, z: 950 },
-      { x: -280, y: 250, z: -750 },
-    ];
+    // Spawn new crates ahead of player flight vector
+    while (this.crates.length < this.maxCrates) {
+      const angle = (Math.random() - 0.5) * Math.PI * 1.2; // 120-degree cone ahead
+      const dist = 350 + Math.random() * 1100;
+      
+      const spawnDir = playerForward.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), angle).normalize();
+      const spawnX = playerPos.x + spawnDir.x * dist + (Math.random() - 0.5) * 200;
+      const spawnZ = playerPos.z + spawnDir.z * dist + (Math.random() - 0.5) * 200;
+      
+      const groundY = this.worldManager.getTerrainHeight(spawnX, spawnZ);
+      const spawnY = Math.max(groundY + 40, groundY + 90 + Math.random() * 280);
 
-    for (let i = 0; i < count; i++) {
-      const pos = presetPositions[i % presetPositions.length];
-      const crate = this.createSingleCrate(pos.x, pos.y, pos.z);
+      // Random crate type
+      const rand = Math.random();
+      let type = "turbo";
+      if (rand < 0.22) type = "gold"; // 22% rare gold
+      else if (rand < 0.48) type = "plasma"; // 26% plasma shield
+
+      const crate = this.createCrate(spawnX, spawnY, spawnZ, type);
       this.crates.push(crate);
     }
   }
 
-  triggerBurst(position) {
+  triggerBurst(position, type) {
+    let color = 0xff7700;
+    if (type === "gold") color = 0xffd700;
+    if (type === "plasma") color = 0x00f0ff;
+
     let fired = 0;
     for (const p of this.burstParticles) {
-      if (fired >= 24) break;
+      if (fired >= 28) break;
       if (!p.mesh.visible) {
         p.mesh.position.copy(position);
+        p.mesh.material.color.setHex(color);
         p.velocity.set(
-          (Math.random() - 0.5) * 35,
-          (Math.random() - 0.2) * 35,
-          (Math.random() - 0.5) * 35
+          (Math.random() - 0.5) * 40,
+          (Math.random() - 0.2) * 40,
+          (Math.random() - 0.5) * 40
         );
         p.life = 0;
         p.mesh.visible = true;
@@ -191,46 +208,50 @@ export class SupplyCrateManager {
 
   update(delta, airplane, onCollectCallback) {
     const time = Date.now() * 0.001;
+    const playerPos = airplane.mesh.position;
+    const playerForward = new THREE.Vector3(0, 0, 1).applyQuaternion(airplane.mesh.quaternion);
+
+    this.maintainCratesAroundPlayer(playerPos, playerForward);
 
     for (const crate of this.crates) {
       if (!crate.active) continue;
 
-      // Gentle floating descent & sway
-      const swayX = Math.sin(time * 1.5 + crate.swayOffset) * 0.12;
-      const swayZ = Math.cos(time * 1.3 + crate.swayOffset) * 0.12;
-
+      // Parachute sway
+      const swayX = Math.sin(time * 1.6 + crate.swayOffset) * 0.14;
+      const swayZ = Math.cos(time * 1.4 + crate.swayOffset) * 0.14;
       crate.group.rotation.x = swayX;
       crate.group.rotation.z = swayZ;
 
-      // Slow descent with ground check
+      // Descent with terrain ground check
       const groundY = this.worldManager.getTerrainHeight(crate.group.position.x, crate.group.position.z);
-      if (crate.group.position.y > groundY + 3.0) {
+      if (crate.group.position.y > groundY + 3.2) {
         crate.group.position.y -= crate.fallSpeed * delta;
       }
 
-      // Beacon blink
-      const blink = Math.sin(time * 8 + crate.swayOffset) > 0;
-      crate.beacon.material.color.setHex(blink ? 0x00ffff : 0x005577);
+      // Distance to airplane
+      const dist = crate.group.position.distanceTo(playerPos);
 
-      // Distance to Airplane
-      const dist = crate.group.position.distanceTo(airplane.mesh.position);
-
-      // Magnetic pull when close
-      if (dist < 65) {
-        const pullDir = new THREE.Vector3().subVectors(airplane.mesh.position, crate.group.position).normalize();
-        crate.group.position.addScaledVector(pullDir, delta * 30);
+      // Magnetic attraction within 75m
+      if (dist < 75) {
+        const pullDir = new THREE.Vector3().subVectors(playerPos, crate.group.position).normalize();
+        crate.group.position.addScaledVector(pullDir, delta * 38);
       }
 
-      // Collect Trigger
-      if (dist < 14) {
+      // Collect crate
+      if (dist < 15) {
         crate.active = false;
         crate.group.visible = false;
         this.collectedCount++;
-        this.score += 500;
-        this.triggerBurst(crate.group.position);
+
+        let addedScore = 500;
+        if (crate.type === "gold") addedScore = 1000;
+        if (crate.type === "plasma") addedScore = 600;
+
+        this.score += addedScore;
+        this.triggerBurst(crate.group.position, crate.type);
 
         if (onCollectCallback) {
-          onCollectCallback(this.collectedCount, this.score);
+          onCollectCallback(crate.type, addedScore, this.collectedCount, this.score);
         }
       }
     }
@@ -249,23 +270,12 @@ export class SupplyCrateManager {
     }
   }
 
-  getNearestCratePosition(fromPos) {
-    let nearest = null;
-    let minDist = Infinity;
-    for (const c of this.crates) {
-      if (!c.active) continue;
-      const d = c.group.position.distanceTo(fromPos);
-      if (d < minDist) {
-        minDist = d;
-        nearest = c.group.position;
-      }
-    }
-    return nearest;
-  }
-
   reset() {
+    for (const c of this.crates) {
+      this.scene.remove(c.group);
+    }
+    this.crates = [];
     this.collectedCount = 0;
     this.score = 0;
-    this.spawnInitialCrates(14);
   }
 }
