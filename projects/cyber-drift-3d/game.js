@@ -1,4 +1,4 @@
-// game.js - Cyber Drift 3D Main Director, AI Rivals Race, Bullet Time Focus, Weather & Radio
+// game.js - Cyber Drift 3D Main Director with 3D Showroom Turntable & Interactive Orbit
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { CyberCar } from "./car.js";
 import { CityTrackManager } from "./city.js";
@@ -17,7 +17,9 @@ export class CyberDriftGame {
     this.clock = new THREE.Clock();
     this.cameraMode = "CHASE";
     this.gameState = "GARAGE";
-    this.garageOrbitAngle = 0;
+    this.garageOrbitAngle = 0.6;
+    this.isDraggingGarage = false;
+    this.prevMouseX = 0;
     this.screenShake = 0;
 
     this.keys = {
@@ -42,10 +44,10 @@ export class CyberDriftGame {
 
   initThree() {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x111827);
+    this.scene.background = new THREE.Color(0x0f172a);
 
-    this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.2, 5000);
-    this.camera.position.set(0, 4, 12);
+    this.camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.2, 5000);
+    this.camera.position.set(7, 2.5, 9);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -61,6 +63,29 @@ export class CyberDriftGame {
   initWorld() {
     this.trackManager = new CityTrackManager(this.scene);
     this.car = new CyberCar(this.scene, 0);
+
+    // Showroom Studio Turntable Pod
+    const turntableGeom = new THREE.CylinderGeometry(7.5, 8.0, 0.2, 32);
+    const turntableMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      metalness: 0.9,
+      roughness: 0.2,
+    });
+    this.turntable = new THREE.Mesh(turntableGeom, turntableMat);
+    this.turntable.position.set(0, 0.08, 0);
+    this.turntable.receiveShadow = true;
+    this.scene.add(this.turntable);
+
+    // Showroom Spotlights
+    this.studioSpotL = new THREE.SpotLight(0xffffff, 4.0, 40, Math.PI / 4, 0.4);
+    this.studioSpotL.position.set(6, 12, 6);
+    this.studioSpotL.target = this.car.mesh;
+    this.scene.add(this.studioSpotL);
+
+    this.studioSpotR = new THREE.SpotLight(0x38bdf8, 3.0, 40, Math.PI / 4, 0.4);
+    this.studioSpotR.position.set(-6, 10, -6);
+    this.studioSpotR.target = this.car.mesh;
+    this.scene.add(this.studioSpotR);
 
     this.trackManager.onTakedownCallback = (bannerText) => {
       this.screenShake = 1.4;
@@ -111,6 +136,26 @@ export class CyberDriftGame {
       if (e.code === "Space") this.keys.drift = false;
       if (e.code === "ShiftLeft" || e.code === "ShiftRight") this.keys.nitro = false;
       if (e.code === "KeyF") this.keys.focus = false;
+    });
+
+    // Mouse Drag to Spin Car in Garage Showroom
+    window.addEventListener("mousedown", (e) => {
+      if (this.gameState === "GARAGE" && e.clientX > 420) {
+        this.isDraggingGarage = true;
+        this.prevMouseX = e.clientX;
+      }
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if (this.isDraggingGarage && this.gameState === "GARAGE") {
+        const dx = e.clientX - this.prevMouseX;
+        this.garageOrbitAngle += dx * 0.008;
+        this.prevMouseX = e.clientX;
+      }
+    });
+
+    window.addEventListener("mouseup", () => {
+      this.isDraggingGarage = false;
     });
 
     const camBtn = document.getElementById("btn-cam-switch");
@@ -209,6 +254,9 @@ export class CyberDriftGame {
     document.getElementById("garage-screen").style.display = "none";
     document.getElementById("busted-screen").style.display = "none";
     document.getElementById("hud").style.display = "flex";
+    if (this.turntable) this.turntable.visible = false;
+    if (this.studioSpotL) this.studioSpotL.intensity = 0;
+    if (this.studioSpotR) this.studioSpotR.intensity = 0;
     this.showBanner("🔥 СТАРТ ГОНКИ! ПОБЕДИ 3 СОПЕРНИКОВ");
   }
 
@@ -257,14 +305,25 @@ export class CyberDriftGame {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
+  // 🏎️ CINEMATIC SHOWROOM POSITIONING (Car sits framed on the RIGHT side!)
   updateCamera(delta) {
     if (this.gameState === "GARAGE") {
-      this.garageOrbitAngle += delta * 0.65;
-      const radius = 12.5;
-      const camX = Math.sin(this.garageOrbitAngle) * radius;
-      const camZ = Math.cos(this.garageOrbitAngle) * radius;
-      this.camera.position.set(camX, 3.2, camZ);
-      this.camera.lookAt(0, 0.8, 0);
+      if (!this.isDraggingGarage) {
+        this.garageOrbitAngle += delta * 0.35;
+      }
+
+      const radius = 10.5;
+      // Offset center to the left so car is framed on the right 60% of viewport!
+      const targetLookAt = new THREE.Vector3(-2.2, 0.9, 0);
+
+      const camX = targetLookAt.x + Math.sin(this.garageOrbitAngle) * radius;
+      const camZ = targetLookAt.z + Math.cos(this.garageOrbitAngle) * radius;
+      const camY = 2.4;
+
+      this.camera.position.set(camX, camY, camZ);
+      this.camera.lookAt(targetLookAt);
+
+      if (this.turntable) this.turntable.rotation.y = -this.garageOrbitAngle * 0.5;
       return;
     }
 
@@ -349,7 +408,6 @@ export class CyberDriftGame {
     if (this.nitroBarEl) this.nitroBarEl.style.width = `${Math.round(this.car.nitroFuel)}%`;
     if (this.focusBarEl) this.focusBarEl.style.width = `${Math.round(this.car.focusEnergy)}%`;
 
-    // Dynamic Race Position Tracking
     if (this.positionEl && this.trackManager) {
       let position = 1;
       const playerPos = this.car.position;
@@ -386,7 +444,6 @@ export class CyberDriftGame {
     requestAnimationFrame(this.animate);
     let rawDelta = Math.min(this.clock.getDelta(), 0.05);
 
-    // Bullet-Time Slow-Mo (0.35x speed on F)
     const isFocus = this.keys.focus && this.car.focusEnergy > 0;
     if (isFocus) {
       this.car.focusEnergy = Math.max(0, this.car.focusEnergy - rawDelta * 30);
