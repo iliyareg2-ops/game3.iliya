@@ -206,7 +206,9 @@ export class CyberDriftGame {
     this.rewindOverlayEl = document.getElementById("rewind-overlay");
     this.skillBadgeEl = document.getElementById("hud-skill-badge");
 
-    this.rpmBarEl = document.getElementById("hud-rpm-bar");
+    this.svgRpmArc = document.getElementById("svg-rpm-arc");
+    this.svgNitroArc = document.getElementById("svg-nitro-arc");
+    this.hudPosBadge = document.getElementById("hud-pos-badge");
     this.rpmValEl = document.getElementById("hud-rpm-val");
     this.shiftFlashEl = document.getElementById("hud-shift-flash");
     this.speedVignetteEl = document.getElementById("speed-vignette");
@@ -325,14 +327,32 @@ export class CyberDriftGame {
     const ctx = this.minimapCtx;
     const w = this.minimapCanvas.width;
     const h = this.minimapCanvas.height;
+    const cxCenter = w / 2;
+    const cyCenter = h / 2;
 
     ctx.clearRect(0, 0, w, h);
 
-    const mapX = (wx) => ((wx + 650) / 1300) * (w - 28) + 14;
-    const mapZ = (wz) => ((wz + 650) / 1300) * (h - 28) + 14;
+    // 1. Radar Glass Background
+    ctx.fillStyle = "#070a14";
+    ctx.beginPath();
+    ctx.arc(cxCenter, cyCenter, w / 2 - 2, 0, Math.PI * 2);
+    ctx.fill();
 
-    ctx.strokeStyle = "#334155";
-    ctx.lineWidth = 10;
+    // 2. Concentric Radar Grid Rings
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.08)";
+    ctx.lineWidth = 1.5;
+    [0.3, 0.6, 0.9].forEach((rRatio) => {
+      ctx.beginPath();
+      ctx.arc(cxCenter, cyCenter, (w / 2 - 4) * rRatio, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+
+    const mapX = (wx) => ((wx + 650) / 1300) * (w - 36) + 18;
+    const mapZ = (wz) => ((wz + 650) / 1300) * (h - 36) + 18;
+
+    // 3. Track Asphalt Glow Background
+    ctx.strokeStyle = "rgba(30, 41, 59, 0.95)";
+    ctx.lineWidth = 12;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.beginPath();
@@ -348,37 +368,56 @@ export class CyberDriftGame {
     ctx.closePath();
     ctx.stroke();
 
-    ctx.strokeStyle = "#0284c7";
-    ctx.lineWidth = 3;
+    // 4. Glowing Neon Circuit Line
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineWidth = 3.5;
+    ctx.shadowColor = "rgba(56, 189, 248, 0.6)";
+    ctx.shadowBlur = 8;
     ctx.stroke();
+    ctx.shadowBlur = 0;
 
+    // 5. Start/Finish Line Indicator
     const startX = mapX(0);
     const startZ = mapZ(0);
-    ctx.fillStyle = "#f59e0b";
-    ctx.fillRect(startX - 5, startZ - 5, 10, 10);
+    ctx.fillStyle = "#facc15";
+    ctx.fillRect(startX - 6, startZ - 3, 12, 6);
 
-    const rivalColors = ["#38bdf8", "#a855f7", "#22c55e"];
+    // 6. AI Rivals Blips
+    const rivalColors = ["#38bdf8", "#ec4899", "#22c55e"];
     this.trackManager.aiRivals.forEach((rival, idx) => {
       const rx = mapX(rival.mesh.position.x);
       const rz = mapZ(rival.mesh.position.z);
       ctx.fillStyle = rivalColors[idx % rivalColors.length];
+      ctx.shadowColor = rivalColors[idx % rivalColors.length];
+      ctx.shadowBlur = 6;
       ctx.beginPath();
-      ctx.arc(rx, rz, 5, 0, Math.PI * 2);
+      ctx.arc(rx, rz, 5.5, 0, Math.PI * 2);
       ctx.fill();
+      ctx.shadowBlur = 0;
     });
 
+    // 7. Player Car Arrow with Orientation & Halo Glow
     const px = mapX(this.car.position.x);
     const pz = mapZ(this.car.position.z);
     ctx.save();
     ctx.translate(px, pz);
     ctx.rotate(-this.car.heading + Math.PI);
 
-    ctx.fillStyle = "#fbbf24";
+    // Player Halo
+    ctx.fillStyle = "rgba(250, 204, 21, 0.35)";
     ctx.beginPath();
-    ctx.moveTo(0, -8);
-    ctx.lineTo(6, 6);
-    ctx.lineTo(0, 3);
-    ctx.lineTo(-6, 6);
+    ctx.arc(0, 0, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Player Arrow
+    ctx.fillStyle = "#fbbf24";
+    ctx.shadowColor = "#f59e0b";
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.moveTo(0, -9);
+    ctx.lineTo(7, 7);
+    ctx.lineTo(0, 3.5);
+    ctx.lineTo(-7, 7);
     ctx.closePath();
     ctx.fill();
     ctx.restore();
@@ -636,16 +675,26 @@ export class CyberDriftGame {
 
     if (this.gearEl) this.gearEl.textContent = gear;
     if (this.scoreEl) this.scoreEl.textContent = this.car.totalScore;
-    if (this.nitroBarEl) this.nitroBarEl.style.width = `${Math.round(this.car.nitroFuel)}%`;
 
-    // 📊 GT7 TACHOMETER & REDLINE SHIFT FLASH
+    // 🔘 SVG CIRCULAR TACHOMETER & NITRO GAUGE (Forza Horizon 5 Style)
     const rpm = Math.floor(1200 + ((spd % 65) / 65) * 7200 + (this.car.throttleInput > 0 ? 800 : 0));
-    const rpmPercent = Math.min(100, Math.max(0, ((rpm - 1000) / 8000) * 100));
-    if (this.rpmBarEl) this.rpmBarEl.style.width = `${rpmPercent}%`;
+    const rpmRatio = Math.min(1.0, Math.max(0, (rpm - 1000) / 8000));
+    if (this.svgRpmArc) {
+      // Stroke dasharray 376: 376 (empty) -> 125 (full)
+      const targetRpmOffset = 376 - (rpmRatio * 251);
+      this.svgRpmArc.style.strokeDashoffset = targetRpmOffset;
+    }
     if (this.rpmValEl) this.rpmValEl.textContent = `${rpm} RPM`;
 
+    // Nitro Gauge: stroke dasharray 424: 284 (empty) -> 140 (full)
+    const nitroRatio = Math.max(0, Math.min(1, this.car.nitroFuel / 100));
+    if (this.svgNitroArc) {
+      const targetNitroOffset = 284 - (nitroRatio * 144);
+      this.svgNitroArc.style.strokeDashoffset = targetNitroOffset;
+    }
+
     if (this.shiftFlashEl) {
-      this.shiftFlashEl.style.opacity = (rpmPercent > 88 && spd > 30) ? "0.85" : "0.0";
+      this.shiftFlashEl.style.opacity = (rpmRatio > 0.88 && spd > 30) ? "0.9" : "0.0";
     }
 
     // 🌪️ HIGH-SPEED MOTION BLUR VIGNETTE
@@ -693,15 +742,24 @@ export class CyberDriftGame {
       }
 
       if (this.positionEl) {
-        this.positionEl.textContent = `${position} / 4`;
-        if (position === 1) this.positionEl.style.color = "#22c55e";
-        else if (position <= 3) this.positionEl.style.color = "#38bdf8";
-        else this.positionEl.style.color = "#ef4444";
+        this.positionEl.textContent = `P${position}`;
+      }
+
+      if (this.hudPosBadge) {
+        if (position === 1) this.hudPosBadge.style.background = "linear-gradient(135deg, #eab308, #ca8a04)";
+        else if (position <= 3) this.hudPosBadge.style.background = "linear-gradient(135deg, #0284c7, #2563eb)";
+        else this.hudPosBadge.style.background = "linear-gradient(135deg, #475569, #334155)";
       }
 
       if (this.lapEl) {
         const displayLap = Math.min(this.playerLapsCompleted + 1, this.maxLaps);
         this.lapEl.textContent = `${displayLap} / ${this.maxLaps}`;
+      }
+
+      if (this.deltaEl) {
+        const deltaSec = ((1 - rawPlayerU) * 1.4 - 0.7).toFixed(2);
+        this.deltaEl.textContent = `${deltaSec > 0 ? '+' : ''}${deltaSec}s`;
+        this.deltaEl.style.color = deltaSec <= 0 ? "#22c55e" : "#ef4444";
       }
     }
 
