@@ -599,8 +599,8 @@ export class CyberCar {
       if (this.speed < 0) this.speed = Math.min(0, this.speed + delta * 35);
     }
 
-    // 🎮 FIXED STEERING: steerInput > 0 (Right, D / →), steerInput < 0 (Left, A / ←)
-    this.steerAngle = THREE.MathUtils.lerp(this.steerAngle, -this.steerInput * 0.55, delta * 8);
+    // 🎮 PERFECT STEERING: steerInput = -1 (A / ←, Left), steerInput = +1 (D / →, Right)
+    this.steerAngle = THREE.MathUtils.lerp(this.steerAngle, this.steerInput * 0.55, delta * 8);
     this.frontLeftWheelGroup.rotation.y = this.steerAngle;
     this.frontRightWheelGroup.rotation.y = this.steerAngle;
 
@@ -614,10 +614,10 @@ export class CyberCar {
     if (this.handbrake && Math.abs(this.speed) > 35) {
       this.isDrifting = true;
       this.speed = Math.max(0, this.speed - delta * 50);
-      this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, this.steerInput * 0.75, delta * 6);
+      this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, -this.steerInput * 0.75, delta * 6);
     } else if (Math.abs(this.steerInput) > 0.4 && Math.abs(this.speed) > 95) {
       this.isDrifting = true;
-      this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, this.steerInput * 0.48, delta * 4);
+      this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, -this.steerInput * 0.48, delta * 4);
     } else {
       this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, 0, delta * 5);
       if (Math.abs(this.driftAngle) < 0.08) {
@@ -642,10 +642,10 @@ export class CyberCar {
       if (Math.random() < 0.9) this.emitTireSmoke(false);
     }
 
-    // Heading calculation (steerInput < 0 turns Left toward -X, steerInput > 0 turns Right toward +X)
-    const effectiveSteer = -this.steerInput * (this.isDrifting ? 1.4 : 1.0);
+    // Heading calculation: Left (steerInput = -1) decreases heading, Right (steerInput = +1) increases heading
+    const effectiveSteer = this.steerInput * (this.isDrifting ? 1.4 : 1.0);
     this.heading += effectiveSteer * this.turnSpeed * (this.speed / this.maxSpeed) * delta;
-    this.mesh.rotation.y = this.heading - this.driftAngle;
+    this.mesh.rotation.y = this.heading + this.driftAngle;
 
     const speedMs = (this.speed * 1000) / 3600;
     const forward = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.heading);

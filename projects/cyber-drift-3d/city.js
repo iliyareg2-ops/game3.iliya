@@ -1,4 +1,4 @@
-// city.js - Photorealistic Real-Life Textured Asphalt Track, Highway Markings, Curbs & Police Takedowns
+// city.js - Photorealistic Flat Road Ribbon Track, Real Asphalt Texture, Curbs & Police Takedowns
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -10,7 +10,6 @@ export class CityTrackManager {
     this.guardrails = [];
     this.trafficCars = [];
     this.policeUnits = [];
-    this.roadblocks = [];
     this.helicopter = null;
     this.heliSearchlight = null;
 
@@ -20,7 +19,7 @@ export class CityTrackManager {
 
     this.initTextures();
     this.initLighting();
-    this.buildTrackAndCurbs();
+    this.buildFlatTrackAndCurbs();
     this.buildGuardrailsAndGantries();
     this.buildSkyscrapersAndNeon();
     this.buildPoliceFleet();
@@ -29,38 +28,37 @@ export class CityTrackManager {
   }
 
   initTextures() {
-    // 🛣️ 1. High-Resolution Real-Life Asphalt Canvas Texture with Road Markings
     const roadCanvas = document.createElement("canvas");
     roadCanvas.width = 1024;
     roadCanvas.height = 1024;
     const rCtx = roadCanvas.getContext("2d");
 
     // Natural Slate Grey Asphalt Base
-    rCtx.fillStyle = "#363b46";
+    rCtx.fillStyle = "#383e4a";
     rCtx.fillRect(0, 0, 1024, 1024);
 
-    // Micro-gravel & aggregate pebble speckles
+    // Micro-gravel & stone speckles
     for (let i = 0; i < 45000; i++) {
       const x = Math.random() * 1024;
       const y = Math.random() * 1024;
       const shade = Math.random();
-      if (shade > 0.6) rCtx.fillStyle = "#4a515e";
-      else if (shade > 0.3) rCtx.fillStyle = "#272a32";
-      else rCtx.fillStyle = "#5c6474";
+      if (shade > 0.6) rCtx.fillStyle = "#4c5464";
+      else if (shade > 0.3) rCtx.fillStyle = "#262930";
+      else rCtx.fillStyle = "#5e6878";
       rCtx.fillRect(x, y, 2 + Math.random() * 2, 2 + Math.random() * 2);
     }
 
-    // Tire wear grooves (darker asphalt where cars drive)
-    rCtx.fillStyle = "rgba(22, 25, 32, 0.45)";
-    rCtx.fillRect(180, 0, 160, 1024);
-    rCtx.fillRect(680, 0, 160, 1024);
+    // Tire grooves
+    rCtx.fillStyle = "rgba(20, 23, 30, 0.4)";
+    rCtx.fillRect(160, 0, 180, 1024);
+    rCtx.fillRect(684, 0, 180, 1024);
 
-    // Outer Solid White Road Shoulder Lines
+    // Outer Solid White Shoulder Lines
     rCtx.fillStyle = "#ffffff";
-    rCtx.fillRect(40, 0, 18, 1024);
-    rCtx.fillRect(966, 0, 18, 1024);
+    rCtx.fillRect(35, 0, 16, 1024);
+    rCtx.fillRect(973, 0, 16, 1024);
 
-    // Center Double Golden-Yellow Dashed Lines
+    // Center Double Yellow Dashed Lines
     rCtx.fillStyle = "#ffcc00";
     for (let y = 30; y < 1024; y += 140) {
       rCtx.fillRect(504, y, 7, 85);
@@ -70,19 +68,19 @@ export class CityTrackManager {
     // White Lane Boundary Dashes
     rCtx.fillStyle = "rgba(255, 255, 255, 0.85)";
     for (let y = 60; y < 1024; y += 160) {
-      rCtx.fillRect(280, y, 6, 70);
-      rCtx.fillRect(738, y, 6, 70);
+      rCtx.fillRect(270, y, 6, 70);
+      rCtx.fillRect(748, y, 6, 70);
     }
 
     this.asphaltTex = new THREE.CanvasTexture(roadCanvas);
     this.asphaltTex.wrapS = THREE.RepeatWrapping;
     this.asphaltTex.wrapT = THREE.RepeatWrapping;
-    this.asphaltTex.repeat.set(1, 55);
+    this.asphaltTex.repeat.set(1, 1);
 
     this.roadMat = new THREE.MeshStandardMaterial({
       map: this.asphaltTex,
       roughness: 0.45,
-      metalness: 0.18,
+      metalness: 0.15,
     });
   }
 
@@ -111,72 +109,109 @@ export class CityTrackManager {
     this.scene.add(this.moonLight);
   }
 
-  buildTrackAndCurbs() {
+  // 🛣️ Flat Ribbon Track: 100% Flat at y = 0.12 (Cars never sink!)
+  buildFlatTrackAndCurbs() {
     const groundGroup = new THREE.Group();
 
-    // 1. City Concrete Ground (Natural dark slate asphalt)
+    // 1. Surrounding Flat Ground
     const groundGeom = new THREE.PlaneGeometry(2400, 2400);
     groundGeom.rotateX(-Math.PI / 2);
     const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x1e2430,
-      roughness: 0.55,
-      metalness: 0.3,
+      color: 0x181c26,
+      roughness: 0.6,
+      metalness: 0.2,
     });
     const ground = new THREE.Mesh(groundGeom, groundMat);
+    ground.position.y = 0.0;
     ground.receiveShadow = true;
     groundGroup.add(ground);
 
-    // 2. High-Speed Multi-Lane Circuit with Textured Real Asphalt
+    // 2. High-Speed Circuit Curve Points
     const trackPoints = [
-      new THREE.Vector3(0, 0.1, 0),
-      new THREE.Vector3(0, 0.1, 300),
-      new THREE.Vector3(90, 0.1, 400),
-      new THREE.Vector3(240, 0.1, 380),
-      new THREE.Vector3(280, 0.1, 220),
-      new THREE.Vector3(240, 0.1, -90),
-      new THREE.Vector3(130, 0.1, -240),
-      new THREE.Vector3(190, 0.1, -400),
-      new THREE.Vector3(0, 0.1, -480),
-      new THREE.Vector3(-190, 0.1, -400),
-      new THREE.Vector3(-260, 0.1, -200),
-      new THREE.Vector3(-130, 0.1, 60),
-      new THREE.Vector3(-240, 0.1, 260),
-      new THREE.Vector3(-130, 0.1, 400),
-      new THREE.Vector3(0, 0.1, 300),
+      new THREE.Vector3(0, 0.12, 0),
+      new THREE.Vector3(0, 0.12, 300),
+      new THREE.Vector3(90, 0.12, 400),
+      new THREE.Vector3(240, 0.12, 380),
+      new THREE.Vector3(280, 0.12, 220),
+      new THREE.Vector3(240, 0.12, -90),
+      new THREE.Vector3(130, 0.12, -240),
+      new THREE.Vector3(190, 0.12, -400),
+      new THREE.Vector3(0, 0.12, -480),
+      new THREE.Vector3(-190, 0.12, -400),
+      new THREE.Vector3(-260, 0.12, -200),
+      new THREE.Vector3(-130, 0.12, 60),
+      new THREE.Vector3(-240, 0.12, 260),
+      new THREE.Vector3(-130, 0.12, 400),
+      new THREE.Vector3(0, 0.12, 300),
     ];
 
     this.trackCurve = new THREE.CatmullRomCurve3(trackPoints, true);
-    const trackWidth = 36;
-    const trackGeom = new THREE.TubeGeometry(this.trackCurve, 260, trackWidth / 2, 4, true);
+    const divisions = 260;
+    const trackWidth = 34;
+    const halfWidth = trackWidth / 2;
 
-    const trackMesh = new THREE.Mesh(trackGeom, this.roadMat);
-    trackMesh.scale.set(1, 0.04, 1);
-    trackMesh.receiveShadow = true;
-    groundGroup.add(trackMesh);
+    const points = this.trackCurve.getPoints(divisions);
+    const vertices = [];
+    const uvs = [];
+    const indices = [];
 
-    // 3. Red & White Curbs on Corners
+    // Build Flat Ribbon Mesh
+    for (let i = 0; i <= divisions; i++) {
+      const p = points[i % divisions];
+      const nextP = points[(i + 1) % divisions];
+      const tangent = new THREE.Vector3().subVectors(nextP, p).normalize();
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+      const leftX = p.x - normal.x * halfWidth;
+      const leftZ = p.z - normal.z * halfWidth;
+      const rightX = p.x + normal.x * halfWidth;
+      const rightZ = p.z + normal.z * halfWidth;
+
+      vertices.push(leftX, 0.12, leftZ);
+      vertices.push(rightX, 0.12, rightZ);
+
+      const v = (i / divisions) * 60; // 60 texture repeats
+      uvs.push(0, v);
+      uvs.push(1, v);
+
+      if (i < divisions) {
+        const base = i * 2;
+        indices.push(base, base + 1, base + 2);
+        indices.push(base + 1, base + 3, base + 2);
+      }
+    }
+
+    const roadGeom = new THREE.BufferGeometry();
+    roadGeom.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+    roadGeom.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+    roadGeom.setIndex(indices);
+    roadGeom.computeVertexNormals();
+
+    const roadMesh = new THREE.Mesh(roadGeom, this.roadMat);
+    roadMesh.receiveShadow = true;
+    groundGroup.add(roadMesh);
+
+    // 3. Flat Curbs on Edges (Height y = 0.15)
     const curbRedMat = new THREE.MeshBasicMaterial({ color: 0xe11d48 });
     const curbWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
-    const points = this.trackCurve.getPoints(160);
-    for (let i = 0; i < points.length; i++) {
+    for (let i = 0; i < points.length; i += 2) {
       const p1 = points[i];
       const p2 = points[(i + 1) % points.length];
       const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
-      const dist = p1.distanceTo(p2);
+      const tangent = new THREE.Vector3().subVectors(p2, p1).normalize();
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+      const dist = p1.distanceTo(p2) * 2;
 
-      const curbMat = i % 2 === 0 ? curbRedMat : curbWhiteMat;
-      const curb1 = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.18, dist * 0.95), curbMat);
-      const perp = new THREE.Vector3(-(p2.z - p1.z), 0, p2.x - p1.x).normalize();
+      const curbMat = (i / 2) % 2 === 0 ? curbRedMat : curbWhiteMat;
 
-      curb1.position.copy(mid).addScaledVector(perp, trackWidth / 2 - 0.8);
-      curb1.position.y = 0.2;
-      curb1.lookAt(p2.x + perp.x * (trackWidth / 2 - 0.8), 0.2, p2.z + perp.z * (trackWidth / 2 - 0.8));
+      const curb1 = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, dist), curbMat);
+      curb1.position.set(mid.x + normal.x * (halfWidth + 0.8), 0.15, mid.z + normal.z * (halfWidth + 0.8));
+      curb1.lookAt(mid.x + normal.x * (halfWidth + 0.8) + tangent.x, 0.15, mid.z + normal.z * (halfWidth + 0.8) + tangent.z);
 
-      const curb2 = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.18, dist * 0.95), curbMat);
-      curb2.position.copy(mid).addScaledVector(perp, -(trackWidth / 2 - 0.8));
-      curb2.position.y = 0.2;
-      curb2.lookAt(p2.x - perp.x * (trackWidth / 2 - 0.8), 0.2, p2.z - perp.z * (trackWidth / 2 - 0.8));
+      const curb2 = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, dist), curbMat);
+      curb2.position.set(mid.x - normal.x * (halfWidth + 0.8), 0.15, mid.z - normal.z * (halfWidth + 0.8));
+      curb2.lookAt(mid.x - normal.x * (halfWidth + 0.8) + tangent.x, 0.15, mid.z - normal.z * (halfWidth + 0.8) + tangent.z);
 
       groundGroup.add(curb1, curb2);
     }
@@ -317,20 +352,20 @@ export class CityTrackManager {
       const g = new THREE.Group();
 
       const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.8, 9.4), bodyMat);
-      chassis.position.y = 0.5;
+      chassis.position.y = 0.55;
       g.add(chassis);
 
       const doors = new THREE.Mesh(new THREE.BoxGeometry(4.45, 0.6, 3.6), whiteDoorMat);
-      doors.position.set(0, 0.5, 0);
+      doors.position.set(0, 0.55, 0);
       g.add(doors);
 
       const blueLight = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.3, 0.6), new THREE.MeshBasicMaterial({ color: 0x0066ff }));
-      blueLight.position.set(0.7, 1.5, -0.4);
+      blueLight.position.set(0.7, 1.55, -0.4);
       const redLight = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.3, 0.6), new THREE.MeshBasicMaterial({ color: 0xff0022 }));
-      redLight.position.set(-0.7, 1.5, -0.4);
+      redLight.position.set(-0.7, 1.55, -0.4);
       g.add(blueLight, redLight);
 
-      g.position.set((i - 1) * 60, 0.48, -260 - i * 80);
+      g.position.set((i - 1) * 60, 0.12, -260 - i * 80);
       this.scene.add(g);
 
       this.policeUnits.push({
@@ -395,7 +430,7 @@ export class CityTrackManager {
       tl.position.set(0, 0.6, -3.61);
       g.add(hl, tl);
 
-      g.position.set((Math.random() - 0.5) * 350, 0.48, (Math.random() - 0.5) * 350);
+      g.position.set((Math.random() - 0.5) * 350, 0.12, (Math.random() - 0.5) * 350);
       this.scene.add(g);
       this.trafficCars.push({
         mesh: g,
@@ -450,7 +485,7 @@ export class CityTrackManager {
       const dir = new THREE.Vector3().subVectors(playerPos, police.group.position).normalize();
       const speedMs = (Math.min(playerSpeed * 0.95 + 15, police.speed) * 1000) / 3600;
       police.group.position.addScaledVector(dir, speedMs * delta);
-      police.group.lookAt(playerPos.x, 0.48, playerPos.z);
+      police.group.lookAt(playerPos.x, 0.12, playerPos.z);
 
       const dist = police.group.position.distanceTo(playerPos);
       if (dist < 4.8) {
@@ -468,7 +503,7 @@ export class CityTrackManager {
           setTimeout(() => {
             police.isDestroyed = false;
             police.group.rotation.set(0, 0, 0);
-            police.group.position.set(playerPos.x + (Math.random() - 0.5) * 180, 0.48, playerPos.z - 280);
+            police.group.position.set(playerPos.x + (Math.random() - 0.5) * 180, 0.12, playerPos.z - 280);
           }, 12000);
         } else {
           this.bustedTimer += delta;
