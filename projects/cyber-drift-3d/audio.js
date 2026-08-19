@@ -1,37 +1,43 @@
-// audio.js - Warm, Deep & Realistic Supercar Sound Engine (No Harsh Frequencies, Zero Piercing Noise)
+// audio.js - 100% Realistic Automotive Internal Combustion & Mechanical Acoustic Engine (ZERO Arcade Beeps / Pure Realism)
 class CyberAudioEngine {
   constructor() {
     this.ctx = null;
     this.isInitialized = false;
     this.isMuted = false;
-    this.isRadioPlaying = false; // Off by default for pure clean engine sound
-    this.radioStation = 0;
 
     this.masterGain = null;
     this.bulletTimeFilter = null;
 
-    // V8 Engine Rumble Oscillators
+    // Granular Combustion Engine
     this.engineGain = null;
-    this.engineOsc1 = null;
-    this.engineOsc2 = null;
-    this.engineFilter = null;
+    this.combustionNoiseNode = null;
+    this.combustionFilter = null;
+    this.combustionPulseOsc = null;
+    this.combustionPulseGain = null;
 
-    // Soft Tire Road Friction
-    this.tireGain = null;
+    // Exhaust Pipe Resonator
+    this.exhaustResonator = null;
+    this.exhaustGain = null;
+
+    // Asphalt Tire Grip Scrubbing
+    this.tireNoiseNode = null;
     this.tireFilter = null;
+    this.tireGain = null;
 
-    // Subtle Turbo / Wind
-    this.windGain = null;
+    // Aerodynamic Airflow Rush
+    this.windNoiseNode = null;
     this.windFilter = null;
+    this.windGain = null;
 
+    // Nitro Pressurized Gas Jet
+    this.nitroNoiseNode = null;
+    this.nitroFilter = null;
     this.nitroGain = null;
-    this.sirenGain = null;
-    this.sirenOsc = null;
 
+    // Rain
+    this.rainNoiseNode = null;
+    this.rainFilter = null;
     this.rainGain = null;
-    this.radioGain = null;
-    this.radioStep = 0;
-    this.radioInterval = null;
   }
 
   init() {
@@ -40,9 +46,8 @@ class CyberAudioEngine {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       this.ctx = new AudioContext();
 
-      // Master Gain - Gentle, comfortable volume level
       this.masterGain = this.ctx.createGain();
-      this.masterGain.gain.setValueAtTime(0.38, this.ctx.currentTime);
+      this.masterGain.gain.setValueAtTime(0.7, this.ctx.currentTime);
 
       this.bulletTimeFilter = this.ctx.createBiquadFilter();
       this.bulletTimeFilter.type = "lowpass";
@@ -51,16 +56,11 @@ class CyberAudioEngine {
       this.masterGain.connect(this.bulletTimeFilter);
       this.bulletTimeFilter.connect(this.ctx.destination);
 
-      this.radioGain = this.ctx.createGain();
-      this.radioGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
-      this.radioGain.connect(this.masterGain);
-
-      this._setupDeepEngineSound();
-      this._setupSoftTireFriction();
-      this._setupWindAcoustics();
-      this._setupNitroSound();
-      this._setupMellowSiren();
-      this._setupRainSound();
+      this._setupRealisticEngine();
+      this._setupTireScrubbing();
+      this._setupAerodynamicWind();
+      this._setupPressurizedNitroJet();
+      this._setupRainAcoustics();
 
       this.isInitialized = true;
     } catch (e) {
@@ -74,8 +74,8 @@ class CyberAudioEngine {
     }
   }
 
-  _createNoiseBuffer() {
-    const bufferSize = this.ctx.sampleRate * 2;
+  _createNoiseBuffer(seconds = 3) {
+    const bufferSize = this.ctx.sampleRate * seconds;
     const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const output = buffer.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) {
@@ -84,290 +84,250 @@ class CyberAudioEngine {
     return buffer;
   }
 
-  // 🏎️ Deep, Smooth V8 Engine Growl (Pure Lows & Warm Mids, No Piercing Buzz)
-  _setupDeepEngineSound() {
+  // 🏎️ Real Internal Combustion Engine (Exhaust pulses + Granular gas expansion)
+  _setupRealisticEngine() {
     this.engineGain = this.ctx.createGain();
     this.engineGain.gain.setValueAtTime(0.01, this.ctx.currentTime);
 
-    // Warm Low Rumble (Triangle wave)
-    this.engineOsc1 = this.ctx.createOscillator();
-    this.engineOsc1.type = "triangle";
-    this.engineOsc1.frequency.setValueAtTime(32, this.ctx.currentTime);
+    // 1. Granular Combustion Noise
+    this.combustionNoiseNode = this.ctx.createBufferSource();
+    this.combustionNoiseNode.buffer = this._createNoiseBuffer(4);
+    this.combustionNoiseNode.loop = true;
 
-    // Sub-Bass Foundation (Sine wave)
-    this.engineOsc2 = this.ctx.createOscillator();
-    this.engineOsc2.type = "sine";
-    this.engineOsc2.frequency.setValueAtTime(64, this.ctx.currentTime);
+    this.combustionFilter = this.ctx.createBiquadFilter();
+    this.combustionFilter.type = "bandpass";
+    this.combustionFilter.frequency.setValueAtTime(110, this.ctx.currentTime);
+    this.combustionFilter.Q.setValueAtTime(1.8, this.ctx.currentTime);
 
-    const mixGain = this.ctx.createGain();
-    mixGain.gain.setValueAtTime(0.45, this.ctx.currentTime);
-    this.engineOsc1.connect(mixGain);
-    this.engineOsc2.connect(mixGain);
+    this.combustionNoiseNode.connect(this.combustionFilter);
 
-    // Warm 24dB Low-Pass Filter (Cuts all sharp highs)
-    this.engineFilter = this.ctx.createBiquadFilter();
-    this.engineFilter.type = "lowpass";
-    this.engineFilter.frequency.setValueAtTime(260, this.ctx.currentTime);
-    this.engineFilter.Q.setValueAtTime(0.7, this.ctx.currentTime); // No harsh resonance
+    // 2. Cylinder Stroke Pulse Modulator (Low-frequency combustion cycles)
+    this.combustionPulseOsc = this.ctx.createOscillator();
+    this.combustionPulseOsc.type = "sawtooth";
+    this.combustionPulseOsc.frequency.setValueAtTime(32, this.ctx.currentTime);
 
-    mixGain.connect(this.engineFilter);
-    this.engineFilter.connect(this.engineGain);
+    const pulseFilter = this.ctx.createBiquadFilter();
+    pulseFilter.type = "lowpass";
+    pulseFilter.frequency.setValueAtTime(140, this.ctx.currentTime);
+
+    this.combustionPulseOsc.connect(pulseFilter);
+
+    // 3. Exhaust Chamber Resonator
+    this.exhaustResonator = this.ctx.createBiquadFilter();
+    this.exhaustResonator.type = "peaking";
+    this.exhaustResonator.frequency.setValueAtTime(75, this.ctx.currentTime);
+    this.exhaustResonator.gain.setValueAtTime(12, this.ctx.currentTime);
+    this.exhaustResonator.Q.setValueAtTime(1.5, this.ctx.currentTime);
+
+    this.combustionFilter.connect(this.exhaustResonator);
+    pulseFilter.connect(this.exhaustResonator);
+
+    this.exhaustResonator.connect(this.engineGain);
     this.engineGain.connect(this.masterGain);
 
-    this.engineOsc1.start();
-    this.engineOsc2.start();
+    this.combustionNoiseNode.start();
+    this.combustionPulseOsc.start();
   }
 
-  // 🚗 Soft Asphalt Friction (Low-passed brown noise instead of harsh squeal)
-  _setupSoftTireFriction() {
+  // 🚗 Realistic Tire Asphalt Friction & Scrubbing (Brownian noise)
+  _setupTireScrubbing() {
     this.tireGain = this.ctx.createGain();
     this.tireGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
 
-    const noiseBuffer = this._createNoiseBuffer();
-    const noiseSource = this.ctx.createBufferSource();
-    noiseSource.buffer = noiseBuffer;
-    noiseSource.loop = true;
+    this.tireNoiseNode = this.ctx.createBufferSource();
+    this.tireNoiseNode.buffer = this._createNoiseBuffer(3);
+    this.tireNoiseNode.loop = true;
 
     this.tireFilter = this.ctx.createBiquadFilter();
-    this.tireFilter.type = "lowpass";
-    this.tireFilter.frequency.setValueAtTime(450, this.ctx.currentTime);
-    this.tireFilter.Q.setValueAtTime(0.6, this.ctx.currentTime);
+    this.tireFilter.type = "bandpass";
+    this.tireFilter.frequency.setValueAtTime(550, this.ctx.currentTime);
+    this.tireFilter.Q.setValueAtTime(1.2, this.ctx.currentTime);
 
-    noiseSource.connect(this.tireFilter);
+    this.tireNoiseNode.connect(this.tireFilter);
     this.tireFilter.connect(this.tireGain);
     this.tireGain.connect(this.masterGain);
 
-    noiseSource.start();
+    this.tireNoiseNode.start();
   }
 
-  // 💨 Smooth Highway Aerodynamics Wind
-  _setupWindAcoustics() {
+  // 💨 Natural High-Speed Aerodynamic Wind Resistance
+  _setupAerodynamicWind() {
     this.windGain = this.ctx.createGain();
     this.windGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
 
-    const noiseBuffer = this._createNoiseBuffer();
-    const windNoise = this.ctx.createBufferSource();
-    windNoise.buffer = noiseBuffer;
-    windNoise.loop = true;
+    this.windNoiseNode = this.ctx.createBufferSource();
+    this.windNoiseNode.buffer = this._createNoiseBuffer(3);
+    this.windNoiseNode.loop = true;
 
     this.windFilter = this.ctx.createBiquadFilter();
     this.windFilter.type = "lowpass";
-    this.windFilter.frequency.setValueAtTime(320, this.ctx.currentTime);
+    this.windFilter.frequency.setValueAtTime(280, this.ctx.currentTime);
 
-    windNoise.connect(this.windFilter);
+    this.windNoiseNode.connect(this.windFilter);
     this.windFilter.connect(this.windGain);
     this.windGain.connect(this.masterGain);
 
-    windNoise.start();
+    this.windNoiseNode.start();
   }
 
-  _setupNitroSound() {
+  // ⚡ Pressurized Liquid Gas Jet (Real N2O Injector Rush, No Sci-Fi Beep)
+  _setupPressurizedNitroJet() {
     this.nitroGain = this.ctx.createGain();
     this.nitroGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
 
-    const noiseBuffer = this._createNoiseBuffer();
-    const nitroNoise = this.ctx.createBufferSource();
-    nitroNoise.buffer = noiseBuffer;
-    nitroNoise.loop = true;
+    this.nitroNoiseNode = this.ctx.createBufferSource();
+    this.nitroNoiseNode.buffer = this._createNoiseBuffer(3);
+    this.nitroNoiseNode.loop = true;
 
-    const filter = this.ctx.createBiquadFilter();
-    filter.type = "bandpass";
-    filter.frequency.setValueAtTime(600, this.ctx.currentTime);
+    this.nitroFilter = this.ctx.createBiquadFilter();
+    this.nitroFilter.type = "bandpass";
+    this.nitroFilter.frequency.setValueAtTime(850, this.ctx.currentTime);
+    this.nitroFilter.Q.setValueAtTime(1.1, this.ctx.currentTime);
 
-    nitroNoise.connect(filter);
-    filter.connect(this.nitroGain);
+    this.nitroNoiseNode.connect(this.nitroFilter);
+    this.nitroFilter.connect(this.nitroGain);
     this.nitroGain.connect(this.masterGain);
 
-    nitroNoise.start();
+    this.nitroNoiseNode.start();
   }
 
-  // 🚨 Mellow, Realistic Distant Police Siren
-  _setupMellowSiren() {
-    this.sirenGain = this.ctx.createGain();
-    this.sirenGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
-
-    this.sirenOsc = this.ctx.createOscillator();
-    this.sirenOsc.type = "sine"; // Soft sine wave instead of harsh sawtooth
-    this.sirenOsc.frequency.setValueAtTime(450, this.ctx.currentTime);
-
-    const filter = this.ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.setValueAtTime(700, this.ctx.currentTime);
-
-    this.sirenOsc.connect(filter);
-    filter.connect(this.sirenGain);
-    this.sirenGain.connect(this.masterGain);
-
-    this.sirenOsc.start();
-  }
-
+  // 🌧️ Rain Acoustics
   _setupRainSound() {
     this.rainGain = this.ctx.createGain();
     this.rainGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
 
-    const noiseBuffer = this._createNoiseBuffer();
-    const rainNoise = this.ctx.createBufferSource();
-    rainNoise.buffer = noiseBuffer;
-    rainNoise.loop = true;
+    this.rainNoiseNode = this.ctx.createBufferSource();
+    this.rainNoiseNode.buffer = this._createNoiseBuffer(3);
+    this.rainNoiseNode.loop = true;
 
-    const filter = this.ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.setValueAtTime(500, this.ctx.currentTime);
+    this.rainFilter = this.ctx.createBiquadFilter();
+    this.rainFilter.type = "lowpass";
+    this.rainFilter.frequency.setValueAtTime(450, this.ctx.currentTime);
 
-    rainNoise.connect(filter);
-    filter.connect(this.rainGain);
+    this.rainNoiseNode.connect(this.rainFilter);
+    this.rainFilter.connect(this.rainGain);
     this.rainGain.connect(this.masterGain);
 
-    rainNoise.start();
+    this.rainNoiseNode.start();
   }
 
   setRainActive(isRaining) {
     if (!this.rainGain || !this.ctx) return;
-    this.rainGain.gain.setTargetAtTime(isRaining ? 0.25 : 0.0, this.ctx.currentTime, 0.5);
+    this.rainGain.gain.setTargetAtTime(isRaining ? 0.3 : 0.0, this.ctx.currentTime, 0.4);
   }
 
   setBulletTime(isActive) {
     if (!this.bulletTimeFilter || !this.ctx) return;
-    this.bulletTimeFilter.frequency.setTargetAtTime(isActive ? 350 : 14000, this.ctx.currentTime, 0.1);
+    this.bulletTimeFilter.frequency.setTargetAtTime(isActive ? 320 : 14000, this.ctx.currentTime, 0.08);
   }
 
-  nextRadioStation() {
-    this.radioStation = (this.radioStation + 1) % 3;
-    const names = ["📻 NIGHT DRIVE", "📻 HIGH-OCTANE", "📻 DEEP GROOVE"];
-    return names[this.radioStation];
-  }
-
-  toggleRadio() {
-    this.isRadioPlaying = !this.isRadioPlaying;
-    if (this.radioGain) {
-      this.radioGain.gain.setValueAtTime(this.isRadioPlaying ? 0.25 : 0, this.ctx.currentTime);
-    }
-    return this.isRadioPlaying;
-  }
-
-  // 🎛️ Real-Time Audio Update (Soft, Rich & Smooth Transitions)
-  update(rpmRatio, speedKmH, driftRatio, isNitro, isPoliceNearby) {
+  // 🎛️ Dynamic Realistic Engine Physics Audio
+  update(rpmRatio, speedKmH, driftRatio, isNitro) {
     if (!this.isInitialized || this.isMuted) return;
     const t = this.ctx.currentTime;
 
-    // Smooth engine pitch (Deep 28Hz idle to 110Hz max RPM)
-    const baseFreq = 28 + (rpmRatio * 48) + (speedKmH / 360) * 22;
-    this.engineOsc1.frequency.setTargetAtTime(baseFreq, t, 0.08);
-    this.engineOsc2.frequency.setTargetAtTime(baseFreq * 1.5, t, 0.08);
+    // 1. Engine Cylinder Pulse Frequency (Real V8 RPM cycles: 24Hz idle to 125Hz at redline)
+    const engineFreq = 24 + (rpmRatio * 85) + (speedKmH / 360) * 16;
+    this.combustionPulseOsc.frequency.setTargetAtTime(engineFreq, t, 0.06);
 
-    // Warm Low-Pass Cutoff (No high-pitch screeching)
-    const cutoff = 180 + (rpmRatio * 320);
-    this.engineFilter.frequency.setTargetAtTime(cutoff, t, 0.08);
-    this.engineGain.gain.setTargetAtTime(0.28 + (rpmRatio * 0.22), t, 0.08);
+    // 2. Combustion Filter & Resonator sweep
+    const filterFreq = 90 + (rpmRatio * 320);
+    this.combustionFilter.frequency.setTargetAtTime(filterFreq, t, 0.06);
+    this.exhaustResonator.frequency.setTargetAtTime(65 + (rpmRatio * 180), t, 0.06);
 
-    // Tire road friction in drift
-    const targetTire = Math.min(0.35, driftRatio * 0.38);
+    const targetEngineVol = 0.45 + (rpmRatio * 0.45);
+    this.engineGain.gain.setTargetAtTime(targetEngineVol, t, 0.06);
+
+    // 3. Tire Asphalt Friction
+    const targetTire = Math.min(0.55, driftRatio * 0.6);
     this.tireGain.gain.setTargetAtTime(targetTire, t, 0.08);
+    this.tireFilter.frequency.setTargetAtTime(400 + (driftRatio * 450), t, 0.08);
 
-    // Wind rush at high speeds
-    const windVol = Math.min(0.22, (speedKmH / 300) * 0.22);
-    this.windGain.gain.setTargetAtTime(windVol, t, 0.12);
+    // 4. Wind Rush
+    const windVol = Math.min(0.35, (speedKmH / 320) * 0.35);
+    this.windGain.gain.setTargetAtTime(windVol, t, 0.1);
+    this.windFilter.frequency.setTargetAtTime(200 + (speedKmH / 320) * 350, t, 0.1);
 
-    // Nitro sound
-    const targetNitro = isNitro ? 0.28 : 0.0;
-    this.nitroGain.gain.setTargetAtTime(targetNitro, t, 0.08);
-
-    // Distant mellow police siren
-    if (isPoliceNearby) {
-      const sirenFreq = 420 + Math.sin(t * 3.5) * 160;
-      this.sirenOsc.frequency.setValueAtTime(sirenFreq, t);
-      this.sirenGain.gain.setTargetAtTime(0.18, t, 0.15);
-    } else {
-      this.sirenGain.gain.setTargetAtTime(0.0, t, 0.25);
-    }
+    // 5. N2O Gas Jet Hiss
+    const targetNitro = isNitro ? 0.45 : 0.0;
+    this.nitroGain.gain.setTargetAtTime(targetNitro, t, 0.06);
   }
 
-  playCameraFlash() {
-    if (!this.isInitialized || this.isMuted) return;
-    const t = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(900, t);
-    osc.frequency.exponentialRampToValueAtTime(250, t + 0.08);
-    gain.gain.setValueAtTime(0.25, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
-    osc.connect(gain);
-    gain.connect(this.masterGain);
-    osc.start(t);
-    osc.stop(t + 0.1);
-  }
-
-  playNitroPickupSound() {
-    if (!this.isInitialized || this.isMuted) return;
-    const t = this.ctx.currentTime;
-    const freqs = [440.0, 554.37, 659.25];
-    freqs.forEach((freq, idx) => {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, t + idx * 0.05);
-      gain.gain.setValueAtTime(0.18, t + idx * 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.05 + 0.2);
-      osc.connect(gain);
-      gain.connect(this.masterGain);
-      osc.start(t + idx * 0.05);
-      osc.stop(t + idx * 0.05 + 0.22);
-    });
-  }
-
-  playTakedownCrunch() {
-    if (!this.isInitialized || this.isMuted) return;
-    const t = this.ctx.currentTime;
-
-    const boomOsc = this.ctx.createOscillator();
-    const boomGain = this.ctx.createGain();
-    boomOsc.type = "sine";
-    boomOsc.frequency.setValueAtTime(95, t);
-    boomOsc.frequency.exponentialRampToValueAtTime(20, t + 0.4);
-    boomGain.gain.setValueAtTime(0.5, t);
-    boomGain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
-    boomOsc.connect(boomGain);
-    boomGain.connect(this.masterGain);
-    boomOsc.start(t);
-    boomOsc.stop(t + 0.5);
-  }
-
-  playScoreChime() {
-    if (!this.isInitialized || this.isMuted) return;
-    const t = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(587.33, t);
-    gain.gain.setValueAtTime(0.12, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-    osc.connect(gain);
-    gain.connect(this.masterGain);
-    osc.start(t);
-    osc.stop(t + 0.2);
-  }
-
+  // 💥 Realistic Metal & Body Impact Crunch (Zero Sine Drops)
   playCrash() {
     if (!this.isInitialized || this.isMuted) return;
     const t = this.ctx.currentTime;
-    const boomOsc = this.ctx.createOscillator();
-    const boomGain = this.ctx.createGain();
-    boomOsc.type = "sine";
-    boomOsc.frequency.setValueAtTime(80, t);
-    boomOsc.frequency.exponentialRampToValueAtTime(20, t + 0.35);
-    boomGain.gain.setValueAtTime(0.4, t);
-    boomGain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
-    boomOsc.connect(boomGain);
-    boomGain.connect(this.masterGain);
-    boomOsc.start(t);
-    boomOsc.stop(t + 0.45);
+
+    const noiseBuffer = this._createNoiseBuffer(0.6);
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = noiseBuffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(350, t);
+    filter.frequency.exponentialRampToValueAtTime(30, t + 0.5);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.75, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+    noise.start(t);
+    noise.stop(t + 0.6);
+  }
+
+  playTakedownCrunch() {
+    this.playCrash();
+  }
+
+  playScoreChime() {
+    // Zero arcade bleeps - silent score increment
+  }
+
+  playNitroPickupSound() {
+    // Soft mechanical canister latch sound
+    if (!this.isInitialized || this.isMuted) return;
+    const t = this.ctx.currentTime;
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = this._createNoiseBuffer(0.15);
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(900, t);
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.25, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+    noise.start(t);
+    noise.stop(t + 0.15);
+  }
+
+  playCameraFlash() {
+    // Mechanical camera click
+    if (!this.isInitialized || this.isMuted) return;
+    const t = this.ctx.currentTime;
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = this._createNoiseBuffer(0.08);
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "highpass";
+    filter.frequency.setValueAtTime(2500, t);
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.2, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+    noise.start(t);
+    noise.stop(t + 0.08);
   }
 
   toggleMute() {
     this.isMuted = !this.isMuted;
     if (this.masterGain) {
-      this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.38, this.ctx.currentTime);
+      this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.7, this.ctx.currentTime);
     }
     return this.isMuted;
   }

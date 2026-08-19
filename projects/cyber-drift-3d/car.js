@@ -347,15 +347,13 @@ export class CyberCar {
       trackManager.handleCarTrackCollision(this);
     }
 
-    // 5. Audio Engine
-    const rpmRatio = Math.min(1.0, (Math.abs(this.speed) % 65) / 65 + (this.throttleInput > 0 ? 0.3 : 0));
+    // 5. Realistic Automotive Sound Engine
+    const rpmRatio = Math.min(1.0, (Math.abs(this.speed) % 65) / 65 + (this.throttleInput > 0 ? 0.35 : 0));
     cyberAudio.update(
       rpmRatio,
       Math.abs(this.speed),
-      this.isDrifting ? 0.8 : 0.0,
-      this.nitroActive && this.nitroFuel > 0,
-      trackManager ? trackManager.isPoliceNearby : false,
-      false
+      this.isDrifting ? 0.85 : 0.0,
+      this.nitroActive && this.nitroFuel > 0
     );
 
     this._updateParticles(delta);
