@@ -74,7 +74,7 @@ export class CyberDriftGame {
   }
 
   initWorld() {
-    this.trackManager = new CityTrackManager(this.scene, 0, "MIDNIGHT");
+    this.trackManager = new CityTrackManager(this.scene, 0, "DAY");
     this.car = new CyberCar(this.scene, 0);
 
     this.car.position.set(0, 0.12, 0);
@@ -83,22 +83,22 @@ export class CyberDriftGame {
     // Showroom Studio Turntable Pod
     const turntableGeom = new THREE.CylinderGeometry(7.5, 8.0, 0.1, 32);
     const turntableMat = new THREE.MeshStandardMaterial({
-      color: 0x111827,
-      metalness: 0.95,
-      roughness: 0.15,
+      color: 0x181a20,
+      metalness: 0.9,
+      roughness: 0.25,
     });
     this.turntable = new THREE.Mesh(turntableGeom, turntableMat);
     this.turntable.position.set(0, 0.06, 0);
     this.turntable.receiveShadow = true;
     this.scene.add(this.turntable);
 
-    // Showroom Spotlights
-    this.studioSpotL = new THREE.SpotLight(0xffffff, 4.5, 40, Math.PI / 4, 0.4);
+    // Showroom Studio Softbox Spots
+    this.studioSpotL = new THREE.SpotLight(0xffffff, 3.5, 40, Math.PI / 4, 0.4);
     this.studioSpotL.position.set(6, 12, 6);
     this.studioSpotL.target = this.car.mesh;
     this.scene.add(this.studioSpotL);
 
-    this.studioSpotR = new THREE.SpotLight(0x38bdf8, 3.5, 40, Math.PI / 4, 0.4);
+    this.studioSpotR = new THREE.SpotLight(0xe2e8f0, 3.0, 40, Math.PI / 4, 0.4);
     this.studioSpotR.position.set(-6, 10, -6);
     this.studioSpotR.target = this.car.mesh;
     this.scene.add(this.studioSpotR);
@@ -268,17 +268,7 @@ export class CyberDriftGame {
       });
     });
 
-    // 5. Underglow Neon
-    document.querySelectorAll("[data-neon]").forEach((swatch) => {
-      swatch.addEventListener("click", () => {
-        document.querySelectorAll("[data-neon]").forEach((s) => s.classList.remove("active"));
-        swatch.classList.add("active");
-        const hex = parseInt(swatch.dataset.neon, 16);
-        this.car.setUnderglowColor(hex);
-      });
-    });
-
-    // 6. Custom Rims
+    // 5. Custom Rims
     document.querySelectorAll("[data-rim]").forEach((btn) => {
       btn.addEventListener("click", () => {
         document.querySelectorAll("[data-rim]").forEach((b) => b.classList.remove("active"));

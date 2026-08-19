@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cyber Drift 3D: Formula 1 & Forza Horizon</title>
+  <title>Apex GT: Realistic Motorsport & Drift</title>
   <style>
     * {
       box-sizing: border-box;
@@ -17,7 +17,7 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #0a0f1d;
+      background: #0f172a;
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       color: #fff;
     }
@@ -35,10 +35,10 @@
       left: 50%;
       transform: translate(-50%, -50%);
       z-index: 40;
-      font-size: 84px;
+      font-size: 88px;
       font-weight: 900;
-      color: #38bdf8;
-      text-shadow: 0 4px 30px rgba(56, 189, 248, 0.8), 0 0 10px #000;
+      color: #f8fafc;
+      text-shadow: 0 4px 30px rgba(0, 0, 0, 0.8);
       pointer-events: none;
       display: none;
     }
@@ -50,9 +50,9 @@
       z-index: 45;
       pointer-events: none;
       display: none;
-      background: radial-gradient(circle, rgba(56, 189, 248, 0.15) 0%, rgba(2, 6, 23, 0.85) 100%);
-      backdrop-filter: blur(2px);
-      box-shadow: inset 0 0 80px rgba(56, 189, 248, 0.6);
+      background: radial-gradient(circle, rgba(15, 23, 42, 0.4) 0%, rgba(2, 6, 23, 0.88) 100%);
+      backdrop-filter: blur(3px);
+      box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.8);
     }
 
     #rewind-banner {
@@ -60,20 +60,20 @@
       top: 25%;
       left: 50%;
       transform: translate(-50%, -50%);
-      font-size: 42px;
+      font-size: 38px;
       font-weight: 900;
-      color: #38bdf8;
+      color: #f8fafc;
       letter-spacing: 0.16em;
-      text-shadow: 0 0 25px #38bdf8, 0 0 8px #000;
+      text-shadow: 0 4px 20px rgba(0, 0, 0, 0.9);
       animation: pulseRewind 0.4s infinite alternate;
     }
 
     @keyframes pulseRewind {
       from { transform: translate(-50%, -50%) scale(1.0); opacity: 0.85; }
-      to { transform: translate(-50%, -50%) scale(1.08); opacity: 1.0; }
+      to { transform: translate(-50%, -50%) scale(1.06); opacity: 1.0; }
     }
 
-    /* Clean HUD Overlay */
+    /* Clean GT Telemetry HUD Overlay */
     #hud {
       position: absolute;
       inset: 0;
@@ -93,26 +93,26 @@
     }
 
     .hud-pill {
-      background: rgba(15, 23, 42, 0.9);
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      border-radius: 16px;
-      padding: 10px 18px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 8px 16px;
       backdrop-filter: blur(12px);
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
       display: flex;
       flex-direction: column;
     }
 
     .hud-label {
       font-size: 10px;
-      font-weight: 900;
+      font-weight: 800;
       color: #94a3b8;
       letter-spacing: 0.12em;
       text-transform: uppercase;
     }
 
     .hud-val {
-      font-size: 26px;
+      font-size: 24px;
       font-weight: 900;
       color: #f8fafc;
       letter-spacing: 0.04em;
@@ -126,7 +126,7 @@
     }
 
     .star-icon {
-      font-size: 22px;
+      font-size: 20px;
       color: #334155;
       text-shadow: 0 0 4px #000;
       transition: all 0.2s ease;
@@ -152,15 +152,15 @@
       top: 14%;
       left: 50%;
       transform: translateX(-50%);
-      background: linear-gradient(135deg, rgba(2, 132, 199, 0.95), rgba(56, 189, 248, 0.85));
-      border: 2px solid #fff;
-      border-radius: 25px;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
       padding: 8px 24px;
-      font-size: 16px;
-      font-weight: 900;
+      font-size: 15px;
+      font-weight: 800;
       letter-spacing: 0.08em;
-      color: #fff;
-      box-shadow: 0 8px 30px rgba(56, 189, 248, 0.7);
+      color: #f8fafc;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
       opacity: 0;
       transform: translateX(-50%) translateY(-10px);
       transition: all 0.25s ease;
@@ -183,26 +183,25 @@
       flex-direction: column;
       align-items: center;
       background: rgba(15, 23, 42, 0.92);
-      border: 2px solid #38bdf8;
-      border-radius: 16px;
-      padding: 10px 24px;
-      box-shadow: 0 4px 25px rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 14px;
+      padding: 8px 20px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     }
 
     #hud-drift-pts {
-      font-size: 34px;
+      font-size: 32px;
       font-weight: 900;
-      color: #38bdf8;
+      color: #f8fafc;
     }
 
     #hud-drift-mult {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 800;
       color: #f8fafc;
-      background: rgba(56, 189, 248, 0.2);
-      border: 1px solid #38bdf8;
-      border-radius: 8px;
-      padding: 2px 10px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      padding: 2px 8px;
       margin-top: 4px;
     }
 
@@ -211,15 +210,15 @@
       top: 9%;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(15, 23, 42, 0.95);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      border-radius: 12px;
-      padding: 10px 22px;
-      font-size: 14px;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      padding: 8px 18px;
+      font-size: 13px;
       font-weight: 800;
       letter-spacing: 0.06em;
-      color: #fff;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
+      color: #f8fafc;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
       opacity: 0;
       transition: opacity 0.3s ease;
       white-space: nowrap;
@@ -235,21 +234,21 @@
 
     /* GPS Minimap Radar Widget */
     .minimap-box {
-      background: rgba(15, 23, 42, 0.92);
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      border-radius: 16px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
       padding: 8px;
       backdrop-filter: blur(12px);
       display: flex;
       flex-direction: column;
       align-items: center;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
     }
 
     #hud-minimap-canvas {
-      width: 150px;
-      height: 150px;
-      border-radius: 10px;
+      width: 140px;
+      height: 140px;
+      border-radius: 8px;
       background: #090d16;
     }
 
@@ -260,35 +259,35 @@
     }
 
     .speedo-box {
-      background: rgba(15, 23, 42, 0.92);
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      border-radius: 16px;
-      padding: 12px 20px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
+      padding: 10px 18px;
       backdrop-filter: blur(12px);
       display: flex;
       align-items: baseline;
-      gap: 8px;
+      gap: 6px;
     }
 
     .speedo-val {
-      font-size: 48px;
+      font-size: 46px;
       font-weight: 900;
       color: #f8fafc;
       line-height: 1;
     }
 
     .speedo-unit {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 800;
       color: #94a3b8;
     }
 
     .gear-box {
-      background: rgba(15, 23, 42, 0.92);
-      border: 2px solid #f59e0b;
-      border-radius: 14px;
-      padding: 12px 18px;
-      font-size: 32px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid #f59e0b;
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-size: 30px;
       font-weight: 900;
       color: #f59e0b;
       line-height: 1;
@@ -298,21 +297,21 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
-      width: 180px;
+      width: 160px;
     }
 
     .bar-pill {
-      background: rgba(15, 23, 42, 0.92);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 10px;
-      padding: 8px 12px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 6px 10px;
     }
 
     .bar-track {
       width: 100%;
-      height: 10px;
-      background: rgba(255, 255, 255, 0.12);
-      border-radius: 5px;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
       margin-top: 4px;
       overflow: hidden;
     }
@@ -320,7 +319,7 @@
     #hud-nitro-bar {
       width: 100%;
       height: 100%;
-      background: linear-gradient(90deg, #0284c7, #38bdf8);
+      background: #38bdf8;
       transition: width 0.1s linear;
     }
 
@@ -332,9 +331,9 @@
 
     .hud-btn {
       background: rgba(15, 23, 42, 0.88);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 10px;
-      padding: 8px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 8px 12px;
       color: #cbd5e1;
       font-weight: 800;
       font-size: 11px;
@@ -348,7 +347,7 @@
       color: #fff;
     }
 
-    /* Forza Horizon 5 Studio Garage UI */
+    /* Minimalist Automotive Studio Showroom UI */
     #garage-screen {
       position: fixed;
       inset: 0;
@@ -366,16 +365,16 @@
       max-height: 94vh;
       overflow-y: auto;
       background: rgba(15, 23, 42, 0.96);
-      border: 2px solid #38bdf8;
-      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 16px;
       padding: 18px 20px;
       backdrop-filter: blur(16px);
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85);
       text-align: left;
     }
 
     .modal-tag {
-      color: #38bdf8;
+      color: #94a3b8;
       font-size: 11px;
       font-weight: 800;
       letter-spacing: 0.16em;
@@ -438,7 +437,7 @@
 
     .tune-btn {
       background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.18);
       border-radius: 8px;
       padding: 6px 4px;
       color: #cbd5e1;
@@ -450,14 +449,14 @@
     }
 
     .tune-btn.active {
-      border-color: #38bdf8;
-      background: rgba(56, 189, 248, 0.2);
+      border-color: #f8fafc;
+      background: rgba(255, 255, 255, 0.2);
       color: #fff;
     }
 
     .keymap-card {
       background: rgba(30, 41, 59, 0.85);
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 10px;
       padding: 8px 10px;
       margin-top: 6px;
@@ -482,38 +481,39 @@
       padding: 2px 5px;
       font-size: 9px;
       font-weight: 900;
-      color: #38bdf8;
+      color: #f8fafc;
       min-width: 22px;
       text-align: center;
     }
 
     .btn-main {
       width: 100%;
-      background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+      background: #2563eb;
       border: none;
-      border-radius: 12px;
+      border-radius: 10px;
       padding: 12px 16px;
       color: #fff;
       font-size: 14px;
       font-weight: 900;
       letter-spacing: 0.06em;
       cursor: pointer;
-      box-shadow: 0 8px 25px rgba(2, 132, 199, 0.4);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
       margin-top: 8px;
+      transition: all 0.15s ease;
     }
 
     .btn-main:hover {
-      filter: brightness(1.1);
+      background: #1d4ed8;
     }
 
     /* Finish / Results Screen */
     .finish-card {
       width: min(500px, 92vw);
       background: #1e293b;
-      border: 2px solid #38bdf8;
-      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 16px;
       padding: 28px 24px;
-      box-shadow: 0 0 45px rgba(56, 189, 248, 0.3);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
       text-align: center;
     }
 
@@ -533,9 +533,9 @@
       width: min(500px, 92vw);
       background: #1e293b;
       border: 2px solid #ef4444;
-      border-radius: 20px;
+      border-radius: 16px;
       padding: 28px 24px;
-      box-shadow: 0 0 45px rgba(239, 68, 68, 0.3);
+      box-shadow: 0 10px 40px rgba(239, 68, 68, 0.3);
       text-align: center;
     }
   </style>
@@ -558,7 +558,7 @@
     <span id="hud-drift-mult">x1.0</span>
   </div>
 
-  <!-- Real HUD Overlay -->
+  <!-- Real GT Telemetry HUD Overlay -->
   <div id="hud">
     <div class="hud-top">
       <!-- ПОЗИЦИЯ -->
@@ -586,7 +586,7 @@
       <!-- ОЧКИ ДРИФТА -->
       <div class="hud-pill">
         <span class="hud-label">ОЧКИ ДРИФТА</span>
-        <span class="hud-val" id="hud-score" style="color: #38bdf8;">0</span>
+        <span class="hud-val" id="hud-score" style="color: #f8fafc;">0</span>
       </div>
 
       <div class="quick-actions">
@@ -602,7 +602,7 @@
       <!-- РАДАР (GPS MINIMAP) -->
       <div class="minimap-box">
         <canvas id="hud-minimap-canvas" width="200" height="200"></canvas>
-        <span class="hud-label" style="margin-top: 4px;">🗺️ РАДАР</span>
+        <span class="hud-label" style="margin-top: 4px;">🗺️ РАДАР ТРАССЫ</span>
       </div>
 
       <!-- СКОРОСТЬ & НИТРО -->
@@ -630,19 +630,19 @@
       <h1 id="finish-title" style="font-size: 36px; color: #22c55e; margin-bottom: 12px;">🏁 ФИНИШ ГОНКИ!</h1>
       <p style="color: #cbd5e1; font-size: 18px; margin-bottom: 16px;">
         Ваше итоговое место: <b id="finish-rank" style="color: #38bdf8; font-size: 26px;">1 / 4</b><br>
-        Очки дрифта: <b id="finish-score" style="color: #f59e0b; font-size: 24px;">0</b> PTS
+        Очки заезда: <b id="finish-score" style="color: #f59e0b; font-size: 24px;">0</b> PTS
       </p>
       <button class="btn-main" id="btn-restart-finish">ЕЩЁ ЗАЕЗД (R)</button>
     </div>
   </div>
 
-  <!-- Forza Horizon 5 3D Studio Showroom -->
+  <!-- Minimalist Auto Studio Showroom -->
   <div id="garage-screen">
     <div class="garage-card">
-      <div class="modal-tag">FORZA HORIZON 5 &bull; ТЮНИНГ ШОУРУМ</div>
-      <h1>Cyber Drift 3D</h1>
+      <div class="modal-tag">MOTORSPORT SHOWROOM</div>
+      <h1>Apex GT Racing</h1>
 
-      <!-- 🗺️ ВЫБОР ЛОКАЦИИ / ТРАССЫ -->
+      <!-- 🗺️ ВЫБОР ТРАССЫ -->
       <div class="custom-row">
         <div class="custom-row-title">🗺️ Выбор локации:</div>
         <div class="tuning-options">
@@ -652,13 +652,13 @@
         </div>
       </div>
 
-      <!-- 🌅 ВРЕМЯ СУТОК И АТМОСФЕРА -->
+      <!-- ☀️ ВРЕМЯ СУТОК И ПОГОДА -->
       <div class="custom-row">
-        <div class="custom-row-title">🌅 Время суток & Атмосфера:</div>
+        <div class="custom-row-title">☀️ Время суток & Погода:</div>
         <div class="tuning-options">
-          <button class="tune-btn active" data-atmosphere="MIDNIGHT">🌙 Ночной неон</button>
+          <button class="tune-btn active" data-atmosphere="DAY">☀️ Ясный день</button>
           <button class="tune-btn" data-atmosphere="SUNSET">🌅 Закат</button>
-          <button class="tune-btn" data-atmosphere="RAINSTORM">🌧️ Шторм</button>
+          <button class="tune-btn" data-atmosphere="RAINSTORM">🌧️ Дождь</button>
         </div>
       </div>
 
@@ -667,36 +667,22 @@
         <div class="custom-row-title">Выбор спорткара:</div>
         <div class="tuning-options">
           <button class="tune-btn active" data-cartype="0">GT-R Skyline</button>
-          <button class="tune-btn" data-cartype="1">911 Turbo</button>
-          <button class="tune-btn" data-cartype="2">Venom Hyper</button>
+          <button class="tune-btn" data-cartype="1">911 GT3 RS</button>
+          <button class="tune-btn" data-cartype="2">Venom F5</button>
         </div>
       </div>
 
       <!-- ЦВЕТ КУЗОВА -->
       <div class="custom-row">
-        <div class="custom-row-title">Цвет кузова:</div>
+        <div class="custom-row-title">Цвет кузова (OEM Paint):</div>
         <div class="swatches">
-          <div class="color-swatch active" style="background:#dc2626;" data-color="dc2626"></div>
-          <div class="color-swatch" style="background:#0284c7;" data-color="0284c7"></div>
-          <div class="color-swatch" style="background:#16a34a;" data-color="16a34a"></div>
-          <div class="color-swatch" style="background:#d97706;" data-color="d97706"></div>
-          <div class="color-swatch" style="background:#8b5cf6;" data-color="8b5cf6"></div>
-          <div class="color-swatch" style="background:#f43f5e;" data-color="f43f5e"></div>
-          <div class="color-swatch" style="background:#f8fafc;" data-color="f8fafc"></div>
-          <div class="color-swatch" style="background:#18181b;" data-color="18181b"></div>
-        </div>
-      </div>
-
-      <!-- НЕОНОВАЯ ПОДСВЕТКА ДНИЩА (UNDERGLOW) -->
-      <div class="custom-row">
-        <div class="custom-row-title">Неон днища (Underglow):</div>
-        <div class="swatches">
-          <div class="color-swatch active" style="background:#38bdf8; box-shadow: 0 0 8px #38bdf8;" data-neon="38bdf8"></div>
-          <div class="color-swatch" style="background:#a855f7; box-shadow: 0 0 8px #a855f7;" data-neon="a855f7"></div>
-          <div class="color-swatch" style="background:#ef4444; box-shadow: 0 0 8px #ef4444;" data-neon="ef4444"></div>
-          <div class="color-swatch" style="background:#22c55e; box-shadow: 0 0 8px #22c55e;" data-neon="22c55e"></div>
-          <div class="color-swatch" style="background:#f59e0b; box-shadow: 0 0 8px #f59e0b;" data-neon="f59e0b"></div>
-          <div class="color-swatch" style="background:#334155;" data-neon="000000" title="Выкл"></div>
+          <div class="color-swatch active" style="background:#dc2626;" data-color="dc2626" title="Rosso Corsa"></div>
+          <div class="color-swatch" style="background:#1d4ed8;" data-color="1d4ed8" title="Monaco Blue"></div>
+          <div class="color-swatch" style="background:#15803d;" data-color="15803d" title="British Racing Green"></div>
+          <div class="color-swatch" style="background:#d97706;" data-color="d97706" title="Speed Yellow"></div>
+          <div class="color-swatch" style="background:#64748b;" data-color="64748b" title="Nardo Grey"></div>
+          <div class="color-swatch" style="background:#f8fafc;" data-color="f8fafc" title="Porsche Chalk White"></div>
+          <div class="color-swatch" style="background:#18181b;" data-color="18181b" title="Obsidian Black"></div>
         </div>
       </div>
 
@@ -750,9 +736,9 @@
   <!-- Busted Screen -->
   <div class="screen-overlay" id="busted-screen">
     <div class="busted-card">
-      <h1 style="font-size: 40px; color: #ef4444; margin-bottom: 12px;">ПОЙМАН! (BUSTED)</h1>
+      <h1 style="font-size: 38px; color: #ef4444; margin-bottom: 12px;">ЗАБЛОКИРОВАН! (BUSTED)</h1>
       <p style="color: #cbd5e1; font-size: 16px; margin-bottom: 20px;">
-        Полицейские экипажи заблокировали ваш суперкар.<br>
+        Полицейские экипажи заблокировали спорткар.<br>
         Итоговый счет: <b id="busted-score" style="color: #38bdf8; font-size: 24px;">0</b> PTS
       </p>
       <button class="btn-main" id="btn-restart-busted" style="background: #dc2626;">ПОВТОРИТЬ ЗАЕЗД (R)</button>

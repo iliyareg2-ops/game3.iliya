@@ -1,12 +1,12 @@
-// city.js - Pure Formula 1, Touge Mountain & Miami Coast Circuits with Dynamic Time-of-Day, Kerb Rumble & GTA Features
+// city.js - Pure Motorsport Realism: Real Asphalt, Rubber Skidmarks, Sponsor Hoardings (Pirelli, Brembo, Motul), Tire Barriers & Natural Lighting
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
 export class CityTrackManager {
-  constructor(scene, trackIndex = 0, timeOfDay = "MIDNIGHT") {
+  constructor(scene, trackIndex = 0, timeOfDay = "DAY") {
     this.scene = scene;
     this.trackIndex = trackIndex; // 0: F1 Autodrome, 1: Touge Mountain, 2: Miami Coast
-    this.timeOfDay = timeOfDay; // "MIDNIGHT", "SUNSET", "RAINSTORM"
+    this.timeOfDay = timeOfDay; // "DAY", "SUNSET", "RAINSTORM"
 
     this.colliders = [];
     this.trafficCars = [];
@@ -50,40 +50,46 @@ export class CityTrackManager {
     this.initTextures();
     this.initLighting();
     this.buildTrackEnvironment();
-    this.buildForzaHorizonStudioGarage();
+    this.buildMinimalistStudioGarage();
     this.buildRainSystem();
   }
 
   initTextures() {
+    // 🛣️ Realistic Motorsport Asphalt with Rubbered-in Line & Grain
     const roadCanvas = document.createElement("canvas");
     roadCanvas.width = 1024;
     roadCanvas.height = 1024;
     const rCtx = roadCanvas.getContext("2d");
 
-    rCtx.fillStyle = "#3f4654";
+    // Base dark weathered asphalt
+    rCtx.fillStyle = "#272a30";
     rCtx.fillRect(0, 0, 1024, 1024);
 
-    for (let i = 0; i < 45000; i++) {
+    // Realistic asphalt aggregate speckling
+    for (let i = 0; i < 50000; i++) {
       const x = Math.random() * 1024;
       const y = Math.random() * 1024;
       const shade = Math.random();
-      if (shade > 0.6) rCtx.fillStyle = "#535d70";
-      else if (shade > 0.3) rCtx.fillStyle = "#2d3340";
-      else rCtx.fillStyle = "#69768e";
-      rCtx.fillRect(x, y, 2 + Math.random() * 2, 2 + Math.random() * 2);
+      if (shade > 0.65) rCtx.fillStyle = "#3a3e47";
+      else if (shade > 0.3) rCtx.fillStyle = "#1e2025";
+      else rCtx.fillStyle = "#4a4f5a";
+      rCtx.fillRect(x, y, 1 + Math.random() * 2, 1 + Math.random() * 2);
     }
 
-    rCtx.fillStyle = "rgba(20, 24, 32, 0.45)";
-    rCtx.fillRect(180, 0, 160, 1024);
-    rCtx.fillRect(684, 0, 160, 1024);
+    // Heavy Rubber Laydown Groove (Racing Line)
+    rCtx.fillStyle = "rgba(10, 11, 14, 0.65)";
+    rCtx.fillRect(160, 0, 180, 1024);
+    rCtx.fillRect(684, 0, 180, 1024);
 
-    rCtx.fillStyle = "#ffffff";
-    rCtx.fillRect(35, 0, 18, 1024);
-    rCtx.fillRect(971, 0, 18, 1024);
+    // Solid Edge White Lines
+    rCtx.fillStyle = "rgba(235, 238, 242, 0.9)";
+    rCtx.fillRect(40, 0, 14, 1024);
+    rCtx.fillRect(970, 0, 14, 1024);
 
-    rCtx.fillStyle = "rgba(255, 255, 255, 0.85)";
-    for (let y = 30; y < 1024; y += 140) {
-      rCtx.fillRect(507, y, 10, 85);
+    // Subtle Broken Center Line
+    rCtx.fillStyle = "rgba(220, 225, 230, 0.75)";
+    for (let y = 30; y < 1024; y += 160) {
+      rCtx.fillRect(507, y, 10, 95);
     }
 
     this.asphaltTex = new THREE.CanvasTexture(roadCanvas);
@@ -92,68 +98,32 @@ export class CityTrackManager {
 
     this.roadMat = new THREE.MeshStandardMaterial({
       map: this.asphaltTex,
-      roughness: this.isRaining ? 0.08 : 0.38,
-      metalness: this.isRaining ? 0.65 : 0.15,
+      roughness: this.isRaining ? 0.08 : 0.45,
+      metalness: this.isRaining ? 0.6 : 0.1,
     });
 
+    // Realistic Architecture Materials
     this.facadeMats = [
-      this._createFacadeMat("#142238", "#38bdf8", "#bae6fd", 0x0a1c2e),
-      this._createFacadeMat("#241c10", "#f59e0b", "#fef3c7", 0x2e1c05),
-      this._createFacadeMat("#0f261c", "#10b981", "#a7f3d0", 0x052414),
-      this._createFacadeMat("#280f1d", "#f43f5e", "#fecdd3", 0x290416),
-      this._createFacadeMat("#181920", "#f1f5f9", "#cbd5e1", 0x111317),
+      new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6, metalness: 0.2 }),
+      new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.7, metalness: 0.1 }),
+      new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4, metalness: 0.5 }),
+      new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.8, metalness: 0.1 }),
+      new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3, metalness: 0.7 }),
     ];
   }
 
-  _createFacadeMat(bgColor, winColor1, winColor2, emissiveHex) {
-    const c = document.createElement("canvas");
-    c.width = 512;
-    c.height = 1024;
-    const ctx = c.getContext("2d");
-
-    ctx.fillStyle = bgColor;
-    ctx.fillRect(0, 0, 512, 1024);
-
-    for (let y = 14; y < 1024; y += 28) {
-      ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
-      ctx.fillRect(0, y, 512, 4);
-      for (let x = 12; x < 512; x += 26) {
-        const isLit = Math.random() > 0.35;
-        if (isLit) {
-          ctx.fillStyle = Math.random() > 0.4 ? winColor1 : winColor2;
-          ctx.fillRect(x, y + 5, 18, 18);
-        } else {
-          ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
-          ctx.fillRect(x, y + 5, 18, 18);
-        }
-      }
-    }
-
-    const tex = new THREE.CanvasTexture(c);
-    tex.wrapS = THREE.RepeatWrapping;
-    tex.wrapT = THREE.RepeatWrapping;
-
-    return new THREE.MeshStandardMaterial({
-      map: tex,
-      metalness: 0.8,
-      roughness: 0.18,
-      emissive: emissiveHex,
-      emissiveIntensity: 0.5,
-    });
-  }
-
   initLighting() {
-    this.scene.fog = new THREE.FogExp2(0x141e2e, 0.0004);
+    this.scene.fog = new THREE.FogExp2(0x94a3b8, 0.00025);
 
-    this.ambLight = new THREE.AmbientLight(0x7598c8, 2.2);
+    this.ambLight = new THREE.AmbientLight(0xffffff, 1.8);
     this.scene.add(this.ambLight);
 
-    this.hemiLight = new THREE.HemisphereLight(0x90b8f0, 0x30425c, 2.5);
+    this.hemiLight = new THREE.HemisphereLight(0xe0f2fe, 0x334155, 1.6);
     this.hemiLight.position.set(0, 500, 0);
     this.scene.add(this.hemiLight);
 
-    this.mainSunLight = new THREE.DirectionalLight(0xd0e4ff, 3.2);
-    this.mainSunLight.position.set(500, 800, 400);
+    this.mainSunLight = new THREE.DirectionalLight(0xfffaed, 3.8);
+    this.mainSunLight.position.set(450, 750, 350);
     this.mainSunLight.castShadow = true;
     this.mainSunLight.shadow.mapSize.width = 2048;
     this.mainSunLight.shadow.mapSize.height = 2048;
@@ -169,7 +139,7 @@ export class CityTrackManager {
     this.applyAtmosphere(this.timeOfDay);
   }
 
-  // 🌅 TIME-OF-DAY / ATMOSPHERE PRESETS
+  // ☀️ NATURAL DAYLIGHT / SUNSET / RAIN PRESETS
   applyAtmosphere(timeOfDay) {
     this.timeOfDay = timeOfDay;
     this.isRaining = timeOfDay === "RAINSTORM";
@@ -178,52 +148,52 @@ export class CityTrackManager {
     cyberAudio.setRainActive(this.isRaining);
 
     if (timeOfDay === "SUNSET") {
-      this.scene.fog.color.setHex(0x3a1c28);
-      this.scene.background.setHex(0x2d1424);
+      // Golden Hour Sunset
+      this.scene.fog.color.setHex(0x52363e);
+      this.scene.background.setHex(0x3d212b);
       this.ambLight.color.setHex(0xfb923c);
-      this.ambLight.intensity = 2.4;
+      this.ambLight.intensity = 2.0;
       this.hemiLight.color.setHex(0xf472b6);
-      this.hemiLight.groundColor.setHex(0x451a03);
+      this.hemiLight.groundColor.setHex(0x431407);
       this.mainSunLight.color.setHex(0xfdba74);
-      this.mainSunLight.position.set(800, 250, 400); // Low golden hour sun
-      this.mainSunLight.intensity = 3.6;
+      this.mainSunLight.position.set(700, 220, 350);
+      this.mainSunLight.intensity = 3.8;
     } else if (timeOfDay === "RAINSTORM") {
-      this.scene.fog.color.setHex(0x0f172a);
-      this.scene.background.setHex(0x0a0f1d);
-      this.ambLight.color.setHex(0x64748b);
-      this.ambLight.intensity = 1.8;
-      this.hemiLight.color.setHex(0x38bdf8);
-      this.hemiLight.groundColor.setHex(0x020617);
-      this.mainSunLight.color.setHex(0x94a3b8);
-      this.mainSunLight.position.set(300, 700, 300);
-      this.mainSunLight.intensity = 2.2;
+      // Overcast Rain
+      this.scene.fog.color.setHex(0x334155);
+      this.scene.background.setHex(0x1e293b);
+      this.ambLight.color.setHex(0x94a3b8);
+      this.ambLight.intensity = 1.4;
+      this.hemiLight.color.setHex(0x64748b);
+      this.hemiLight.groundColor.setHex(0x0f172a);
+      this.mainSunLight.color.setHex(0xcbd5e1);
+      this.mainSunLight.position.set(300, 600, 300);
+      this.mainSunLight.intensity = 2.0;
     } else {
-      // MIDNIGHT
-      this.scene.fog.color.setHex(0x141e2e);
-      this.scene.background.setHex(0x0a0f1d);
-      this.ambLight.color.setHex(0x7598c8);
-      this.ambLight.intensity = 2.2;
-      this.hemiLight.color.setHex(0x90b8f0);
-      this.hemiLight.groundColor.setHex(0x30425c);
-      this.mainSunLight.color.setHex(0xd0e4ff);
-      this.mainSunLight.position.set(500, 800, 400);
-      this.mainSunLight.intensity = 3.2;
+      // Clear Daylight (DAY)
+      this.scene.fog.color.setHex(0x94a3b8);
+      this.scene.background.setHex(0x60a5fa);
+      this.ambLight.color.setHex(0xffffff);
+      this.ambLight.intensity = 1.8;
+      this.hemiLight.color.setHex(0xe0f2fe);
+      this.hemiLight.groundColor.setHex(0x334155);
+      this.mainSunLight.color.setHex(0xfffaed);
+      this.mainSunLight.position.set(450, 750, 350);
+      this.mainSunLight.intensity = 3.8;
     }
 
     if (this.roadMat) {
-      this.roadMat.roughness = this.isRaining ? 0.08 : 0.38;
-      this.roadMat.metalness = this.isRaining ? 0.65 : 0.15;
+      this.roadMat.roughness = this.isRaining ? 0.08 : 0.45;
+      this.roadMat.metalness = this.isRaining ? 0.6 : 0.1;
     }
   }
 
-  // 🗺️ SWITCH TRACK LAYOUT
   setTrack(trackIndex) {
     this.trackIndex = trackIndex;
     this.buildTrackEnvironment();
   }
 
   buildTrackEnvironment() {
-    // Clear old track items
     while (this.trackWorldGroup.children.length > 0) {
       this.trackWorldGroup.remove(this.trackWorldGroup.children[0]);
     }
@@ -236,10 +206,9 @@ export class CityTrackManager {
     this.destructibleProps = [];
     this.aiRivals = [];
 
-    // Track Path Splines for 3 Layouts
     let trackPoints = [];
     if (this.trackIndex === 1) {
-      // 🏔️ 2. TOUGE MOUNTAIN PASS (Technical S-curves & Hairpins)
+      // 🏔️ 2. TOUGE MOUNTAIN PASS
       trackPoints = [
         new THREE.Vector3(0, 0.12, 0),
         new THREE.Vector3(0, 0.12, 280),
@@ -259,7 +228,7 @@ export class CityTrackManager {
         new THREE.Vector3(-70, 0.12, -180),
       ];
     } else if (this.trackIndex === 2) {
-      // 🌴 3. MIAMI VICE COASTLINE (Fast ocean sweeps)
+      // 🌴 3. MIAMI VICE COASTLINE
       trackPoints = [
         new THREE.Vector3(0, 0.12, 0),
         new THREE.Vector3(0, 0.12, 450),
@@ -276,7 +245,7 @@ export class CityTrackManager {
         new THREE.Vector3(-60, 0.12, -160),
       ];
     } else {
-      // 🏎️ 1. F1 AUTODROME (Monza / Singapore Grand Prix)
+      // 🏎️ 1. F1 AUTODROME
       trackPoints = [
         new THREE.Vector3(0, 0.12, 0),
         new THREE.Vector3(0, 0.12, 380),
@@ -306,14 +275,14 @@ export class CityTrackManager {
       this.trackSamplePoints.push(this.trackCurve.getPointAt(i / divisions));
     }
 
-    // Ground Plane
+    // Natural Grass & Runoff Ground Plane
     const groundGeom = new THREE.PlaneGeometry(3800, 3800);
     groundGeom.rotateX(-Math.PI / 2);
-    const groundColor = this.trackIndex === 1 ? 0x142018 : (this.trackIndex === 2 ? 0x182438 : 0x1a2230);
+    const groundColor = this.trackIndex === 1 ? 0x223824 : (this.trackIndex === 2 ? 0x2d3748 : 0x283626);
     const groundMat = new THREE.MeshStandardMaterial({
       color: groundColor,
-      roughness: 0.7,
-      metalness: 0.1,
+      roughness: 0.85,
+      metalness: 0.05,
     });
     const ground = new THREE.Mesh(groundGeom, groundMat);
     ground.receiveShadow = true;
@@ -359,9 +328,9 @@ export class CityTrackManager {
     this.roadMesh.receiveShadow = true;
     this.trackWorldGroup.add(this.roadMesh);
 
-    // Kerbs
-    const curbRedMat = new THREE.MeshBasicMaterial({ color: 0xe11d48 });
-    const curbWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    // FIA Standard Apex Kerbs
+    const curbRedMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.6 });
+    const curbWhiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.6 });
 
     for (let i = 0; i < this.trackSamplePoints.length; i += 2) {
       const p1 = this.trackSamplePoints[i];
@@ -373,84 +342,39 @@ export class CityTrackManager {
 
       const curbMat = (i / 2) % 2 === 0 ? curbRedMat : curbWhiteMat;
 
-      const curb1 = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.1, dist), curbMat);
+      const curb1 = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.12, dist), curbMat);
       curb1.position.set(mid.x + normal.x * (halfWidth + 1.0), 0.16, mid.z + normal.z * (halfWidth + 1.0));
       curb1.lookAt(mid.x + normal.x * (halfWidth + 1.0) + tangent.x, 0.16, mid.z + normal.z * (halfWidth + 1.0) + tangent.z);
 
-      const curb2 = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.1, dist), curbMat);
+      const curb2 = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.12, dist), curbMat);
       curb2.position.set(mid.x - normal.x * (halfWidth + 1.0), 0.16, mid.z - normal.z * (halfWidth + 1.0));
       curb2.lookAt(mid.x - normal.x * (halfWidth + 1.0) + tangent.x, 0.16, mid.z - normal.z * (halfWidth + 1.0) + tangent.z);
 
       this.trackWorldGroup.add(curb1, curb2);
     }
 
-    // Build Props, Buildings / Trees, Lights, Rivals
-    this.buildGTAPalmTrees();
-    this.buildGTANeonBillboards();
+    this.buildMotorsportSponsorHoardings();
+    this.buildTireBarriers();
     this.buildF1GrandstandsAndPits();
-    this.buildStartFinishGantryAndGrid();
+    this.buildStartFinishGantry();
     this.buildRoadsideStreetlights();
-    this.buildDiverseSkyscrapers();
+    this.buildDiverseBuildings();
     this.buildSpeedTrapCameras();
     this.buildDestructibleProps();
-    this.buildCityFurniture();
-    this.buildNitroPickups();
-    this.buildAnimatedPedestrians();
     this.buildAIRivals();
     this.buildPoliceFleet();
     this.buildPoliceHelicopter();
     this.buildDetailedTraffic();
   }
 
-  buildForzaHorizonStudioGarage() {
+  // 🏛️ MINIMALIST ARCHITECTURAL AUTO STUDIO SHOWROOM (NO NEON)
+  buildMinimalistStudioGarage() {
     this.garageGroup = new THREE.Group();
 
-    const floorCanvas = document.createElement("canvas");
-    floorCanvas.width = 1024;
-    floorCanvas.height = 1024;
-    const fCtx = floorCanvas.getContext("2d");
-
-    const grad = fCtx.createRadialGradient(512, 512, 50, 512, 512, 500);
-    grad.addColorStop(0, "#1e293b");
-    grad.addColorStop(0.5, "#0f172a");
-    grad.addColorStop(1, "#020617");
-    fCtx.fillStyle = grad;
-    fCtx.fillRect(0, 0, 1024, 1024);
-
-    fCtx.strokeStyle = "rgba(56, 189, 248, 0.45)";
-    fCtx.lineWidth = 3;
-    const drawHex = (x, y, r) => {
-      fCtx.beginPath();
-      for (let a = 0; a < 6; a++) {
-        const angle = (a * Math.PI) / 3;
-        const hx = x + r * Math.cos(angle);
-        const hy = y + r * Math.sin(angle);
-        if (a === 0) fCtx.moveTo(hx, hy);
-        else fCtx.lineTo(hx, hy);
-      }
-      fCtx.closePath();
-      fCtx.stroke();
-    };
-
-    for (let x = 64; x < 1024; x += 128) {
-      for (let y = 64; y < 1024; y += 110) {
-        drawHex(x, y, 48);
-      }
-    }
-
-    fCtx.strokeStyle = "#38bdf8";
-    fCtx.lineWidth = 10;
-    fCtx.beginPath();
-    fCtx.arc(512, 512, 380, 0, Math.PI * 2);
-    fCtx.stroke();
-
-    const floorTex = new THREE.CanvasTexture(floorCanvas);
-    const floorMat = new THREE.MeshPhysicalMaterial({
-      map: floorTex,
-      metalness: 0.95,
-      roughness: 0.08,
-      clearcoat: 1.0,
-      clearcoatRoughness: 0.05,
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: 0x18191f,
+      metalness: 0.85,
+      roughness: 0.2,
     });
 
     const garageFloor = new THREE.Mesh(new THREE.PlaneGeometry(42, 42), floorMat);
@@ -459,14 +383,14 @@ export class CityTrackManager {
     garageFloor.receiveShadow = true;
     this.garageGroup.add(garageFloor);
 
-    const backWallMat = new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.3, metalness: 0.8 });
-    const backWall = new THREE.Mesh(new THREE.BoxGeometry(42, 18, 0.8), backWallMat);
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x1e222b, roughness: 0.8 });
+    const backWall = new THREE.Mesh(new THREE.BoxGeometry(42, 18, 0.8), wallMat);
     backWall.position.set(0, 9, -18);
 
     const glassMat = new THREE.MeshPhysicalMaterial({
-      color: 0x38bdf8,
+      color: 0x94a3b8,
       transparent: true,
-      opacity: 0.3,
+      opacity: 0.25,
       metalness: 0.9,
       roughness: 0.1,
     });
@@ -477,150 +401,120 @@ export class CityTrackManager {
 
     this.garageGroup.add(backWall, glassWallL, glassWallR);
 
-    const signCanvas = document.createElement("canvas");
-    signCanvas.width = 1024;
-    signCanvas.height = 256;
-    const sCtx = signCanvas.getContext("2d");
-    sCtx.fillStyle = "rgba(15, 23, 42, 0.9)";
-    sCtx.fillRect(0, 0, 1024, 256);
+    // Studio Overhead Softbox Lights
+    const softboxMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const softbox1 = new THREE.Mesh(new THREE.BoxGeometry(18, 0.2, 10), softboxMat);
+    softbox1.position.set(0, 15, 0);
+    this.garageGroup.add(softbox1);
 
-    sCtx.strokeStyle = "#38bdf8";
-    sCtx.lineWidth = 10;
-    sCtx.strokeRect(12, 12, 1000, 232);
-
-    sCtx.fillStyle = "#ffffff";
-    sCtx.font = "900 68px Segoe UI, sans-serif";
-    sCtx.textAlign = "center";
-    sCtx.fillText("FORZA HORIZON 5", 512, 110);
-
-    sCtx.fillStyle = "#38bdf8";
-    sCtx.font = "800 42px Segoe UI, sans-serif";
-    sCtx.fillText("DRIFT FESTIVAL SHOWROOM", 512, 180);
-
-    const signTex = new THREE.CanvasTexture(signCanvas);
-    const neonSign = new THREE.Mesh(new THREE.PlaneGeometry(28, 7), new THREE.MeshBasicMaterial({ map: signTex }));
-    neonSign.position.set(0, 11.5, -17.4);
-    this.garageGroup.add(neonSign);
-
-    const hexGlowMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const ceilingGroup = new THREE.Group();
-
-    for (let x = -14; x <= 14; x += 7) {
-      for (let z = -14; z <= 14; z += 7) {
-        const hexGeom = new THREE.CylinderGeometry(2.8, 2.8, 0.1, 6);
-        const hexMesh = new THREE.Mesh(hexGeom, hexGlowMat);
-        hexMesh.position.set(x, 15.5, z);
-        ceilingGroup.add(hexMesh);
-      }
-    }
-    this.garageGroup.add(ceilingGroup);
-
-    const keySpot = new THREE.SpotLight(0xffffff, 5.5, 35, Math.PI / 3, 0.3);
+    const keySpot = new THREE.SpotLight(0xffffff, 4.0, 35, Math.PI / 3, 0.25);
     keySpot.position.set(0, 14, 0);
     this.garageGroup.add(keySpot);
 
-    const rimSpotL = new THREE.SpotLight(0x38bdf8, 4.0, 30, Math.PI / 4, 0.5);
-    rimSpotL.position.set(12, 10, -12);
-    const rimSpotR = new THREE.SpotLight(0xf59e0b, 4.0, 30, Math.PI / 4, 0.5);
-    rimSpotR.position.set(-12, 10, -12);
-    this.garageGroup.add(rimSpotL, rimSpotR);
-
-    const barMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
-    const barL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.15, 32), barMat);
-    barL.position.set(-15, 0.08, 0);
-    const barR = barL.clone();
-    barR.position.x = 15;
-    const barB = new THREE.Mesh(new THREE.BoxGeometry(30, 0.15, 0.3), barMat);
-    barB.position.set(0, 0.08, -16);
-    this.garageGroup.add(barL, barR, barB);
+    const sideSpot1 = new THREE.DirectionalLight(0xffffff, 1.2);
+    sideSpot1.position.set(15, 10, 15);
+    const sideSpot2 = new THREE.DirectionalLight(0xe2e8f0, 0.8);
+    sideSpot2.position.set(-15, 8, -15);
+    this.garageGroup.add(sideSpot1, sideSpot2);
 
     this.scene.add(this.garageGroup);
   }
 
-  buildGTAPalmTrees() {
-    const palmGroup = new THREE.Group();
-    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.9 });
-    const frondMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.6, side: THREE.DoubleSide });
+  // 🏁 AUTHENTIC MOTORSPORT SPONSORS (PIRELLI, BREMBO, MOTUL, MICHELIN)
+  buildMotorsportSponsorHoardings() {
+    const hoardGroup = new THREE.Group();
 
-    const makePalmTree = (x, z) => {
-      const g = new THREE.Group();
-      const trunkGeom = new THREE.CylinderGeometry(0.3, 0.6, 14, 8);
-      const trunk = new THREE.Mesh(trunkGeom, trunkMat);
-      trunk.position.y = 7;
-      trunk.rotation.z = (Math.random() - 0.5) * 0.15;
-      g.add(trunk);
-
-      for (let k = 0; k < 7; k++) {
-        const frond = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 6.5), frondMat);
-        frond.position.set(0, 13.8, 0);
-        frond.rotation.y = (k / 7) * Math.PI * 2;
-        frond.rotation.x = 0.85;
-        g.add(frond);
-      }
-      g.position.set(x, 0, z);
-      return g;
-    };
-
-    for (let z = 50; z <= 350; z += 60) {
-      palmGroup.add(makePalmTree(45, z));
-      palmGroup.add(makePalmTree(-45, z));
-    }
-    this.trackWorldGroup.add(palmGroup);
-  }
-
-  buildGTANeonBillboards() {
-    const billGroup = new THREE.Group();
-
-    const makeBoard = (text, sub, bgColor, textColor, x, y, z, rotY) => {
+    const makeBoard = (brand, sub, bgHex, textHex, x, y, z, rotY) => {
       const c = document.createElement("canvas");
       c.width = 512;
-      c.height = 256;
+      c.height = 128;
       const ctx = c.getContext("2d");
-      ctx.fillStyle = bgColor;
-      ctx.fillRect(0, 0, 512, 256);
-      ctx.fillStyle = textColor;
-      ctx.font = "900 64px Segoe UI, sans-serif";
+      ctx.fillStyle = bgHex;
+      ctx.fillRect(0, 0, 512, 128);
+
+      ctx.fillStyle = textHex;
+      ctx.font = "900 68px Segoe UI, Arial, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(text, 256, 110);
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "700 28px Segoe UI, sans-serif";
-      ctx.fillText(sub, 256, 175);
+      ctx.fillText(brand, 256, 75);
+
+      if (sub) {
+        ctx.font = "700 22px Segoe UI, sans-serif";
+        ctx.fillText(sub, 256, 110);
+      }
 
       const tex = new THREE.CanvasTexture(c);
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(28, 14), new THREE.MeshBasicMaterial({ map: tex }));
+      const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4 });
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(24, 6), mat);
       mesh.position.set(x, y, z);
       mesh.rotation.y = rotY;
       return mesh;
     };
 
-    billGroup.add(makeBoard("SPRUNK", "A TASTE OF ESCAPISM", "#15803d", "#facc15", 280, 85, 450, -0.4));
-    billGroup.add(makeBoard("MAZE BANK", "INVEST IN YOUR DREAMS", "#dc2626", "#ffffff", -380, 110, -280, 1.2));
-    billGroup.add(makeBoard("CYBER DRIFT", "HIGH OCTANE ADRENALINE", "#0284c7", "#38bdf8", -450, 95, 220, 2.1));
+    hoardGroup.add(makeBoard("PIRELLI", "POWER IS NOTHING WITHOUT CONTROL", "#facc15", "#dc2626", 260, 4, 460, -0.4));
+    hoardGroup.add(makeBoard("BREMBO", "HIGH PERFORMANCE BRAKES", "#dc2626", "#ffffff", -380, 4, -280, 1.2));
+    hoardGroup.add(makeBoard("MOTUL", "100% SYNTHETIC MOTOR OIL", "#dc2626", "#ffffff", -450, 4, 220, 2.1));
+    hoardGroup.add(makeBoard("MICHELIN", "PILOT SPORT CUP 2", "#1d4ed8", "#facc15", 380, 4, -200, -1.8));
+    hoardGroup.add(makeBoard("MOBIL 1", "OFFICIAL MOTORSPORT LUBRICANT", "#ffffff", "#1e3a8a", 160, 4, 580, -0.2));
+    hoardGroup.add(makeBoard("BBS", "GERMAN ENGINEERED RACING WHEELS", "#18181b", "#e2e8f0", -420, 4, -400, 0.8));
 
-    this.trackWorldGroup.add(billGroup);
+    this.trackWorldGroup.add(hoardGroup);
+  }
+
+  // 🛞 REALISTIC TIRE BARRIERS (TIED RACING TIRES)
+  buildTireBarriers() {
+    const tireGroup = new THREE.Group();
+    const tireRubberMat = new THREE.MeshStandardMaterial({ color: 0x18191c, roughness: 0.9 });
+    const tireGeom = new THREE.CylinderGeometry(0.55, 0.55, 0.38, 14);
+
+    const makeStack = (x, z) => {
+      const g = new THREE.Group();
+      for (let y = 0; y < 4; y++) {
+        const tire = new THREE.Mesh(tireGeom, tireRubberMat);
+        tire.position.y = 0.2 + y * 0.38;
+        g.add(tire);
+      }
+      g.position.set(x, 0.12, z);
+      return g;
+    };
+
+    const halfWidth = this.trackWidth / 2;
+    const curvePoints = [0.15, 0.35, 0.65, 0.85];
+
+    for (const u of curvePoints) {
+      const pt = this.trackCurve.getPointAt(u);
+      const tangent = this.trackCurve.getTangentAt(u).normalize();
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+      for (let s = -6; s <= 6; s += 1.4) {
+        const pos = pt.clone().addScaledVector(normal, halfWidth + 4.0).addScaledVector(tangent, s);
+        tireGroup.add(makeStack(pos.x, pos.z));
+      }
+    }
+
+    this.trackWorldGroup.add(tireGroup);
   }
 
   buildF1GrandstandsAndPits() {
     const standsGroup = new THREE.Group();
-    const concreteMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.8 });
-    const seatBlue = new THREE.MeshBasicMaterial({ color: 0x0284c7 });
-    const seatRed = new THREE.MeshBasicMaterial({ color: 0xdc2626 });
-    const roofMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8 });
+    const concreteMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.85 });
+    const seatBlue = new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.7 });
+    const seatRed = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.7 });
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.6 });
 
     const makeGrandstand = (x, z, rotY) => {
       const g = new THREE.Group();
 
-      const base = new THREE.Mesh(new THREE.BoxGeometry(32, 12, 18), concreteMat);
+      const base = new THREE.Mesh(new THREE.BoxGeometry(34, 12, 18), concreteMat);
       base.position.set(0, 6, 0);
 
-      const roof = new THREE.Mesh(new THREE.BoxGeometry(34, 0.6, 22), roofMat);
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(36, 0.6, 22), roofMat);
       roof.position.set(0, 14, 2);
 
-      const seats1 = new THREE.Mesh(new THREE.BoxGeometry(30, 2, 4), seatBlue);
+      const seats1 = new THREE.Mesh(new THREE.BoxGeometry(32, 2, 4), seatBlue);
       seats1.position.set(0, 5, -4);
-      const seats2 = new THREE.Mesh(new THREE.BoxGeometry(30, 2, 4), seatRed);
+      const seats2 = new THREE.Mesh(new THREE.BoxGeometry(32, 2, 4), seatRed);
       seats2.position.set(0, 8, 0);
-      const seats3 = new THREE.Mesh(new THREE.BoxGeometry(30, 2, 4), seatBlue);
+      const seats3 = new THREE.Mesh(new THREE.BoxGeometry(32, 2, 4), seatBlue);
       seats3.position.set(0, 11, 4);
 
       g.add(base, roof, seats1, seats2, seats3);
@@ -629,24 +523,24 @@ export class CityTrackManager {
       return g;
     };
 
-    standsGroup.add(makeGrandstand(32, 100, Math.PI / 2));
-    standsGroup.add(makeGrandstand(32, 220, Math.PI / 2));
-    standsGroup.add(makeGrandstand(-32, 100, -Math.PI / 2));
-    standsGroup.add(makeGrandstand(-32, 220, -Math.PI / 2));
+    standsGroup.add(makeGrandstand(34, 100, Math.PI / 2));
+    standsGroup.add(makeGrandstand(34, 220, Math.PI / 2));
+    standsGroup.add(makeGrandstand(-34, 100, -Math.PI / 2));
+    standsGroup.add(makeGrandstand(-34, 220, -Math.PI / 2));
 
     this.trackWorldGroup.add(standsGroup);
   }
 
-  buildStartFinishGantryAndGrid() {
+  buildStartFinishGantry() {
     const halfWidth = this.trackWidth / 2;
     const g = new THREE.Group();
 
-    const trussMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9, roughness: 0.2 });
+    const trussMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.8, roughness: 0.3 });
     const bannerCanvas = document.createElement("canvas");
     bannerCanvas.width = 1024;
     bannerCanvas.height = 256;
     const bCtx = bannerCanvas.getContext("2d");
-    bCtx.fillStyle = "#0f172a";
+    bCtx.fillStyle = "#1e293b";
     bCtx.fillRect(0, 0, 1024, 256);
 
     for (let x = 0; x < 1024; x += 32) {
@@ -660,19 +554,19 @@ export class CityTrackManager {
     bCtx.fillStyle = "#0f172a";
     bCtx.fillRect(140, 36, 744, 184);
 
-    const titleText = this.trackIndex === 1 ? "🏔️ TOUGE MOUNTAIN PASS" : (this.trackIndex === 2 ? "🌴 MIAMI VICE COASTLINE" : "🏁 F1 GRAND PRIX AUTODROME");
+    const titleText = this.trackIndex === 1 ? "TOUGE MOUNTAIN PASS" : (this.trackIndex === 2 ? "MIAMI COASTLINE CIRCUIT" : "F1 GRAND PRIX AUTODROME");
 
-    bCtx.fillStyle = "#38bdf8";
-    bCtx.font = "900 60px Segoe UI, sans-serif";
+    bCtx.fillStyle = "#ffffff";
+    bCtx.font = "900 58px Segoe UI, sans-serif";
     bCtx.textAlign = "center";
     bCtx.fillText(titleText, 512, 120);
 
     bCtx.fillStyle = "#f59e0b";
-    bCtx.font = "800 34px Segoe UI, sans-serif";
-    bCtx.fillText("START / FINISH LINE • LAP TIMING", 512, 175);
+    bCtx.font = "800 32px Segoe UI, sans-serif";
+    bCtx.fillText("OFFICIAL TIMING & LAP SCORING", 512, 175);
 
     const bannerTex = new THREE.CanvasTexture(bannerCanvas);
-    const bannerMat = new THREE.MeshBasicMaterial({ map: bannerTex });
+    const bannerMat = new THREE.MeshStandardMaterial({ map: bannerTex, roughness: 0.5 });
 
     const pillarL = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.0, 18, 12), trussMat);
     pillarL.position.set(-halfWidth - 4.5, 9, 0);
@@ -698,7 +592,7 @@ export class CityTrackManager {
     checkLine.position.set(0, 0.13, 0);
     g.add(checkLine);
 
-    const gridBoxMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const gridBoxMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 });
     const gridPositions = [
       { x: -5.5, z: 24 },
       { x: 5.5, z: 24 },
@@ -722,7 +616,7 @@ export class CityTrackManager {
 
     const lightPoleGeom = new THREE.CylinderGeometry(0.3, 0.45, 16, 8);
     const lightPoleMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8 });
-    const lampGlowMat = new THREE.MeshBasicMaterial({ color: 0xfff3cc });
+    const lampGlowMat = new THREE.MeshStandardMaterial({ color: 0xfff8db, emissive: 0xfff8db, emissiveIntensity: 0.6 });
 
     const count = 30;
     for (let i = 0; i < count; i++) {
@@ -739,16 +633,13 @@ export class CityTrackManager {
       const lampHead = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.4, 3.5), lampGlowMat);
       lampHead.position.set(polePos.x - normal.x * 2.0, 15.8, polePos.z - normal.z * 2.0);
 
-      const lampLight = new THREE.PointLight(0xfff3cc, 3.5, 60);
-      lampLight.position.set(polePos.x - normal.x * 2.0, 15, polePos.z - normal.z * 2.0);
-
-      railGroup.add(pole, lampHead, lampLight);
+      railGroup.add(pole, lampHead);
     }
 
     this.trackWorldGroup.add(railGroup);
   }
 
-  buildDiverseSkyscrapers() {
+  buildDiverseBuildings() {
     const cityGroup = new THREE.Group();
 
     const getMinDistToTrack = (x, z) => {
@@ -769,42 +660,16 @@ export class CityTrackManager {
 
         bldgIndex++;
         const facadeMat = this.facadeMats[bldgIndex % this.facadeMats.length];
-        const archType = bldgIndex % 5;
-        const height = 120 + Math.random() * 260;
+        const height = 100 + Math.random() * 220;
+        const w = 48;
+        const d = 48;
 
-        if (archType === 0) {
-          const radius = 22 + Math.random() * 12;
-          const cyl = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, height, 24), facadeMat);
-          cyl.position.set(x, height / 2, z);
-          cyl.castShadow = true;
-          cityGroup.add(cyl);
+        const bldg = new THREE.Mesh(new THREE.BoxGeometry(w, height, d), facadeMat);
+        bldg.position.set(x, height / 2, z);
+        bldg.castShadow = true;
+        cityGroup.add(bldg);
 
-          this.colliders.push({ minX: x - radius, maxX: x + radius, minZ: z - radius, maxZ: z + radius });
-        } else if (archType === 1) {
-          const baseW = 54;
-          const t1H = height * 0.5;
-          const t2H = height * 0.35;
-          const t3H = height * 0.15;
-
-          const tier1 = new THREE.Mesh(new THREE.BoxGeometry(baseW, t1H, baseW), facadeMat);
-          tier1.position.set(x, t1H / 2, z);
-          const tier2 = new THREE.Mesh(new THREE.BoxGeometry(baseW * 0.72, t2H, baseW * 0.72), facadeMat);
-          tier2.position.set(x, t1H + t2H / 2, z);
-          const tier3 = new THREE.Mesh(new THREE.BoxGeometry(baseW * 0.45, t3H, baseW * 0.45), facadeMat);
-          tier3.position.set(x, t1H + t2H + t3H / 2, z);
-
-          cityGroup.add(tier1, tier2, tier3);
-          this.colliders.push({ minX: x - baseW / 2, maxX: x + baseW / 2, minZ: z - baseW / 2, maxZ: z + baseW / 2 });
-        } else {
-          const w = 48;
-          const d = 48;
-          const bldg = new THREE.Mesh(new THREE.BoxGeometry(w, height, d), facadeMat);
-          bldg.position.set(x, height / 2, z);
-          bldg.castShadow = true;
-          cityGroup.add(bldg);
-
-          this.colliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 });
-        }
+        this.colliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 });
       }
     }
 
@@ -813,8 +678,7 @@ export class CityTrackManager {
 
   buildSpeedTrapCameras() {
     const uPositions = [0.12, 0.55, 0.85];
-    const camMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9 });
-    const lensMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+    const camMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.3 });
 
     for (const u of uPositions) {
       const pt = this.trackCurve.getPointAt(u);
@@ -829,10 +693,8 @@ export class CityTrackManager {
 
       const camBox = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.4, 1.8), camMat);
       camBox.position.set(0, 10.4, 0);
-      const lens = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8), lensMat);
-      lens.position.set(0, 10.4, 1.0);
 
-      g.add(pole, arm, camBox, lens);
+      g.add(pole, arm, camBox);
       g.position.set(pt.x, 0, pt.z);
       g.lookAt(pt.x + tangent.x, 0, pt.z + tangent.z);
       this.trackWorldGroup.add(g);
@@ -845,10 +707,8 @@ export class CityTrackManager {
     const halfWidth = this.trackWidth / 2;
     const coneGeom = new THREE.ConeGeometry(0.4, 1.1, 10);
     const coneBaseGeom = new THREE.BoxGeometry(0.7, 0.1, 0.7);
-    const coneMat = new THREE.MeshStandardMaterial({ color: 0xff5500, roughness: 0.4 });
-    const whiteStripeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const barrelGeom = new THREE.CylinderGeometry(0.8, 0.8, 1.6, 12);
-    const barrelMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, metalness: 0.6 });
+    const coneMat = new THREE.MeshStandardMaterial({ color: 0xea580c, roughness: 0.5 });
+    const whiteStripeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
 
     for (let i = 0; i < 20; i++) {
       const u = (i / 20);
@@ -857,19 +717,13 @@ export class CityTrackManager {
       const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
 
       const g = new THREE.Group();
-      if (i % 2 === 0) {
-        const cone = new THREE.Mesh(coneGeom, coneMat);
-        cone.position.y = 0.55;
-        const base = new THREE.Mesh(coneBaseGeom, coneMat);
-        base.position.y = 0.05;
-        const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.3, 10), whiteStripeMat);
-        stripe.position.y = 0.65;
-        g.add(cone, base, stripe);
-      } else {
-        const barrel = new THREE.Mesh(barrelGeom, barrelMat);
-        barrel.position.y = 0.8;
-        g.add(barrel);
-      }
+      const cone = new THREE.Mesh(coneGeom, coneMat);
+      cone.position.y = 0.55;
+      const base = new THREE.Mesh(coneBaseGeom, coneMat);
+      base.position.y = 0.05;
+      const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.3, 10), whiteStripeMat);
+      stripe.position.y = 0.65;
+      g.add(cone, base, stripe);
 
       const offset = (i % 4 === 0 ? halfWidth - 2.5 : -(halfWidth - 2.5));
       const pos = pt.clone().addScaledVector(normal, offset);
@@ -887,88 +741,11 @@ export class CityTrackManager {
     }
   }
 
-  buildCityFurniture() {
-    const halfWidth = this.trackWidth / 2;
-    const glassMat = new THREE.MeshStandardMaterial({ color: 0x0ea5e9, transparent: true, opacity: 0.5, metalness: 0.9 });
-    const metalMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8 });
-
-    for (let i = 0; i < 6; i++) {
-      const u = (i + 0.6) / 6;
-      const pt = this.trackCurve.getPointAt(u);
-      const tangent = this.trackCurve.getTangentAt(u).normalize();
-      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-
-      const side = (i % 2 === 0 ? halfWidth + 8.5 : -(halfWidth + 8.5));
-      const pos = pt.clone().addScaledVector(normal, side);
-
-      const g = new THREE.Group();
-      const roof = new THREE.Mesh(new THREE.BoxGeometry(7.0, 0.2, 3.5), metalMat);
-      roof.position.set(0, 3.8, 0);
-      const glassBack = new THREE.Mesh(new THREE.BoxGeometry(6.6, 3.2, 0.1), glassMat);
-      glassBack.position.set(0, 1.9, 1.6);
-      const bench = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.15, 0.8), metalMat);
-      bench.position.set(0, 0.7, 0.8);
-      g.add(roof, glassBack, bench);
-
-      g.position.set(pos.x, 0.12, pos.z);
-      g.lookAt(pt.x, 0.12, pt.z);
-      this.trackWorldGroup.add(g);
-    }
-  }
-
-  buildAnimatedPedestrians() {
-    const pedCount = 20;
-    const suitMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
-    const cyberMat = new THREE.MeshStandardMaterial({ color: 0x0284c7 });
-    const goldMat = new THREE.MeshStandardMaterial({ color: 0xd97706 });
-    const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
-    const mats = [suitMat, cyberMat, goldMat];
-
-    const halfWidth = this.trackWidth / 2;
-
-    for (let i = 0; i < pedCount; i++) {
-      const g = new THREE.Group();
-      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.75, 1.0, 0.45), mats[i % mats.length]);
-      torso.position.y = 1.35;
-      g.add(torso);
-
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 8), skinMat);
-      head.position.y = 2.1;
-      g.add(head);
-
-      const legGeom = new THREE.BoxGeometry(0.26, 0.9, 0.26);
-      const legL = new THREE.Mesh(legGeom, mats[(i + 1) % mats.length]);
-      legL.position.set(0.2, 0.45, 0);
-      const legR = legL.clone();
-      legR.position.x = -0.2;
-      g.add(legL, legR);
-
-      const u = (i / pedCount);
-      const pt = this.trackCurve.getPointAt(u);
-      const tangent = this.trackCurve.getTangentAt(u).normalize();
-      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-
-      const sideOffset = (i % 2 === 0 ? halfWidth + 4.5 : -(halfWidth + 4.5));
-      g.position.copy(pt).addScaledVector(normal, sideOffset);
-      g.position.y = 0.12;
-
-      this.trackWorldGroup.add(g);
-      this.pedestrians.push({
-        group: g,
-        u: u,
-        sideOffset: sideOffset,
-        speed: 0.00045 + Math.random() * 0.0002,
-        legL: legL,
-        legR: legR,
-      });
-    }
-  }
-
   buildAIRivals() {
     const rivalsData = [
-      { name: "Akira [GT-R]", color: 0x0284c7, u: 0.008, lane: -5.5, baseSpeedU: 0.018 },
-      { name: "Ghost [911]", color: 0x18181b, u: 0.008, lane: 5.5, baseSpeedU: 0.019 },
-      { name: "⚡ Razor [M3 GTR]", color: 0x16a34a, u: 0.0025, lane: -5.5, baseSpeedU: 0.017 },
+      { name: "Akira [GT-R]", color: 0x1d4ed8, u: 0.008, lane: -5.5, baseSpeedU: 0.018 },
+      { name: "Ghost [911]", color: 0x1e293b, u: 0.008, lane: 5.5, baseSpeedU: 0.019 },
+      { name: "⚡ Razor [M3 GTR]", color: 0x15803d, u: 0.0025, lane: -5.5, baseSpeedU: 0.017 },
     ];
 
     const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
@@ -979,7 +756,7 @@ export class CityTrackManager {
       const paintMat = new THREE.MeshPhysicalMaterial({
         color: r.color,
         metalness: 0.85,
-        roughness: 0.15,
+        roughness: 0.18,
         clearcoat: 1.0,
       });
 
@@ -990,11 +767,11 @@ export class CityTrackManager {
       const wing = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.08, 1.0), carbonMat);
       wing.position.set(0, 1.45, -4.2);
 
-      const hlL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.25, 0.1), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      const hlL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.25, 0.1), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 }));
       hlL.position.set(1.4, 0.6, 4.61);
       const hlR = hlL.clone();
       hlR.position.x = -1.4;
-      const tl = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.18, 0.1), new THREE.MeshBasicMaterial({ color: 0xff0022 }));
+      const tl = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.18, 0.1), new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.2 }));
       tl.position.set(0, 0.6, -4.61);
 
       g.add(body, cabin, wing, hlL, hlR, tl);
@@ -1003,11 +780,11 @@ export class CityTrackManager {
       nameCanvas.width = 256;
       nameCanvas.height = 64;
       const nCtx = nameCanvas.getContext("2d");
-      nCtx.fillStyle = "rgba(15, 23, 42, 0.85)";
-      nCtx.roundRect(0, 0, 256, 64, 16);
+      nCtx.fillStyle = "rgba(15, 23, 42, 0.9)";
+      nCtx.roundRect(0, 0, 256, 64, 12);
       nCtx.fill();
-      nCtx.strokeStyle = "#38bdf8";
-      nCtx.lineWidth = 4;
+      nCtx.strokeStyle = "#94a3b8";
+      nCtx.lineWidth = 3;
       nCtx.stroke();
       nCtx.fillStyle = "#ffffff";
       nCtx.font = "900 22px Segoe UI, sans-serif";
@@ -1036,53 +813,10 @@ export class CityTrackManager {
     }
   }
 
-  buildNitroPickups() {
-    const pickupCount = 10;
-    const canGeom = new THREE.CylinderGeometry(0.45, 0.45, 1.6, 14);
-    const canMat = new THREE.MeshStandardMaterial({
-      color: 0x0284c7,
-      emissive: 0x0284c7,
-      emissiveIntensity: 0.6,
-      metalness: 0.9,
-      roughness: 0.1,
-    });
-    const ringGeom = new THREE.TorusGeometry(1.0, 0.08, 8, 18);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
-
-    for (let i = 0; i < pickupCount; i++) {
-      const u = (i + 0.5) / pickupCount;
-      const pt = this.trackCurve.getPointAt(u);
-      const tangent = this.trackCurve.getTangentAt(u).normalize();
-      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-
-      const offset = (i % 2 === 0 ? 6.0 : -6.0);
-      const pos = pt.clone().addScaledVector(normal, offset);
-
-      const g = new THREE.Group();
-      const canister = new THREE.Mesh(canGeom, canMat);
-      const ring = new THREE.Mesh(ringGeom, ringMat);
-      ring.rotation.x = Math.PI / 2;
-      g.add(canister, ring);
-
-      const light = new THREE.PointLight(0x0284c7, 2.5, 12);
-      g.add(light);
-
-      g.position.set(pos.x, 1.2, pos.z);
-      this.trackWorldGroup.add(g);
-
-      this.nitroPickups.push({
-        group: g,
-        active: true,
-        respawnTimer: 0,
-        pos: pos,
-      });
-    }
-  }
-
   buildPoliceFleet() {
     const policeCount = 4;
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x08090c, roughness: 0.2, metalness: 0.85 });
-    const whiteDoorMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.3 });
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.25, metalness: 0.8 });
+    const whiteDoorMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 });
 
     for (let i = 0; i < policeCount; i++) {
       const g = new THREE.Group();
@@ -1092,9 +826,9 @@ export class CityTrackManager {
       const doors = new THREE.Mesh(new THREE.BoxGeometry(4.45, 0.6, 3.6), whiteDoorMat);
       doors.position.set(0, 0.55, 0);
 
-      const blueLight = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.3, 0.6), new THREE.MeshBasicMaterial({ color: 0x0066ff }));
+      const blueLight = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.3, 0.6), new THREE.MeshStandardMaterial({ color: 0x1d4ed8 }));
       blueLight.position.set(0.7, 1.55, -0.4);
-      const redLight = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.3, 0.6), new THREE.MeshBasicMaterial({ color: 0xff0022 }));
+      const redLight = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.3, 0.6), new THREE.MeshStandardMaterial({ color: 0xdc2626 }));
       redLight.position.set(-0.7, 1.55, -0.4);
       g.add(chassis, doors, blueLight, redLight);
 
@@ -1119,7 +853,7 @@ export class CityTrackManager {
 
   buildPoliceHelicopter() {
     const heliGroup = new THREE.Group();
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.9, roughness: 0.2 });
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.3 });
 
     const fuse = new THREE.Mesh(new THREE.BoxGeometry(3.5, 3.2, 10), bodyMat);
     heliGroup.add(fuse);
@@ -1136,7 +870,7 @@ export class CityTrackManager {
 
     const spotGeom = new THREE.ConeGeometry(24, 90, 16, 1, true);
     spotGeom.rotateX(Math.PI / 2);
-    const spotMat = new THREE.MeshBasicMaterial({ color: 0xeeffff, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+    const spotMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
     const spotCone = new THREE.Mesh(spotGeom, spotMat);
     spotCone.position.set(0, -45, 0);
     heliGroup.add(spotCone);
@@ -1147,12 +881,12 @@ export class CityTrackManager {
   }
 
   buildDetailedTraffic() {
-    const carColors = [0xfacc15, 0x0284c7, 0xfacc15, 0xdc2626, 0x475569, 0xfacc15];
+    const carColors = [0x475569, 0x1e293b, 0x94a3b8, 0xdc2626, 0x1d4ed8, 0x15803d];
     const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
-    const tireMat = new THREE.MeshStandardMaterial({ color: 0x1c1d22, roughness: 0.8 });
-    const rimMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.9 });
-    const hlMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const tlMat = new THREE.MeshBasicMaterial({ color: 0xff0022 });
+    const tireMat = new THREE.MeshStandardMaterial({ color: 0x18191c, roughness: 0.85 });
+    const rimMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.9 });
+    const hlMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
+    const tlMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.2 });
 
     const wheelGeom = new THREE.CylinderGeometry(0.5, 0.5, 0.35, 14);
     wheelGeom.rotateZ(Math.PI / 2);
@@ -1161,10 +895,9 @@ export class CityTrackManager {
 
     for (let i = 0; i < 8; i++) {
       const g = new THREE.Group();
-      const isTaxi = i % 2 === 0;
       const paintMat = new THREE.MeshStandardMaterial({
-        color: isTaxi ? 0xf59e0b : carColors[i % carColors.length],
-        metalness: 0.6,
+        color: carColors[i % carColors.length],
+        metalness: 0.7,
         roughness: 0.25,
       });
 
@@ -1174,14 +907,6 @@ export class CityTrackManager {
       cabin.position.set(0, 1.15, -0.3);
       const roof = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.06, 3.5), paintMat);
       roof.position.set(0, 1.48, -0.3);
-
-      if (isTaxi) {
-        const signGeom = new THREE.BoxGeometry(1.6, 0.4, 0.6);
-        const signMat = new THREE.MeshBasicMaterial({ color: 0xfff000 });
-        const sign = new THREE.Mesh(signGeom, signMat);
-        sign.position.set(0, 1.72, -0.3);
-        g.add(sign);
-      }
 
       const makeWheel = (x, z) => {
         const wg = new THREE.Group();
@@ -1420,7 +1145,7 @@ export class CityTrackManager {
       }
     }
 
-    // 3. BALANCED FAIR AI RIVALS
+    // 3. AI RIVALS
     for (let i = 0; i < this.aiRivals.length; i++) {
       const rival = this.aiRivals[i];
       if (isRaceRunning) {
@@ -1504,40 +1229,8 @@ export class CityTrackManager {
       }
     }
 
-    // 6. Nitro Pickups
-    for (const pickup of this.nitroPickups) {
-      if (!pickup.active) {
-        pickup.respawnTimer += delta;
-        if (pickup.respawnTimer > 12.0) {
-          pickup.active = true;
-          pickup.group.visible = true;
-        }
-        continue;
-      }
-
-      pickup.group.rotation.y += delta * 3.5;
-      pickup.group.position.y = 1.2 + Math.sin(now * 0.005) * 0.25;
-
-      const dist = pickup.group.position.distanceTo(playerPos);
-      if (dist < 4.2) {
-        pickup.active = false;
-        pickup.group.visible = false;
-        pickup.respawnTimer = 0;
-
-        playerCar.nitroFuel = Math.min(100, playerCar.nitroFuel + 50);
-        playerCar.totalScore += 500;
-        cyberAudio.playNitroPickupSound();
-        playerCar.emitSparks(pickup.group.position);
-
-        if (this.onNitroPickupCallback) {
-          this.onNitroPickupCallback("⚡ +50% N2O NITRO PICKUP! +500 PTS");
-        }
-      }
-    }
-
-    // 7. Police Pursuits
+    // 6. Police Pursuits
     let nearestPoliceDist = 999999;
-    const isBlink = Math.sin(now * 0.025) > 0;
 
     for (let i = 0; i < this.policeUnits.length; i++) {
       const police = this.policeUnits[i];
@@ -1550,9 +1243,6 @@ export class CityTrackManager {
         }
         continue;
       }
-
-      police.blueLight.material.color.setHex(isBlink ? 0x00f0ff : 0x001144);
-      police.redLight.material.color.setHex(!isBlink ? 0xff0022 : 0x330008);
 
       let speedMultiplier = 1.0;
       if (this.wantedLevel === 1) speedMultiplier = 1.15;
@@ -1632,7 +1322,7 @@ export class CityTrackManager {
       }
     }
 
-    // 8. Traffic Cars
+    // 7. Traffic Cars
     for (const car of this.trafficCars) {
       car.u = (car.u + car.speed * delta) % 1.0;
       const pt = this.trackCurve.getPointAt(car.u);
