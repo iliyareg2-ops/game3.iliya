@@ -1,4 +1,4 @@
-// car.js - Grand Prix Supercar Physics: Glowing Carbon-Ceramic Brakes, Exhaust Backfires, Tire Heat & Slipstream
+// car.js - Grand Prix Supercar Physics: Glowing Carbon-Ceramic Brakes, Exhaust Backfires, Drift & Slipstream
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -21,10 +21,7 @@ export class CyberCar {
 
     this.nitroFuel = 100;
     this.nitroActive = false;
-    this.focusEnergy = 100;
 
-    // Motorsport Realism Telemetry
-    this.tireTemps = { fl: 82, fr: 82, rl: 85, rr: 85 };
     this.isDrafting = false;
     this.brakeHeat = 0.0;
     this.prevThrottle = 0;
@@ -171,7 +168,6 @@ export class CyberCar {
     this.mesh.add(g);
   }
 
-  // 🛞 WHEELS WITH GLOWING CARBON-CERAMIC BRAKE DISCS
   _buildWheels() {
     const tireMat = new THREE.MeshStandardMaterial({ color: 0x18191c, roughness: 0.85 });
     const rimMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.95, roughness: 0.15 });
@@ -462,7 +458,6 @@ export class CyberCar {
     });
   }
 
-  // 🔥 EMIT EXHAUST BACKFIRE FLAME POP
   emitBackfirePop() {
     const pipeLPos = new THREE.Vector3(0.9, 0.35, -4.9).applyMatrix4(this.mesh.matrixWorld);
     const pipeRPos = new THREE.Vector3(-0.9, 0.35, -4.9).applyMatrix4(this.mesh.matrixWorld);
@@ -489,7 +484,7 @@ export class CyberCar {
   updatePhysics(delta, trackManager) {
     const isNitroFiring = this.nitroActive && this.nitroFuel > 0;
     let maxForwardSpeed = isNitroFiring ? 360 : 255;
-    if (this.isDrafting) maxForwardSpeed += 25; // Slipstream top speed boost!
+    if (this.isDrafting) maxForwardSpeed += 25;
 
     const maxReverseSpeed = -75;
     const accelRate = (isNitroFiring ? 190 : (this.isDrafting ? 140 : 110)) * delta;
@@ -501,7 +496,6 @@ export class CyberCar {
       this.emitNitroExhaust();
     }
 
-    // Check Throttle Lift-Off Backfire
     if (this.prevThrottle > 0.8 && this.throttleInput === 0 && this.speed > 130) {
       this.emitBackfirePop();
     }
@@ -525,7 +519,7 @@ export class CyberCar {
       else if (this.speed < 0) this.speed = Math.min(0, this.speed + coastDrag);
     }
 
-    // 2. Glowing Carbon-Ceramic Brakes Visual
+    // Glowing Carbon-Ceramic Brakes Visual
     for (const disc of this.brakeDiscs) {
       if (this.brakeHeat > 0.15) {
         disc.material.emissive.setHex(0xff3300);
@@ -536,7 +530,7 @@ export class CyberCar {
       }
     }
 
-    // 3. Cornering & Space Drift
+    // Drift Mechanics
     const speedRatio = Math.min(1.0, Math.abs(this.speed) / 100);
     const baseTurnSpeed = 1.35;
     const driftTurnMultiplier = 1.95;
@@ -547,19 +541,9 @@ export class CyberCar {
       effectiveTurnSpeed *= driftTurnMultiplier;
       this.driftMultiplier = Math.min(8.0, this.driftMultiplier + delta * 0.9);
       this.currentDriftScore += Math.abs(this.speed) * delta * 18 * this.driftMultiplier;
-
-      // Tire Heat build-up during drift
-      this.tireTemps.rl = Math.min(125, this.tireTemps.rl + delta * 14);
-      this.tireTemps.rr = Math.min(125, this.tireTemps.rr + delta * 14);
-
       this.emitDriftSmoke();
     } else {
       this.isDrifting = false;
-      this.tireTemps.rl = Math.max(82, this.tireTemps.rl - delta * 4);
-      this.tireTemps.rr = Math.max(82, this.tireTemps.rr - delta * 4);
-      this.tireTemps.fl = Math.max(80, this.tireTemps.fl - delta * 2);
-      this.tireTemps.fr = Math.max(80, this.tireTemps.fr - delta * 2);
-
       if (this.currentDriftScore > 0) {
         this.totalScore += Math.round(this.currentDriftScore);
         cyberAudio.playScoreChime();
@@ -576,7 +560,7 @@ export class CyberCar {
 
     this.heading += this.angularVelocity * delta;
 
-    // 4. Movement
+    // Movement
     const speedMs = (this.speed * 1000) / 3600;
     this.position.x += Math.sin(this.heading) * speedMs * delta;
     this.position.z += Math.cos(this.heading) * speedMs * delta;
@@ -596,7 +580,7 @@ export class CyberCar {
     if (trackManager) {
       trackManager.handleCarTrackCollision(this);
 
-      // Check Slipstream Drafting behind Rivals
+      // Slipstream Drafting
       let drafting = false;
       const forwardX = Math.sin(this.heading);
       const forwardZ = Math.cos(this.heading);
@@ -633,7 +617,6 @@ export class CyberCar {
   }
 
   _updateParticles(delta) {
-    // 1. Update Drift Smoke Particles
     const sPos = this.smokePoints.geometry.attributes.position;
     for (let i = 0; i < this.smokePool.length; i++) {
       const p = this.smokePool[i];
@@ -648,7 +631,6 @@ export class CyberCar {
     }
     sPos.needsUpdate = true;
 
-    // 2. Update Nitro Jet Flame Particles
     const nPos = this.nitroPoints.geometry.attributes.position;
     for (let i = 0; i < this.nitroPool.length; i++) {
       const p = this.nitroPool[i];
@@ -662,7 +644,6 @@ export class CyberCar {
     }
     nPos.needsUpdate = true;
 
-    // 3. Update Backfire Flames
     const bfPos = this.backfirePoints.geometry.attributes.position;
     for (let i = 0; i < this.backfirePool.length; i++) {
       const p = this.backfirePool[i];
@@ -676,7 +657,6 @@ export class CyberCar {
     }
     bfPos.needsUpdate = true;
 
-    // 4. Update Sparks
     const spPos = this.sparkPoints.geometry.attributes.position;
     for (let i = 0; i < this.sparkPool.length; i++) {
       const p = this.sparkPool[i];
@@ -701,7 +681,6 @@ export class CyberCar {
     this.nitroFuel = 100;
     this.currentDriftScore = 0;
     this.brakeHeat = 0;
-    this.tireTemps = { fl: 82, fr: 82, rl: 85, rr: 85 };
     this.mesh.position.copy(this.position);
     this.mesh.rotation.set(0, 0, 0);
   }

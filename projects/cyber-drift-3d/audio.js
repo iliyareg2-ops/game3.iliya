@@ -1,4 +1,4 @@
-// audio.js - Realistic Automotive & Motorsport Sound Engine (Combustion, Exhaust Backfires, Slipstream, Sirens, Helicopter)
+// audio.js - Realistic Automotive Sound Engine (Combustion, Exhaust Backfires, Slipstream, Sirens, Helicopter)
 class CyberAudioEngine {
   constructor() {
     this.ctx = null;
@@ -6,7 +6,6 @@ class CyberAudioEngine {
     this.isMuted = false;
 
     this.masterGain = null;
-    this.bulletTimeFilter = null;
 
     // Granular Combustion Engine
     this.engineGain = null;
@@ -59,13 +58,7 @@ class CyberAudioEngine {
 
       this.masterGain = this.ctx.createGain();
       this.masterGain.gain.setValueAtTime(0.85, this.ctx.currentTime);
-
-      this.bulletTimeFilter = this.ctx.createBiquadFilter();
-      this.bulletTimeFilter.type = "lowpass";
-      this.bulletTimeFilter.frequency.setValueAtTime(14000, this.ctx.currentTime);
-
-      this.masterGain.connect(this.bulletTimeFilter);
-      this.bulletTimeFilter.connect(this.ctx.destination);
+      this.masterGain.connect(this.ctx.destination);
 
       this._setupRealisticEngine();
       this._setupTireScrubbing();
@@ -181,7 +174,6 @@ class CyberAudioEngine {
     windNoise.start();
   }
 
-  // 💨 SLIPSTREAM AERODYNAMIC SUCTION
   _setupSlipstreamSuction() {
     this.slipstreamGain = this.ctx.createGain();
     this.slipstreamGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
@@ -208,7 +200,6 @@ class CyberAudioEngine {
     this.slipstreamGain.gain.setTargetAtTime(isActive ? 0.45 : 0.0, this.ctx.currentTime, 0.1);
   }
 
-  // 🔥 EXHAUST BACKFIRE POPS & BANGS (Unburnt fuel combustion crackles)
   playExhaustBackfire() {
     if (!this.isInitialized || this.isMuted || !this.ctx) return;
     const t = this.ctx.currentTime;
@@ -334,11 +325,6 @@ class CyberAudioEngine {
   setRainActive(isRaining) {
     if (!this.rainGain || !this.ctx) return;
     this.rainGain.gain.setTargetAtTime(isRaining ? 0.35 : 0.0, this.ctx.currentTime, 0.4);
-  }
-
-  setBulletTime(isActive) {
-    if (!this.bulletTimeFilter || !this.ctx) return;
-    this.bulletTimeFilter.frequency.setTargetAtTime(isActive ? 320 : 14000, this.ctx.currentTime, 0.08);
   }
 
   playTrafficFlyby() {
