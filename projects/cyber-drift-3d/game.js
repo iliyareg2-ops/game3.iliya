@@ -78,7 +78,7 @@ export class CyberDriftGame {
     this.trackManager = new CityTrackManager(this.scene, 0, "DAY");
     this.car = new CyberCar(this.scene, 0);
 
-    this.car.position.set(0, 0.12, 0);
+    this.car.position.set(1.2, 0.15, 0);
     this.car.mesh.position.copy(this.car.position);
 
     // Showroom Studio Turntable Pod
@@ -89,7 +89,7 @@ export class CyberDriftGame {
       roughness: 0.25,
     });
     this.turntable = new THREE.Mesh(turntableGeom, turntableMat);
-    this.turntable.position.set(0, 0.06, 0);
+    this.turntable.position.set(1.2, 0.06, 0);
     this.turntable.receiveShadow = true;
     this.scene.add(this.turntable);
 
@@ -655,20 +655,26 @@ export class CyberDriftGame {
   updateCamera(delta) {
     if (this.gameState === "GARAGE") {
       if (!this.isDraggingGarage) {
-        this.garageOrbitAngle += delta * 0.3;
+        this.garageOrbitAngle += delta * 0.4;
       }
 
-      const radius = 10.8;
-      const targetLookAt = new THREE.Vector3(0, 0.9, 0);
+      const radius = 10.5;
+      const targetLookAt = new THREE.Vector3(1.2, 0.8, 0);
 
       const camX = targetLookAt.x + Math.sin(this.garageOrbitAngle) * radius;
       const camZ = targetLookAt.z + Math.cos(this.garageOrbitAngle) * radius;
-      const camY = 2.6;
+      const camY = 2.4;
 
       this.camera.position.set(camX, camY, camZ);
       this.camera.lookAt(targetLookAt);
 
-      if (this.turntable) this.turntable.rotation.y = -this.garageOrbitAngle * 0.5;
+      if (this.turntable) {
+        this.turntable.position.set(1.2, 0.06, 0);
+        this.turntable.rotation.y = -this.garageOrbitAngle * 0.5;
+      }
+      this.car.position.set(1.2, 0.15, 0);
+      this.car.mesh.position.set(1.2, 0.15, 0);
+      this.car.mesh.rotation.y = -this.garageOrbitAngle * 0.5;
       return;
     }
 

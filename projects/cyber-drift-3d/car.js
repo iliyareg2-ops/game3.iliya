@@ -46,6 +46,9 @@ export class CyberCar {
     this.finishType = "metallic";
     this.windowTint = "limo";
     this.rimColorHex = 0xd4d4d8;
+    this.bodykit = "stock";
+    this.underglowNeon = "none";
+    this.stage = 0;
 
     this.throttleInput = 0;
     this.steerInput = 0;
@@ -53,7 +56,9 @@ export class CyberCar {
 
     this.mesh = new THREE.Group();
     this.bodyGroup = new THREE.Group();
+    this.wheelGroup = new THREE.Group();
     this.mesh.add(this.bodyGroup);
+    this.mesh.add(this.wheelGroup);
     this.scene.add(this.mesh);
 
     this.wheels = [];
@@ -63,6 +68,7 @@ export class CyberCar {
     this.activeWingMesh = null;
     this.steeringWheelMesh = null;
     this.driverHelmetMesh = null;
+    this.underglowMesh = null;
 
     this.initCarModel();
     this.initUnderbodyShadow();
@@ -103,6 +109,13 @@ export class CyberCar {
   initCarModel() {
     while (this.bodyGroup.children.length > 0) {
       this.bodyGroup.remove(this.bodyGroup.children[0]);
+    }
+    while (this.wheelGroup.children.length > 0) {
+      this.wheelGroup.remove(this.wheelGroup.children[0]);
+    }
+    if (this.underglowMesh) {
+      this.mesh.remove(this.underglowMesh);
+      this.underglowMesh = null;
     }
     this.wheels = [];
     this.brakeDiscs = [];
@@ -575,7 +588,7 @@ export class CyberCar {
       g.add(tire, rim, brakeDisc, caliper);
       g.position.set(x, 0.52, z);
       g.castShadow = true;
-      this.mesh.add(g);
+      this.wheelGroup.add(g);
       this.brakeDiscs.push(brakeDisc);
       this.brakeCalipers.push(caliper);
       return g;

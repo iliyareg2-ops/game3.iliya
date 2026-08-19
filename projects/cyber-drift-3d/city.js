@@ -970,49 +970,19 @@ export class CityTrackManager {
   buildMinimalistStudioGarage() {
     this.garageGroup = new THREE.Group();
 
-    const floorMat = new THREE.MeshStandardMaterial({
-      color: 0x18191f,
-      metalness: 0.85,
-      roughness: 0.2,
-    });
-
-    const garageFloor = new THREE.Mesh(new THREE.PlaneGeometry(42, 42), floorMat);
-    garageFloor.rotateX(-Math.PI / 2);
-    garageFloor.position.set(0, 0.04, 0);
-    garageFloor.receiveShadow = true;
-    this.garageGroup.add(garageFloor);
-
-    const wallMat = new THREE.MeshStandardMaterial({ color: 0x1e222b, roughness: 0.8 });
-    const backWall = new THREE.Mesh(new THREE.BoxGeometry(42, 18, 0.8), wallMat);
-    backWall.position.set(0, 9, -18);
-
-    const glassMat = new THREE.MeshPhysicalMaterial({
-      color: 0x94a3b8,
-      transparent: true,
-      opacity: 0.25,
-      metalness: 0.9,
-      roughness: 0.1,
-    });
-    const glassWallL = new THREE.Mesh(new THREE.BoxGeometry(0.6, 18, 42), glassMat);
-    glassWallL.position.set(-20, 9, 0);
-    const glassWallR = glassWallL.clone();
-    glassWallR.position.x = 20;
-
-    this.garageGroup.add(backWall, glassWallL, glassWallR);
-
     const softboxMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const softbox1 = new THREE.Mesh(new THREE.BoxGeometry(18, 0.2, 10), softboxMat);
     softbox1.position.set(0, 15, 0);
     this.garageGroup.add(softbox1);
 
-    const keySpot = new THREE.SpotLight(0xffffff, 4.0, 35, Math.PI / 3, 0.25);
+    const keySpot = new THREE.SpotLight(0xffffff, 4.5, 45, Math.PI / 3, 0.3);
     keySpot.position.set(0, 14, 0);
     this.garageGroup.add(keySpot);
 
-    const sideSpot1 = new THREE.DirectionalLight(0xffffff, 1.2);
-    sideSpot1.position.set(15, 10, 15);
-    const sideSpot2 = new THREE.DirectionalLight(0xe2e8f0, 0.8);
-    sideSpot2.position.set(-15, 8, -15);
+    const sideSpot1 = new THREE.DirectionalLight(0xffffff, 1.8);
+    sideSpot1.position.set(15, 12, 15);
+    const sideSpot2 = new THREE.DirectionalLight(0x38bdf8, 1.2);
+    sideSpot2.position.set(-15, 10, -15);
     this.garageGroup.add(sideSpot1, sideSpot2);
 
     this.scene.add(this.garageGroup);
