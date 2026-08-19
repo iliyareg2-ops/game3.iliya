@@ -1,4 +1,4 @@
-// car.js - Hyper-Detailed Sculpted 3D Supercars (Intercoolers, Brake Calipers, Halo Headlights, Interior & Drift Physics)
+// car.js - Hyper-Detailed Sculpted 3D Supercars with Inverted Steering Control Fix
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -79,7 +79,6 @@ export class CyberCar {
     this.flameCones = [];
     this.carMaterials = [];
 
-    // 1. High-End Clearcoat Physical Car Paint (Lustrous & Gleaming in any lighting)
     this.bodyMat = new THREE.MeshPhysicalMaterial({
       color: this.bodyColor,
       metalness: 0.35,
@@ -118,7 +117,7 @@ export class CyberCar {
     });
 
     this.caliperMat = new THREE.MeshStandardMaterial({
-      color: 0xdc2626, // Red Brembo
+      color: 0xdc2626,
       metalness: 0.7,
       roughness: 0.2,
     });
@@ -160,38 +159,32 @@ export class CyberCar {
   }
 
   _buildApexGT() {
-    // 1. Lower Chassis & Side Skirts
     const chassisGeom = new THREE.BoxGeometry(4.4, 0.7, 9.4);
     const chassis = new THREE.Mesh(chassisGeom, this.bodyMat);
     chassis.position.y = 0.52;
     chassis.castShadow = true;
     this.mesh.add(chassis);
 
-    // Front Bumper with Big Intercooler Grille
     const bumperGeom = new THREE.BoxGeometry(4.35, 0.45, 1.2);
     const bumper = new THREE.Mesh(bumperGeom, this.carbonMat);
     bumper.position.set(0, 0.35, 4.4);
     this.mesh.add(bumper);
 
-    // Silver Aluminum Intercooler core
     const intercoolerGeom = new THREE.BoxGeometry(2.4, 0.3, 0.2);
     const intercooler = new THREE.Mesh(intercoolerGeom, this.chromeMat);
     intercooler.position.set(0, 0.32, 4.95);
     this.mesh.add(intercooler);
 
-    // Carbon Front Splitter
     const splitterGeom = new THREE.BoxGeometry(4.6, 0.08, 1.2);
     const splitter = new THREE.Mesh(splitterGeom, this.carbonMat);
     splitter.position.set(0, 0.18, 4.6);
     this.mesh.add(splitter);
 
-    // Sculpted Hood with Vents
     const hoodGeom = new THREE.BoxGeometry(4.1, 0.32, 3.4);
     const hood = new THREE.Mesh(hoodGeom, this.bodyMat);
     hood.position.set(0, 0.72, 2.6);
     this.mesh.add(hood);
 
-    // Side Mirrors
     const mirrorGeom = new THREE.BoxGeometry(0.5, 0.25, 0.35);
     const leftMirror = new THREE.Mesh(mirrorGeom, this.carbonMat);
     leftMirror.position.set(2.35, 1.05, 0.9);
@@ -199,20 +192,17 @@ export class CyberCar {
     rightMirror.position.x = -2.35;
     this.mesh.add(leftMirror, rightMirror);
 
-    // Cabin Glass Greenhouse
     const cabinGeom = new THREE.BoxGeometry(3.6, 0.75, 4.6);
     const cabin = new THREE.Mesh(cabinGeom, this.glassMat);
     cabin.position.set(0, 1.15, -0.4);
     cabin.castShadow = true;
     this.mesh.add(cabin);
 
-    // Carbon Roof
     const roofGeom = new THREE.BoxGeometry(3.45, 0.08, 3.5);
     const roof = new THREE.Mesh(roofGeom, this.carbonMat);
     roof.position.set(0, 1.54, -0.4);
     this.mesh.add(roof);
 
-    // Rear Carbon Diffuser & Quad Burnt Titanium Exhausts
     const diffuserGeom = new THREE.BoxGeometry(4.2, 0.35, 1.0);
     const diffuser = new THREE.Mesh(diffuserGeom, this.carbonMat);
     diffuser.position.set(0, 0.32, -4.5);
@@ -233,7 +223,6 @@ export class CyberCar {
       this.exhaustTips.push(pos);
     });
 
-    // Rear Spoiler
     const wingGeom = new THREE.BoxGeometry(4.5, 0.08, 1.0);
     const wing = new THREE.Mesh(wingGeom, this.carbonMat);
     wing.position.set(0, 1.45, -4.3);
@@ -243,7 +232,6 @@ export class CyberCar {
     stand2.position.x = -1.4;
     this.mesh.add(wing, stand1, stand2);
 
-    // Halo LED Projector Headlights
     const haloGeom = new THREE.TorusGeometry(0.24, 0.04, 8, 16);
     const leftHalo = new THREE.Mesh(haloGeom, this.haloRingMat);
     leftHalo.position.set(1.6, 0.68, 4.75);
@@ -258,21 +246,18 @@ export class CyberCar {
 
     this.mesh.add(leftHalo, rightHalo, leftBulb, rightBulb);
 
-    // Full-Width LED Tail Bar
     const tLight = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.16, 0.1), this.taillightMat);
     tLight.position.set(0, 0.68, -4.72);
     this.mesh.add(tLight);
   }
 
   _buildPhantomDrifter() {
-    // Widebody drift machine
     const chassisGeom = new THREE.BoxGeometry(4.8, 0.72, 9.6);
     const chassis = new THREE.Mesh(chassisGeom, this.bodyMat);
     chassis.position.y = 0.5;
     chassis.castShadow = true;
     this.mesh.add(chassis);
 
-    // Widebody Bolted Fenders
     const flareGeom = new THREE.BoxGeometry(5.35, 0.55, 2.4);
     const frontFlares = new THREE.Mesh(flareGeom, this.carbonMat);
     frontFlares.position.set(0, 0.58, 2.7);
@@ -280,12 +265,10 @@ export class CyberCar {
     rearFlares.position.set(0, 0.58, -2.7);
     this.mesh.add(frontFlares, rearFlares);
 
-    // Intercooler
     const intercooler = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.35, 0.2), this.chromeMat);
     intercooler.position.set(0, 0.32, 4.95);
     this.mesh.add(intercooler);
 
-    // Massive GT Wing
     const wingGeom = new THREE.BoxGeometry(5.4, 0.1, 1.3);
     const wing = new THREE.Mesh(wingGeom, this.carbonMat);
     wing.position.set(0, 1.75, -4.5);
@@ -295,7 +278,6 @@ export class CyberCar {
     stand2.position.x = -1.6;
     this.mesh.add(wing, stand1, stand2);
 
-    // Dual Giant 4-inch Titanium Exhausts
     const tipGeom = new THREE.CylinderGeometry(0.24, 0.24, 0.7, 12);
     tipGeom.rotateX(Math.PI / 2);
     const tip1 = new THREE.Mesh(tipGeom, this.titaniumTipMat);
@@ -305,7 +287,6 @@ export class CyberCar {
     this.mesh.add(tip1, tip2);
     this.exhaustTips.push(new THREE.Vector3(0.9, 0.35, -4.9), new THREE.Vector3(-0.9, 0.35, -4.9));
 
-    // Lights
     const hLight1 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.25, 0.15), this.headlightMat);
     hLight1.position.set(1.75, 0.68, 4.85);
     const hLight2 = hLight1.clone();
@@ -317,7 +298,6 @@ export class CyberCar {
   }
 
   _buildHyperionX() {
-    // Supersonic Futuristic Hypercar
     const bodyShape = new THREE.Shape();
     bodyShape.moveTo(-2.2, -4.8);
     bodyShape.lineTo(2.2, -4.8);
@@ -335,20 +315,17 @@ export class CyberCar {
     body.castShadow = true;
     this.mesh.add(body);
 
-    // Jet Canopy
     const canopyGeom = new THREE.SphereGeometry(1.6, 16, 12);
     canopyGeom.scale(1.0, 0.55, 2.4);
     const canopy = new THREE.Mesh(canopyGeom, this.glassMat);
     canopy.position.set(0, 0.88, -0.4);
     this.mesh.add(canopy);
 
-    // Central Dorsal Fin
     const finGeom = new THREE.BoxGeometry(0.1, 0.85, 2.5);
     const fin = new THREE.Mesh(finGeom, this.carbonMat);
     fin.position.set(0, 1.2, -3.2);
     this.mesh.add(fin);
 
-    // Dual Jet Thruster Exhausts
     const exhaustGeom = new THREE.CylinderGeometry(0.38, 0.44, 0.9, 14);
     exhaustGeom.rotateX(Math.PI / 2);
     const ex1 = new THREE.Mesh(exhaustGeom, this.titaniumTipMat);
@@ -367,7 +344,6 @@ export class CyberCar {
   }
 
   _buildInterior() {
-    // 2 Racing Bucket Seats
     const seatGeom = new THREE.BoxGeometry(0.9, 1.1, 0.9);
     const seatMat = new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.9 });
     const seat1 = new THREE.Mesh(seatGeom, seatMat);
@@ -375,7 +351,6 @@ export class CyberCar {
     const seat2 = seat1.clone();
     seat2.position.x = -0.75;
 
-    // Roll Cage
     const cageGeom = new THREE.CylinderGeometry(0.05, 0.05, 2.2);
     const cageMat = new THREE.MeshStandardMaterial({ color: 0x00f0ff, metalness: 0.9 });
     const cage1 = new THREE.Mesh(cageGeom, cageMat);
@@ -385,7 +360,6 @@ export class CyberCar {
     cage2.position.x = -1.3;
     cage2.rotation.z = -0.35;
 
-    // Steering Wheel
     const wheelGeom = new THREE.TorusGeometry(0.24, 0.04, 8, 16);
     const steerWheel = new THREE.Mesh(wheelGeom, this.carbonMat);
     steerWheel.position.set(0.75, 1.15, 0.4);
@@ -404,7 +378,6 @@ export class CyberCar {
     const rimGeom = new THREE.CylinderGeometry(wheelRadius * 0.74, wheelRadius * 0.74, wheelWidth + 0.02, 14);
     rimGeom.rotateZ(Math.PI / 2);
 
-    // Cross-drilled Brake Disc & Red Caliper
     const discGeom = new THREE.CylinderGeometry(0.38, 0.38, 0.08, 16);
     discGeom.rotateZ(Math.PI / 2);
     const caliperGeom = new THREE.BoxGeometry(0.12, 0.22, 0.28);
@@ -626,7 +599,8 @@ export class CyberCar {
       if (this.speed < 0) this.speed = Math.min(0, this.speed + delta * 35);
     }
 
-    this.steerAngle = THREE.MathUtils.lerp(this.steerAngle, this.steerInput * 0.55, delta * 8);
+    // 🎮 FIXED STEERING: steerInput > 0 (Right, D / →), steerInput < 0 (Left, A / ←)
+    this.steerAngle = THREE.MathUtils.lerp(this.steerAngle, -this.steerInput * 0.55, delta * 8);
     this.frontLeftWheelGroup.rotation.y = this.steerAngle;
     this.frontRightWheelGroup.rotation.y = this.steerAngle;
 
@@ -636,13 +610,14 @@ export class CyberCar {
     this.wheelRL.rotation.x += wheelRot;
     this.wheelRR.rotation.x += wheelRot;
 
+    // Drift physics
     if (this.handbrake && Math.abs(this.speed) > 35) {
       this.isDrifting = true;
       this.speed = Math.max(0, this.speed - delta * 50);
-      this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, -this.steerInput * 0.75, delta * 6);
+      this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, this.steerInput * 0.75, delta * 6);
     } else if (Math.abs(this.steerInput) > 0.4 && Math.abs(this.speed) > 95) {
       this.isDrifting = true;
-      this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, -this.steerInput * 0.48, delta * 4);
+      this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, this.steerInput * 0.48, delta * 4);
     } else {
       this.driftAngle = THREE.MathUtils.lerp(this.driftAngle, 0, delta * 5);
       if (Math.abs(this.driftAngle) < 0.08) {
@@ -667,9 +642,10 @@ export class CyberCar {
       if (Math.random() < 0.9) this.emitTireSmoke(false);
     }
 
-    const effectiveSteer = this.steerInput * (this.isDrifting ? 1.4 : 1.0);
-    this.heading -= effectiveSteer * this.turnSpeed * (this.speed / this.maxSpeed) * delta;
-    this.mesh.rotation.y = this.heading + this.driftAngle;
+    // Heading calculation (steerInput < 0 turns Left toward -X, steerInput > 0 turns Right toward +X)
+    const effectiveSteer = -this.steerInput * (this.isDrifting ? 1.4 : 1.0);
+    this.heading += effectiveSteer * this.turnSpeed * (this.speed / this.maxSpeed) * delta;
+    this.mesh.rotation.y = this.heading - this.driftAngle;
 
     const speedMs = (this.speed * 1000) / 3600;
     const forward = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.heading);
@@ -704,7 +680,7 @@ export class CyberCar {
         s.mesh.visible = false;
       } else {
         s.mesh.position.addScaledVector(s.velocity, delta);
-        s.velocity.y -= delta * 30; // Gravity
+        s.velocity.y -= delta * 30;
       }
     }
   }
