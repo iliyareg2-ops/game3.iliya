@@ -1,4 +1,4 @@
-// audio.js - Cyber Drift 3D Sound Engine (Engine RPM, Turbo, Screech, Police Sirens, Takedown Smashes, Helicopters & Road Grinds)
+// audio.js - Cyber Drift 3D Sound Engine (Engine, Turbo, Screech, Police, Takedowns, Nitro Pickups)
 
 class CyberAudioEngine {
   constructor() {
@@ -233,12 +233,30 @@ class CyberAudioEngine {
     }
   }
 
-  // 💥 Metal Crunch & Explosion when Takedowning Police Interceptor
+  // ⚡ Nitro Canister Pickup Sound
+  playNitroPickupSound() {
+    if (!this.isInitialized || this.isMuted) return;
+    const t = this.ctx.currentTime;
+
+    const freqs = [659.25, 880.0, 1318.51, 1760.0]; // E5, A5, E6, A6 Arpeggio
+    freqs.forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, t + idx * 0.04);
+      gain.gain.setValueAtTime(0.3, t + idx * 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.04 + 0.3);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t + idx * 0.04);
+      osc.stop(t + idx * 0.04 + 0.35);
+    });
+  }
+
   playTakedownCrunch() {
     if (!this.isInitialized || this.isMuted) return;
     const t = this.ctx.currentTime;
 
-    // 1. Sub Bass Boom
     const boomOsc = this.ctx.createOscillator();
     const boomGain = this.ctx.createGain();
     boomOsc.type = "sine";
@@ -251,7 +269,6 @@ class CyberAudioEngine {
     boomOsc.start(t);
     boomOsc.stop(t + 0.7);
 
-    // 2. Metal Crumple Noise
     const noiseBuffer = this._createNoiseBuffer();
     const noise = this.ctx.createBufferSource();
     noise.buffer = noiseBuffer;
@@ -290,7 +307,7 @@ class CyberAudioEngine {
   playScoreChime() {
     if (!this.isInitialized || this.isMuted) return;
     const t = this.ctx.currentTime;
-    const freqs = [587.33, 880.0, 1174.66]; // D-A-D Chord
+    const freqs = [587.33, 880.0, 1174.66];
     freqs.forEach((freq, idx) => {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();

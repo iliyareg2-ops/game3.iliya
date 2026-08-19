@@ -1,4 +1,4 @@
-// game.js - Cyber Drift 3D Main Director, Space=Drift, Shift=Nitro
+// game.js - Cyber Drift 3D Main Director, Space=Drift, Shift=Nitro, Nitro Pickup Banners
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { CyberCar } from "./car.js";
 import { CityTrackManager } from "./city.js";
@@ -68,6 +68,10 @@ export class CyberDriftGame {
 
     this.trackManager.onBustedCallback = () => {
       this.triggerBusted();
+    };
+
+    this.trackManager.onNitroPickupCallback = (bannerText) => {
+      this.showBanner(bannerText, 2200);
     };
   }
 
@@ -152,7 +156,6 @@ export class CyberDriftGame {
     this.driftPtsEl = document.getElementById("hud-drift-pts");
     this.driftMultEl = document.getElementById("hud-drift-mult");
     this.nitroBarEl = document.getElementById("hud-nitro-bar");
-    this.rpmBarEl = document.getElementById("hud-rpm-bar");
     this.wantedEl = document.getElementById("hud-wanted");
     this.camModeEl = document.getElementById("hud-cam-mode");
     this.bannerEl = document.getElementById("hud-banner");
@@ -347,9 +350,6 @@ export class CyberDriftGame {
     if (this.scoreEl) this.scoreEl.textContent = this.car.totalScore;
     if (this.nitroBarEl) this.nitroBarEl.style.width = `${Math.round(this.car.nitroFuel)}%`;
 
-    const rpmRatio = Math.min(100, ((this.car.rpm - 800) / 7500) * 100);
-    if (this.rpmBarEl) this.rpmBarEl.style.width = `${rpmRatio}%`;
-
     if (this.driftBoxEl && this.driftPtsEl && this.driftMultEl) {
       if (this.car.isDrifting && this.car.currentDriftScore > 50) {
         this.driftBoxEl.style.display = "flex";
@@ -377,11 +377,8 @@ export class CyberDriftGame {
 
     if (this.gameState === "RACING") {
       this.car.throttleInput = (this.keys.forward ? 1 : 0) - (this.keys.backward ? 1 : 0);
-      // Inverted steering as user explicitly configured:
       this.car.steerInput = (this.keys.left ? 1 : 0) - (this.keys.right ? 1 : 0);
-      // Space = Drift
       this.car.driftActive = this.keys.drift;
-      // Shift = Nitro
       this.car.nitroActive = this.keys.nitro;
 
       this.car.updatePhysics(delta, this.trackManager);

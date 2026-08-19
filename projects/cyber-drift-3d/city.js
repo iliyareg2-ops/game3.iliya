@@ -1,4 +1,4 @@
-// city.js - Brightened Cyber City, Normal-Offset Roadside Lights & Detailed Traffic Cars
+// city.js - Seamless Grand Prix Highway, Photorealistic Neon Billboards, 3D Nitro Pickups, Traffic Lights, Zebras & Animated Pedestrians
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -10,34 +10,40 @@ export class CityTrackManager {
     this.guardrails = [];
     this.trafficCars = [];
     this.policeUnits = [];
+    this.nitroPickups = [];
+    this.pedestrians = [];
+    this.trafficLights = [];
     this.helicopter = null;
     this.heliSearchlight = null;
 
     this.onTakedownCallback = null;
     this.onBustedCallback = null;
+    this.onNitroPickupCallback = null;
     this.bustedTimer = 0;
 
     this.initTextures();
     this.initLighting();
     this.buildGrandPrixTrackAndCurbs();
     this.buildRoadsideStreetlights();
-    this.buildSkyscrapersWithClearance();
+    this.buildSkyscrapersWithBillboards();
+    this.buildNitroPickups();
+    this.buildTrafficLightsAndCrosswalks();
+    this.buildAnimatedPedestrians();
     this.buildPoliceFleet();
     this.buildPoliceHelicopter();
     this.buildDetailedTraffic();
   }
 
   initTextures() {
+    // 1. High-Res Bright Asphalt Texture
     const roadCanvas = document.createElement("canvas");
     roadCanvas.width = 1024;
     roadCanvas.height = 1024;
     const rCtx = roadCanvas.getContext("2d");
 
-    // Bright Natural Slate Asphalt Base
     rCtx.fillStyle = "#4c5466";
     rCtx.fillRect(0, 0, 1024, 1024);
 
-    // Micro-gravel & stone speckles
     for (let i = 0; i < 45000; i++) {
       const x = Math.random() * 1024;
       const y = Math.random() * 1024;
@@ -48,24 +54,20 @@ export class CityTrackManager {
       rCtx.fillRect(x, y, 2 + Math.random() * 2, 2 + Math.random() * 2);
     }
 
-    // Tire grooves
     rCtx.fillStyle = "rgba(30, 35, 45, 0.35)";
     rCtx.fillRect(160, 0, 180, 1024);
     rCtx.fillRect(684, 0, 180, 1024);
 
-    // Outer Solid White Shoulder Lines
     rCtx.fillStyle = "#ffffff";
     rCtx.fillRect(35, 0, 18, 1024);
     rCtx.fillRect(971, 0, 18, 1024);
 
-    // Center Double Yellow Dashed Lines
     rCtx.fillStyle = "#ffd000";
     for (let y = 30; y < 1024; y += 140) {
       rCtx.fillRect(504, y, 7, 85);
       rCtx.fillRect(515, y, 7, 85);
     }
 
-    // White Lane Boundary Dashes
     rCtx.fillStyle = "rgba(255, 255, 255, 0.9)";
     for (let y = 60; y < 1024; y += 160) {
       rCtx.fillRect(270, y, 6, 70);
@@ -82,9 +84,144 @@ export class CityTrackManager {
       roughness: 0.4,
       metalness: 0.15,
     });
+
+    // 2. High-Resolution Realistic Cyberpunk Neon Billboards
+    this.billboardTextures = [
+      this._createBillboardCyberDrift(),
+      this._createBillboardNitroBoost(),
+      this._createBillboardTokyoRamen(),
+      this._createBillboardHyperion(),
+    ];
   }
 
-  // 💡 Bright, Vibrant City Lighting
+  _createBillboardCyberDrift() {
+    const c = document.createElement("canvas");
+    c.width = 512;
+    c.height = 256;
+    const ctx = c.getContext("2d");
+
+    ctx.fillStyle = "#090d18";
+    ctx.fillRect(0, 0, 512, 256);
+
+    ctx.strokeStyle = "#00f0ff";
+    ctx.lineWidth = 6;
+    ctx.strokeRect(8, 8, 496, 240);
+
+    ctx.fillStyle = "#ff007f";
+    ctx.font = "900 38px Segoe UI, sans-serif";
+    ctx.fillText("CYBER DRIFT", 28, 65);
+
+    ctx.fillStyle = "#00f0ff";
+    ctx.font = "900 24px Segoe UI, sans-serif";
+    ctx.fillText("夜のドリフト • TOKYO 2077", 28, 110);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "800 16px Segoe UI, sans-serif";
+    ctx.fillText("NIGHT CIRCUIT CHAMPIONSHIP", 28, 150);
+
+    ctx.fillStyle = "#ffd000";
+    ctx.font = "900 28px Segoe UI, sans-serif";
+    ctx.fillText("HIGH SPEED DRIFT ONLY", 28, 205);
+
+    return new THREE.CanvasTexture(c);
+  }
+
+  _createBillboardNitroBoost() {
+    const c = document.createElement("canvas");
+    c.width = 512;
+    c.height = 256;
+    const ctx = c.getContext("2d");
+
+    ctx.fillStyle = "#0d1020";
+    ctx.fillRect(0, 0, 512, 256);
+
+    ctx.strokeStyle = "#ffaa00";
+    ctx.lineWidth = 6;
+    ctx.strokeRect(8, 8, 496, 240);
+
+    ctx.fillStyle = "#00f0ff";
+    ctx.font = "900 36px Segoe UI, sans-serif";
+    ctx.fillText("⚡ NITRO POWER 2.0", 28, 65);
+
+    ctx.fillStyle = "#ff0055";
+    ctx.font = "900 26px Segoe UI, sans-serif";
+    ctx.fillText("MAXIMUM N2O INJECTION", 28, 115);
+
+    ctx.fillStyle = "#ffd000";
+    ctx.font = "800 20px Segoe UI, sans-serif";
+    ctx.fillText("COLLECT CANISTERS ON TRACK", 28, 165);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 24px Segoe UI, sans-serif";
+    ctx.fillText("360 KM/H HYPER SPEED", 28, 210);
+
+    return new THREE.CanvasTexture(c);
+  }
+
+  _createBillboardTokyoRamen() {
+    const c = document.createElement("canvas");
+    c.width = 512;
+    c.height = 256;
+    const ctx = c.getContext("2d");
+
+    ctx.fillStyle = "#180a14";
+    ctx.fillRect(0, 0, 512, 256);
+
+    ctx.strokeStyle = "#ff007f";
+    ctx.lineWidth = 6;
+    ctx.strokeRect(8, 8, 496, 240);
+
+    ctx.fillStyle = "#ffd000";
+    ctx.font = "900 38px Segoe UI, sans-serif";
+    ctx.fillText("🍜 NEON RAMEN 24/7", 28, 65);
+
+    ctx.fillStyle = "#00f0ff";
+    ctx.font = "900 26px Segoe UI, sans-serif";
+    ctx.fillText("ラーメン • BEST NOODLES", 28, 115);
+
+    ctx.fillStyle = "#ff007f";
+    ctx.font = "800 20px Segoe UI, sans-serif";
+    ctx.fillText("CYBER FUEL FOR DRIFTERS", 28, 165);
+
+    ctx.fillStyle = "#39ff14";
+    ctx.font = "900 26px Segoe UI, sans-serif";
+    ctx.fillText("ALWAYS OPEN", 28, 215);
+
+    return new THREE.CanvasTexture(c);
+  }
+
+  _createBillboardHyperion() {
+    const c = document.createElement("canvas");
+    c.width = 512;
+    c.height = 256;
+    const ctx = c.getContext("2d");
+
+    ctx.fillStyle = "#081622";
+    ctx.fillRect(0, 0, 512, 256);
+
+    ctx.strokeStyle = "#00f0ff";
+    ctx.lineWidth = 6;
+    ctx.strokeRect(8, 8, 496, 240);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 38px Segoe UI, sans-serif";
+    ctx.fillText("HYPERION X", 28, 65);
+
+    ctx.fillStyle = "#00f0ff";
+    ctx.font = "900 24px Segoe UI, sans-serif";
+    ctx.fillText("NEXT-GEN SUPERCARS", 28, 115);
+
+    ctx.fillStyle = "#ffaa00";
+    ctx.font = "800 20px Segoe UI, sans-serif";
+    ctx.fillText("CARBON MONOCOQUE • DUAL TURBO", 28, 165);
+
+    ctx.fillStyle = "#ff007f";
+    ctx.font = "900 26px Segoe UI, sans-serif";
+    ctx.fillText("AVAILABLE AT GARAGE", 28, 215);
+
+    return new THREE.CanvasTexture(c);
+  }
+
   initLighting() {
     this.scene.fog = new THREE.FogExp2(0x182438, 0.00038);
 
@@ -110,6 +247,7 @@ export class CityTrackManager {
     this.scene.add(this.moonLight);
   }
 
+  // 🛣️ Seamless, Non-Intersecting Grand Prix Highway Loop
   buildGrandPrixTrackAndCurbs() {
     const groundGroup = new THREE.Group();
 
@@ -125,20 +263,21 @@ export class CityTrackManager {
     ground.receiveShadow = true;
     groundGroup.add(ground);
 
+    // 100% Non-Intersecting Smooth Grand Prix Highway Loop
     const trackPoints = [
       new THREE.Vector3(0, 0.12, 0),
       new THREE.Vector3(0, 0.12, 380),
-      new THREE.Vector3(160, 0.12, 600),
-      new THREE.Vector3(420, 0.12, 500),
-      new THREE.Vector3(500, 0.12, 200),
-      new THREE.Vector3(400, 0.12, -220),
+      new THREE.Vector3(180, 0.12, 600),
+      new THREE.Vector3(450, 0.12, 480),
+      new THREE.Vector3(520, 0.12, 180),
+      new THREE.Vector3(420, 0.12, -220),
       new THREE.Vector3(220, 0.12, -500),
       new THREE.Vector3(0, 0.12, -680),
       new THREE.Vector3(-220, 0.12, -500),
-      new THREE.Vector3(-400, 0.12, -220),
-      new THREE.Vector3(-500, 0.12, 200),
-      new THREE.Vector3(-420, 0.12, 500),
-      new THREE.Vector3(-160, 0.12, 600),
+      new THREE.Vector3(-420, 0.12, -220),
+      new THREE.Vector3(-520, 0.12, 180),
+      new THREE.Vector3(-450, 0.12, 480),
+      new THREE.Vector3(-180, 0.12, 600),
       new THREE.Vector3(0, 0.12, 380),
     ];
 
@@ -187,6 +326,7 @@ export class CityTrackManager {
     roadMesh.receiveShadow = true;
     groundGroup.add(roadMesh);
 
+    // Red & White Curbs
     const curbRedMat = new THREE.MeshBasicMaterial({ color: 0xe11d48 });
     const curbWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
@@ -214,7 +354,6 @@ export class CityTrackManager {
     this.scene.add(groundGroup);
   }
 
-  // 🏮 Streetlights placed strictly 6 meters OUTSIDE the outer road curbs on the sidewalk!
   buildRoadsideStreetlights() {
     const railGroup = new THREE.Group();
     const halfWidth = this.trackWidth / 2;
@@ -230,7 +369,6 @@ export class CityTrackManager {
       const tangent = this.trackCurve.getTangentAt(u).normalize();
       const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
 
-      // Right roadside position (halfWidth + 6.0 meters outside track)
       const polePos = pt.clone().addScaledVector(normal, halfWidth + 6.0);
 
       const pole = new THREE.Mesh(lightPoleGeom, lightPoleMat);
@@ -248,7 +386,8 @@ export class CityTrackManager {
     this.scene.add(railGroup);
   }
 
-  buildSkyscrapersWithClearance() {
+  // 🏙️ Skyscrapers with High-Res Realistic Neon Advertisements
+  buildSkyscrapersWithBillboards() {
     const cityGroup = new THREE.Group();
 
     const blueCanvas = document.createElement("canvas");
@@ -279,10 +418,6 @@ export class CityTrackManager {
       emissiveIntensity: 0.8,
     });
 
-    const neonMat1 = new THREE.MeshBasicMaterial({ color: 0xff007f });
-    const neonMat2 = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
-    const neonMat3 = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
-
     const getMinDistToTrack = (x, z) => {
       let minD = 999999;
       for (let i = 0; i < this.trackSamplePoints.length; i += 4) {
@@ -293,11 +428,13 @@ export class CityTrackManager {
       return minD;
     };
 
+    let bldgIndex = 0;
     for (let x = -750; x <= 750; x += 110) {
       for (let z = -750; z <= 750; z += 110) {
         const distToTrack = getMinDistToTrack(x, z);
         if (distToTrack < 54) continue;
 
+        bldgIndex++;
         const width = 45 + Math.random() * 30;
         const depth = 45 + Math.random() * 30;
         const height = 100 + Math.random() * 280;
@@ -316,6 +453,7 @@ export class CityTrackManager {
           maxZ: z + depth / 2,
         });
 
+        // Rooftop spire
         if (height > 180) {
           const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 2.0, 40, 8), new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.9 }));
           spire.position.set(x, height + 20, z);
@@ -326,17 +464,163 @@ export class CityTrackManager {
           cityGroup.add(beacon);
         }
 
-        if (Math.random() > 0.45) {
-          const boardGeom = new THREE.PlaneGeometry(38, 18);
-          const boardMat = Math.random() > 0.5 ? neonMat1 : (Math.random() > 0.5 ? neonMat2 : neonMat3);
+        // Realistic High-Res Neon Billboard
+        if (bldgIndex % 2 === 0) {
+          const boardGeom = new THREE.PlaneGeometry(42, 21);
+          const boardTex = this.billboardTextures[bldgIndex % this.billboardTextures.length];
+          const boardMat = new THREE.MeshBasicMaterial({ map: boardTex });
           const board = new THREE.Mesh(boardGeom, boardMat);
-          board.position.set(x, height * 0.6, z + depth / 2 + 0.4);
+          board.position.set(x, height * 0.55, z + depth / 2 + 0.4);
           cityGroup.add(board);
         }
       }
     }
 
     this.scene.add(cityGroup);
+  }
+
+  // ⚡ 3D Floating Nitro Canisters (N2O Boost Pickups)
+  buildNitroPickups() {
+    const pickupCount = 10;
+    const canGeom = new THREE.CylinderGeometry(0.45, 0.45, 1.6, 14);
+    const canMat = new THREE.MeshStandardMaterial({
+      color: 0x00f0ff,
+      emissive: 0x00f0ff,
+      emissiveIntensity: 0.8,
+      metalness: 0.9,
+      roughness: 0.1,
+    });
+    const ringGeom = new THREE.TorusGeometry(1.0, 0.08, 8, 18);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+
+    for (let i = 0; i < pickupCount; i++) {
+      const u = (i + 0.5) / pickupCount;
+      const pt = this.trackCurve.getPointAt(u);
+      const tangent = this.trackCurve.getTangentAt(u).normalize();
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+      const offset = (i % 2 === 0 ? 6.0 : -6.0);
+      const pos = pt.clone().addScaledVector(normal, offset);
+
+      const g = new THREE.Group();
+      const canister = new THREE.Mesh(canGeom, canMat);
+      const ring = new THREE.Mesh(ringGeom, ringMat);
+      ring.rotation.x = Math.PI / 2;
+      g.add(canister, ring);
+
+      const light = new THREE.PointLight(0x00f0ff, 2.5, 12);
+      g.add(light);
+
+      g.position.set(pos.x, 1.2, pos.z);
+      this.scene.add(g);
+
+      this.nitroPickups.push({
+        group: g,
+        active: true,
+        respawnTimer: 0,
+        pos: pos,
+      });
+    }
+  }
+
+  // 🚦 Traffic Lights & Zebra Pedestrian Crossings
+  buildTrafficLightsAndCrosswalks() {
+    const halfWidth = this.trackWidth / 2;
+    const count = 6;
+
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9 });
+    const gantryGeom = new THREE.BoxGeometry(40, 2.0, 2.0);
+
+    for (let i = 0; i < count; i++) {
+      const u = (i + 0.25) / count;
+      const pt = this.trackCurve.getPointAt(u);
+      const tangent = this.trackCurve.getTangentAt(u).normalize();
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+      // 1. Overhead Traffic Light Gantry
+      const g = new THREE.Group();
+      const beam = new THREE.Mesh(gantryGeom, poleMat);
+      beam.position.y = 12;
+      g.add(beam);
+
+      // 3 LED Lights (Red, Yellow, Green)
+      const redLight = new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff0022 }));
+      redLight.position.set(-6, 12, 1.1);
+      const yelLight = new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 8), new THREE.MeshBasicMaterial({ color: 0x332200 }));
+      yelLight.position.set(0, 12, 1.1);
+      const grnLight = new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 8), new THREE.MeshBasicMaterial({ color: 0x00ff44 }));
+      grnLight.position.set(6, 12, 1.1);
+      g.add(redLight, yelLight, grnLight);
+
+      g.position.set(pt.x, 0, pt.z);
+      g.lookAt(pt.x + tangent.x, 0, pt.z + tangent.z);
+      this.scene.add(g);
+
+      this.trafficLights.push({ redLight, yelLight, grnLight, time: i * 3 });
+
+      // 2. Zebra Pedestrian Crosswalk Stripes
+      const zebraMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      for (let s = -halfWidth + 4; s < halfWidth - 4; s += 3.2) {
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.04, 8), zebraMat);
+        stripe.position.copy(pt).addScaledVector(normal, s);
+        stripe.position.y = 0.13;
+        stripe.lookAt(pt.x + normal.x, 0.13, pt.z + normal.z);
+        this.scene.add(stripe);
+      }
+    }
+  }
+
+  // 🚶 Animated 3D Cyberpunk Pedestrians
+  buildAnimatedPedestrians() {
+    const pedCount = 14;
+    const bodyMat1 = new THREE.MeshStandardMaterial({ color: 0x00f0ff });
+    const bodyMat2 = new THREE.MeshStandardMaterial({ color: 0xff007f });
+    const bodyMat3 = new THREE.MeshStandardMaterial({ color: 0xffaa00 });
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
+    const mats = [bodyMat1, bodyMat2, bodyMat3];
+
+    const halfWidth = this.trackWidth / 2;
+
+    for (let i = 0; i < pedCount; i++) {
+      const g = new THREE.Group();
+
+      // Torso
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.1, 0.5), mats[i % mats.length]);
+      torso.position.y = 1.35;
+      g.add(torso);
+
+      // Head
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), skinMat);
+      head.position.y = 2.15;
+      g.add(head);
+
+      // Legs
+      const legGeom = new THREE.BoxGeometry(0.3, 0.9, 0.3);
+      const legL = new THREE.Mesh(legGeom, mats[(i + 1) % mats.length]);
+      legL.position.set(0.22, 0.45, 0);
+      const legR = legL.clone();
+      legR.position.x = -0.22;
+      g.add(legL, legR);
+
+      const u = (i / pedCount);
+      const pt = this.trackCurve.getPointAt(u);
+      const tangent = this.trackCurve.getTangentAt(u).normalize();
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+      const sideOffset = (i % 2 === 0 ? halfWidth + 4.5 : -(halfWidth + 4.5));
+      g.position.copy(pt).addScaledVector(normal, sideOffset);
+      g.position.y = 0.12;
+
+      this.scene.add(g);
+      this.pedestrians.push({
+        group: g,
+        u: u,
+        sideOffset: sideOffset,
+        speed: 0.006 + Math.random() * 0.004,
+        legL: legL,
+        legR: legR,
+      });
+    }
   }
 
   buildPoliceFleet() {
@@ -405,7 +689,6 @@ export class CityTrackManager {
     this.helicopter = heliGroup;
   }
 
-  // 🚗 HIGH-POLY DETAILED TRAFFIC CARS (Sedans, SUVs, Sports Cabs with wheels, glass & lights)
   buildDetailedTraffic() {
     const carColors = [0x0284c7, 0xf59e0b, 0xdc2626, 0x10b981, 0x7c3aed, 0xf8fafc];
     const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
@@ -427,29 +710,24 @@ export class CityTrackManager {
         roughness: 0.25,
       });
 
-      // 1. Lower Body
       const body = new THREE.Mesh(new THREE.BoxGeometry(3.9, 0.7, 8.4), paintMat);
       body.position.y = 0.55;
       g.add(body);
 
-      // 2. Cabin Glass Greenhouse
       const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.65, 4.4), glassMat);
       cabin.position.set(0, 1.15, -0.3);
       g.add(cabin);
 
-      // 3. Roof
       const roof = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.06, 3.5), paintMat);
       roof.position.set(0, 1.48, -0.3);
       g.add(roof);
 
-      // 4. Mirrors
       const mirrorL = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.2, 0.3), paintMat);
       mirrorL.position.set(2.0, 1.05, 0.8);
       const mirrorR = mirrorL.clone();
       mirrorR.position.x = -2.0;
       g.add(mirrorL, mirrorR);
 
-      // 5. 4 Wheels with Rims
       const makeWheel = (x, z) => {
         const wg = new THREE.Group();
         const tire = new THREE.Mesh(wheelGeom, tireMat);
@@ -465,7 +743,6 @@ export class CityTrackManager {
       const wRR = makeWheel(-1.85, -2.6);
       g.add(wFL, wFR, wRL, wRR);
 
-      // 6. Lights
       const hlL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.25, 0.1), hlMat);
       hlL.position.set(1.4, 0.6, 4.21);
       const hlR = hlL.clone();
@@ -522,17 +799,87 @@ export class CityTrackManager {
   }
 
   update(delta, playerCar) {
-    if (this.helicopter) {
-      if (this.heliRotor) this.heliRotor.rotation.y += delta * 25;
-      const targetPos = playerCar.mesh.position;
-      this.helicopter.position.x = THREE.MathUtils.lerp(this.helicopter.position.x, targetPos.x, delta * 2.0);
-      this.helicopter.position.z = THREE.MathUtils.lerp(this.helicopter.position.z, targetPos.z, delta * 2.0);
-    }
-
-    const isBlink = Math.sin(Date.now() * 0.02) > 0;
     const playerPos = playerCar.mesh.position;
     const playerSpeed = Math.abs(playerCar.speed);
 
+    // 1. Helicopter
+    if (this.helicopter) {
+      if (this.heliRotor) this.heliRotor.rotation.y += delta * 25;
+      this.helicopter.position.x = THREE.MathUtils.lerp(this.helicopter.position.x, playerPos.x, delta * 2.0);
+      this.helicopter.position.z = THREE.MathUtils.lerp(this.helicopter.position.z, playerPos.z, delta * 2.0);
+    }
+
+    // 2. Nitro Pickups (Rotation + Collection Collision)
+    for (const pickup of this.nitroPickups) {
+      if (!pickup.active) {
+        pickup.respawnTimer += delta;
+        if (pickup.respawnTimer > 12.0) {
+          pickup.active = true;
+          pickup.group.visible = true;
+        }
+        continue;
+      }
+
+      pickup.group.rotation.y += delta * 3.5;
+      pickup.group.position.y = 1.2 + Math.sin(Date.now() * 0.005) * 0.25;
+
+      const dist = pickup.group.position.distanceTo(playerPos);
+      if (dist < 4.2) {
+        // COLLECT NITRO!
+        pickup.active = false;
+        pickup.group.visible = false;
+        pickup.respawnTimer = 0;
+
+        playerCar.nitroFuel = Math.min(100, playerCar.nitroFuel + 50); // +50% Nitro
+        playerCar.totalScore += 500;
+        cyberAudio.playNitroPickupSound();
+        playerCar.emitSparks(pickup.group.position);
+
+        if (this.onNitroPickupCallback) {
+          this.onNitroPickupCallback("⚡ +50% N2O NITRO PICKUP! +500 PTS");
+        }
+      }
+    }
+
+    // 3. Traffic Lights Cycling (Red -> Yellow -> Green)
+    for (const tl of this.trafficLights) {
+      tl.time += delta;
+      const cycle = Math.floor(tl.time) % 12;
+      if (cycle < 5) {
+        tl.redLight.material.color.setHex(0xff0022);
+        tl.yelLight.material.color.setHex(0x332200);
+        tl.grnLight.material.color.setHex(0x003311);
+      } else if (cycle < 7) {
+        tl.redLight.material.color.setHex(0x330008);
+        tl.yelLight.material.color.setHex(0xffaa00);
+        tl.grnLight.material.color.setHex(0x003311);
+      } else {
+        tl.redLight.material.color.setHex(0x330008);
+        tl.yelLight.material.color.setHex(0x332200);
+        tl.grnLight.material.color.setHex(0x00ff44);
+      }
+    }
+
+    // 4. Animated Pedestrians walking along sidewalks
+    for (const ped of this.pedestrians) {
+      ped.u = (ped.u + ped.speed * delta) % 1.0;
+      const pt = this.trackCurve.getPointAt(ped.u);
+      const tangent = this.trackCurve.getTangentAt(ped.u).normalize();
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+      ped.group.position.copy(pt).addScaledVector(normal, ped.sideOffset);
+      ped.group.position.y = 0.12;
+
+      const lookPt = pt.clone().addScaledVector(tangent, 3).addScaledVector(normal, ped.sideOffset);
+      ped.group.lookAt(lookPt.x, 0.12, lookPt.z);
+
+      const legSwing = Math.sin(Date.now() * 0.008) * 0.35;
+      ped.legL.rotation.x = legSwing;
+      ped.legR.rotation.x = -legSwing;
+    }
+
+    // 5. Police Pursuits
+    const isBlink = Math.sin(Date.now() * 0.02) > 0;
     for (const police of this.policeUnits) {
       if (police.isDestroyed) {
         police.group.position.y += delta * 8;
@@ -580,7 +927,7 @@ export class CityTrackManager {
 
     if (playerSpeed > 35) this.bustedTimer = Math.max(0, this.bustedTimer - delta * 2);
 
-    // 🚗 Move Traffic Cars smoothly along curve lanes with spinning wheels
+    // 6. Traffic Cars
     for (const car of this.trafficCars) {
       car.u = (car.u + car.speed * delta) % 1.0;
       const pt = this.trackCurve.getPointAt(car.u);
