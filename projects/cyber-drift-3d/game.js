@@ -1,4 +1,4 @@
-// game.js - Cyber Drift 3D Main Director, Inverted Controls & Shift-Only Drift
+// game.js - Cyber Drift 3D Main Director, Space=Drift, Shift=Nitro
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { CyberCar } from "./car.js";
 import { CityTrackManager } from "./city.js";
@@ -26,6 +26,7 @@ export class CyberDriftGame {
       left: false,
       right: false,
       drift: false,
+      nitro: false,
     };
 
     this.initThree();
@@ -40,7 +41,7 @@ export class CyberDriftGame {
 
   initThree() {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0c1322);
+    this.scene.background = new THREE.Color(0x141f33);
 
     this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.2, 5000);
     this.camera.position.set(0, 4, 12);
@@ -49,7 +50,7 @@ export class CyberDriftGame {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.35;
+    this.renderer.toneMappingExposure = 1.45;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -79,7 +80,8 @@ export class CyberDriftGame {
       if (e.code === "KeyS" || e.code === "ArrowDown") this.keys.backward = true;
       if (e.code === "KeyA" || e.code === "ArrowLeft") this.keys.left = true;
       if (e.code === "KeyD" || e.code === "ArrowRight") this.keys.right = true;
-      if (e.code === "ShiftLeft" || e.code === "ShiftRight" || e.code === "Space") this.keys.drift = true;
+      if (e.code === "Space") this.keys.drift = true;
+      if (e.code === "ShiftLeft" || e.code === "ShiftRight") this.keys.nitro = true;
 
       if (e.code === "KeyC") this.toggleCamera();
       if (e.code === "KeyR") this.resetCar();
@@ -94,7 +96,8 @@ export class CyberDriftGame {
       if (e.code === "KeyS" || e.code === "ArrowDown") this.keys.backward = false;
       if (e.code === "KeyA" || e.code === "ArrowLeft") this.keys.left = false;
       if (e.code === "KeyD" || e.code === "ArrowRight") this.keys.right = false;
-      if (e.code === "ShiftLeft" || e.code === "ShiftRight" || e.code === "Space") this.keys.drift = false;
+      if (e.code === "Space") this.keys.drift = false;
+      if (e.code === "ShiftLeft" || e.code === "ShiftRight") this.keys.nitro = false;
     });
 
     const bindBtn = (id, keyName) => {
@@ -127,7 +130,7 @@ export class CyberDriftGame {
     bindBtn("btn-steer-left", "left");
     bindBtn("btn-steer-right", "right");
     bindBtn("btn-handbrake", "drift");
-    bindBtn("btn-nitro", "drift");
+    bindBtn("btn-nitro", "nitro");
 
     const camBtn = document.getElementById("btn-cam-switch");
     if (camBtn) camBtn.addEventListener("click", () => this.toggleCamera());
@@ -148,6 +151,8 @@ export class CyberDriftGame {
     this.driftBoxEl = document.getElementById("hud-drift-box");
     this.driftPtsEl = document.getElementById("hud-drift-pts");
     this.driftMultEl = document.getElementById("hud-drift-mult");
+    this.nitroBarEl = document.getElementById("hud-nitro-bar");
+    this.rpmBarEl = document.getElementById("hud-rpm-bar");
     this.wantedEl = document.getElementById("hud-wanted");
     this.camModeEl = document.getElementById("hud-cam-mode");
     this.bannerEl = document.getElementById("hud-banner");
@@ -203,7 +208,7 @@ export class CyberDriftGame {
     document.getElementById("garage-screen").style.display = "none";
     document.getElementById("busted-screen").style.display = "none";
     document.getElementById("hud").style.display = "flex";
-    this.showBanner("🔥 СТАРТ! ДЛЯ ЗАНОСА ЗАЖМИТЕ SHIFT");
+    this.showBanner("🔥 СТАРТ! ДРИФТ = ПРОБЕЛ, НИТРО = SHIFT");
   }
 
   triggerBusted() {
@@ -262,11 +267,16 @@ export class CyberDriftGame {
       return;
     }
 
+    const isNitro = this.car.nitroActive && this.car.nitroFuel > 0;
+    const targetFov = isNitro ? 78 : 60;
+    this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFov, delta * 4);
+    this.camera.updateProjectionMatrix();
+
     const carPos = this.car.mesh.position;
     const carHeading = this.car.heading;
 
     if (this.cameraMode === "CHASE") {
-      const chaseDist = 14.5;
+      const chaseDist = isNitro ? 16.0 : 14.0;
       const chaseHeight = 4.2;
 
       const targetCamPos = new THREE.Vector3(
@@ -335,6 +345,10 @@ export class CyberDriftGame {
 
     if (this.gearEl) this.gearEl.textContent = gear;
     if (this.scoreEl) this.scoreEl.textContent = this.car.totalScore;
+    if (this.nitroBarEl) this.nitroBarEl.style.width = `${Math.round(this.car.nitroFuel)}%`;
+
+    const rpmRatio = Math.min(100, ((this.car.rpm - 800) / 7500) * 100);
+    if (this.rpmBarEl) this.rpmBarEl.style.width = `${rpmRatio}%`;
 
     if (this.driftBoxEl && this.driftPtsEl && this.driftMultEl) {
       if (this.car.isDrifting && this.car.currentDriftScore > 50) {
@@ -363,10 +377,12 @@ export class CyberDriftGame {
 
     if (this.gameState === "RACING") {
       this.car.throttleInput = (this.keys.forward ? 1 : 0) - (this.keys.backward ? 1 : 0);
-      // 🔄 SWAPPED STEERING: Left button produces +1, Right produces -1 as user requested
+      // Inverted steering as user explicitly configured:
       this.car.steerInput = (this.keys.left ? 1 : 0) - (this.keys.right ? 1 : 0);
-      // 💨 DRIFT STRICTLY ON SHIFT
+      // Space = Drift
       this.car.driftActive = this.keys.drift;
+      // Shift = Nitro
+      this.car.nitroActive = this.keys.nitro;
 
       this.car.updatePhysics(delta, this.trackManager);
       this.trackManager.update(delta, this.car);

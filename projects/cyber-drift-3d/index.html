@@ -17,7 +17,7 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #080d1a;
+      background: #101a2e;
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       color: #fff;
     }
@@ -48,12 +48,12 @@
     }
 
     .hud-pill {
-      background: rgba(10, 16, 28, 0.88);
-      border: 1px solid rgba(0, 240, 255, 0.45);
+      background: rgba(14, 22, 38, 0.88);
+      border: 1px solid rgba(0, 240, 255, 0.55);
       border-radius: 12px;
       padding: 8px 16px;
       backdrop-filter: blur(12px);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(0, 240, 255, 0.1);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(0, 240, 255, 0.15);
       display: flex;
       flex-direction: column;
     }
@@ -61,7 +61,7 @@
     .hud-label {
       font-size: 9px;
       font-weight: 900;
-      color: #8da4be;
+      color: #9cb3cc;
       letter-spacing: 0.14em;
       text-transform: uppercase;
     }
@@ -90,7 +90,7 @@
       display: none;
       flex-direction: column;
       align-items: center;
-      background: rgba(8, 12, 22, 0.92);
+      background: rgba(12, 18, 32, 0.94);
       border: 2px solid #ff007f;
       border-radius: 16px;
       padding: 10px 24px;
@@ -120,7 +120,7 @@
       top: 10%;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(10, 18, 30, 0.94);
+      background: rgba(14, 24, 40, 0.95);
       border: 1px solid #00f0ff;
       border-radius: 12px;
       padding: 12px 24px;
@@ -150,8 +150,8 @@
     }
 
     .speedo-box {
-      background: rgba(10, 16, 28, 0.88);
-      border: 2px solid rgba(0, 240, 255, 0.5);
+      background: rgba(14, 22, 38, 0.88);
+      border: 2px solid rgba(0, 240, 255, 0.55);
       border-radius: 16px;
       padding: 10px 18px;
       backdrop-filter: blur(12px);
@@ -172,11 +172,11 @@
     .speedo-unit {
       font-size: 13px;
       font-weight: 900;
-      color: #8da4be;
+      color: #9cb3cc;
     }
 
     .gear-box {
-      background: rgba(10, 16, 28, 0.88);
+      background: rgba(14, 22, 38, 0.88);
       border: 2px solid #ff7700;
       border-radius: 14px;
       padding: 10px 16px;
@@ -187,6 +187,44 @@
       line-height: 1;
     }
 
+    .bars-col {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 170px;
+    }
+
+    .bar-pill {
+      background: rgba(14, 22, 38, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 8px;
+      padding: 5px 10px;
+    }
+
+    .bar-track {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 4px;
+      margin-top: 3px;
+      overflow: hidden;
+    }
+
+    #hud-nitro-bar {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, #0088ff, #00f0ff);
+      box-shadow: 0 0 10px #00f0ff;
+      transition: width 0.1s linear;
+    }
+
+    #hud-rpm-bar {
+      width: 20%;
+      height: 100%;
+      background: linear-gradient(90deg, #38b000, #ffaa00, #ff0044);
+      transition: width 0.05s linear;
+    }
+
     .quick-actions {
       display: flex;
       gap: 6px;
@@ -194,8 +232,8 @@
     }
 
     .hud-btn {
-      background: rgba(12, 20, 32, 0.88);
-      border: 1px solid rgba(0, 240, 255, 0.5);
+      background: rgba(16, 26, 44, 0.88);
+      border: 1px solid rgba(0, 240, 255, 0.55);
       border-radius: 8px;
       padding: 8px 12px;
       color: #00f0ff;
@@ -241,11 +279,11 @@
     }
 
     .touch-btn {
-      background: rgba(10, 18, 30, 0.75);
-      border: 2px solid rgba(0, 240, 255, 0.6);
+      background: rgba(14, 24, 40, 0.8);
+      border: 2px solid rgba(0, 240, 255, 0.65);
       border-radius: 12px;
       color: #00f0ff;
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 900;
       width: 60px;
       height: 60px;
@@ -278,12 +316,12 @@
     .garage-card {
       pointer-events: auto;
       width: min(390px, 94vw);
-      background: rgba(10, 16, 28, 0.88);
-      border: 2px solid rgba(0, 240, 255, 0.55);
+      background: rgba(14, 22, 38, 0.9);
+      border: 2px solid rgba(0, 240, 255, 0.6);
       border-radius: 20px;
       padding: 22px 20px;
       backdrop-filter: blur(14px);
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 240, 255, 0.25);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 240, 255, 0.3);
       text-align: left;
     }
 
@@ -339,7 +377,7 @@
     .custom-row-title {
       font-size: 10px;
       font-weight: 900;
-      color: #8da4be;
+      color: #9cb3cc;
       margin-bottom: 6px;
       text-transform: uppercase;
       letter-spacing: 0.08em;
@@ -423,7 +461,7 @@
     <div class="hud-top">
       <div style="display: flex; gap: 10px;">
         <div class="hud-pill">
-          <span class="hud-label">ОЧКИ ДРИФТА (SHIFT)</span>
+          <span class="hud-label">ОЧКИ ДРИФТА (SPACE)</span>
           <span class="hud-val" id="hud-score">0</span>
         </div>
         <div class="hud-pill">
@@ -439,7 +477,7 @@
       </div>
     </div>
 
-    <div id="hud-banner">ДЛЯ ЗАНОСА ЗАЖМИТЕ SHIFT</div>
+    <div id="hud-banner">ДРИФТ = ПРОБЕЛ, НИТРО = SHIFT</div>
 
     <div class="hud-bottom">
       <div class="speedo-cluster">
@@ -447,6 +485,20 @@
         <div class="speedo-box">
           <span class="speedo-val" id="hud-speed">0</span>
           <span class="speedo-unit">КМ/Ч</span>
+        </div>
+        <div class="bars-col">
+          <div class="bar-pill">
+            <span class="hud-label" style="color: #00f0ff;">⚡ N2O НИТРО (SHIFT)</span>
+            <div class="bar-track">
+              <div id="hud-nitro-bar"></div>
+            </div>
+          </div>
+          <div class="bar-pill">
+            <span class="hud-label" style="color: #ffaa00;">RPM ТАХОМЕТР</span>
+            <div class="bar-track">
+              <div id="hud-rpm-bar"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -459,9 +511,10 @@
       <button class="touch-btn" id="btn-steer-right">▶</button>
     </div>
     <div class="touch-right">
-      <button class="touch-btn" id="btn-nitro" style="border-color:#ff007f; color:#ff007f; height: 50px; font-size:13px;">💨 ДРИФТ</button>
+      <button class="touch-btn" id="btn-nitro" style="border-color:#00f0ff; color:#00f0ff; height: 48px; font-size:12px;">⚡ НИТРО</button>
       <button class="touch-btn" id="btn-gas" style="border-color:#38b000; color:#38b000;">▲ ГАЗ</button>
-      <button class="touch-btn" id="btn-brake" style="border-color:#ff3344; color:#ff3344; height: 50px;">▼ ТОРМОЗ</button>
+      <button class="touch-btn" id="btn-handbrake" style="border-color:#ff007f; color:#ff007f; height: 46px; font-size:12px;">💨 ДРИФТ</button>
+      <button class="touch-btn" id="btn-brake" style="border-color:#ff3344; color:#ff3344; height: 48px;">▼ ТОРМОЗ</button>
     </div>
   </div>
 

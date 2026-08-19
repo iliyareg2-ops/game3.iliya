@@ -1,4 +1,4 @@
-// car.js - Smooth Grip Driving, Zero Auto-Drift, Drift Exclusively on SHIFT Key
+// car.js - Space = Drift, Shift = Nitro Boost, Smooth Grip Turns & Crisp Controls
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -30,22 +30,26 @@ export class CyberCar {
     this.sparkParticles = [];
 
     // ==========================================
-    // 🏎️ SMOOTH DRIVING STATS (ZERO AUTO-DRIFT)
+    // 🏎️ DRIVING STATS (SPACE=DRIFT, SHIFT=NITRO)
     // ==========================================
     this.position = new THREE.Vector3(0, 0.12, 0);
     this.heading = 0; // World heading angle (radians)
     this.speed = 0; // km/h
 
-    this.maxSpeed = 250; // km/h
+    this.maxSpeed = 255; // km/h
+    this.nitroMaxSpeed = 360; // km/h
     this.maxReverseSpeed = -65; // km/h
-    this.accelRate = 125; // km/h per second (0-100 in ~2.5s)
-    this.brakeRate = 200; // km/h per second
+    this.accelRate = 130; // km/h per second
+    this.nitroAccelRate = 270; // km/h per second
+    this.brakeRate = 220; // km/h per second
     this.coastDecelRate = 40; // Natural drag
-    this.baseTurnSpeed = 1.35; // Gentle, smooth, comfortable turning rate
+    this.baseTurnSpeed = 1.35; // Gentle, smooth turning rate
 
     this.throttleInput = 0; // -1 (brake/rev) to +1 (gas)
-    this.steerInput = 0; // Controls direction
-    this.driftActive = false; // ONLY TRUE WHEN SHIFT IS PRESSED!
+    this.steerInput = 0;
+    this.driftActive = false; // SPACE = DRIFT
+    this.nitroActive = false; // SHIFT = NITRO
+    this.nitroFuel = 100;
 
     this.steerAngle = 0;
     this.driftAngle = 0;
@@ -544,13 +548,25 @@ export class CyberCar {
   }
 
   // =========================================================================
-  // 🏎️ CLEAN GRIP DRIVING + DRIFT ONLY ON SHIFT
+  // 🏎️ SPACE = DRIFT, SHIFT = NITRO BOOST, PURE GRIP TURNS
   // =========================================================================
   updatePhysics(delta, trackManager) {
-    // 1. Acceleration & Braking
+    // 1. NITRO BOOST (SHIFT)
+    const isNitro = this.nitroActive && this.nitroFuel > 0;
+    const topSpd = isNitro ? this.nitroMaxSpeed : this.maxSpeed;
+    const accel = isNitro ? this.nitroAccelRate : this.accelRate;
+
+    if (isNitro) {
+      this.nitroFuel = Math.max(0, this.nitroFuel - delta * 25);
+      this.flameCones.forEach((f) => (f.visible = true));
+    } else {
+      this.flameCones.forEach((f) => (f.visible = false));
+    }
+
+    // 2. Acceleration & Braking
     if (this.throttleInput > 0) {
-      if (this.speed < this.maxSpeed) {
-        this.speed = Math.min(this.maxSpeed, this.speed + this.accelRate * this.throttleInput * delta);
+      if (this.speed < topSpd) {
+        this.speed = Math.min(topSpd, this.speed + accel * this.throttleInput * delta);
       }
     } else if (this.throttleInput < 0) {
       if (this.speed > 5) {
@@ -563,14 +579,14 @@ export class CyberCar {
       if (this.speed < 0) this.speed = Math.min(0, this.speed + this.coastDecelRate * delta);
     }
 
-    // 2. Smooth Steering
+    // 3. Smooth Steering (A/Left: steerInput = +1, D/Right: steerInput = -1)
     this.steerAngle = THREE.MathUtils.lerp(this.steerAngle, this.steerInput * 0.45, delta * 8);
     this.frontLeftWheelGroup.rotation.y = this.steerAngle;
     this.frontRightWheelGroup.rotation.y = this.steerAngle;
 
     const absSpeed = Math.abs(this.speed);
 
-    // 3. DRIFT ONLY ON SHIFT KEY! (Zero auto-drift on normal turns)
+    // 4. DRIFT ONLY ON SPACE (Zero auto-drift on standard turns)
     if (this.driftActive && absSpeed > 30 && Math.abs(this.steerInput) > 0.1) {
       this.isDrifting = true;
       const targetDrift = this.steerInput * 0.42;
@@ -578,6 +594,7 @@ export class CyberCar {
       this.driftMultiplier = Math.min(8.0, this.driftMultiplier + delta * 0.9);
       const pts = absSpeed * Math.abs(this.driftAngle) * this.driftMultiplier * delta * 18;
       this.currentDriftScore += pts;
+      this.nitroFuel = Math.min(100, this.nitroFuel + delta * 15); // Refill nitro on drift!
 
       if (Math.random() < 0.9) this.emitTireSmoke(true);
       if (Math.random() < 0.9) this.emitTireSmoke(false);
@@ -594,7 +611,7 @@ export class CyberCar {
       }
     }
 
-    // 4. Smooth Gentle Heading Curve (Clean grip handling)
+    // 5. Smooth Heading Progression (Gentle, comfortable arcs)
     const speedRatio = Math.min(1.0, (absSpeed + 15) / 80);
     const turnFactor = this.isDrifting ? 1.35 : 1.0;
     const effectiveTurn = this.steerInput * this.baseTurnSpeed * speedRatio * turnFactor;
@@ -602,7 +619,7 @@ export class CyberCar {
     this.heading += effectiveTurn * delta * Math.sign(this.speed || 1);
     this.mesh.rotation.y = this.heading + this.driftAngle;
 
-    // 5. Road Movement (100% glued to asphalt)
+    // 6. Road Movement
     const speedMs = (this.speed * 1000) / 3600;
     const forwardX = Math.sin(this.heading);
     const forwardZ = Math.cos(this.heading);
@@ -612,7 +629,7 @@ export class CyberCar {
     this.position.y = 0.12;
     this.mesh.position.copy(this.position);
 
-    // 6. Suspension Leans
+    // 7. Suspension Leans
     const targetRoll = THREE.MathUtils.clamp(-this.steerInput * (absSpeed / 200) * 0.06, -0.08, 0.08);
     this.bodyRoll = THREE.MathUtils.lerp(this.bodyRoll, targetRoll, delta * 8);
 
@@ -622,7 +639,7 @@ export class CyberCar {
     this.bodySubGroup.rotation.z = this.bodyRoll;
     this.bodySubGroup.rotation.x = this.bodyPitch;
 
-    // 7. Rotate Wheels
+    // 8. Rotate Wheels
     const wheelRot = (speedMs * delta * 4) / 0.55;
     this.wheelFL.rotation.x += wheelRot;
     this.wheelFR.rotation.x += wheelRot;
@@ -636,7 +653,7 @@ export class CyberCar {
     // Audio Engine
     this.rpm = 800 + (absSpeed % 55) * 140 + (this.throttleInput > 0 ? 1400 : 0);
     const rpmRatio = Math.min(1.0, (this.rpm - 800) / 7500);
-    cyberAudio.update(rpmRatio, absSpeed, Math.abs(this.driftAngle), false, false, false);
+    cyberAudio.update(rpmRatio, absSpeed, Math.abs(this.driftAngle), isNitro, false, false);
 
     // Particles
     for (const p of this.smokeParticles) {
@@ -675,5 +692,6 @@ export class CyberCar {
     this.isDrifting = false;
     this.currentDriftScore = 0;
     this.driftMultiplier = 1.0;
+    this.nitroFuel = 100;
   }
 }
