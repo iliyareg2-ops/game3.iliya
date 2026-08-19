@@ -1,4 +1,4 @@
-// audio.js - Realistic Automotive Sound Engine (Granular Combustion, Blow-Off Valve, Rewind, Kerb Rumble, Backfires, Slipstream, Rain)
+// audio.js - Realistic Automotive Sound Engine (Granular Combustion, Turbo Spool, Crowd Cheer, Blow-Off Valve, Rewind, Kerb Rumble, Backfires, Slipstream, Rain)
 class CyberAudioEngine {
   constructor() {
     this.ctx = null;
@@ -13,6 +13,15 @@ class CyberAudioEngine {
     this.combustionFilter = null;
     this.combustionPulseOsc = null;
     this.exhaustResonator = null;
+
+    // Turbo Spool Whine
+    this.turboGain = null;
+    this.turboOsc = null;
+
+    // Grandstand Crowd Cheering
+    this.crowdGain = null;
+    this.crowdFilter = null;
+    this.crowdNoiseNode = null;
 
     // Asphalt Tire Grip Scrubbing
     this.tireNoiseNode = null;
@@ -61,6 +70,8 @@ class CyberAudioEngine {
       this.masterGain.connect(this.ctx.destination);
 
       this._setupRealisticEngine();
+      this._setupTurboSpoolWhine();
+      this._setupGrandstandCrowd();
       this._setupTireScrubbing();
       this._setupAerodynamicWind();
       this._setupSlipstreamSuction();
@@ -131,6 +142,55 @@ class CyberAudioEngine {
 
     this.combustionNoiseNode.start();
     this.combustionPulseOsc.start();
+  }
+
+  _setupTurboSpoolWhine() {
+    this.turboGain = this.ctx.createGain();
+    this.turboGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
+
+    this.turboOsc = this.ctx.createOscillator();
+    this.turboOsc.type = "sine";
+    this.turboOsc.frequency.setValueAtTime(800, this.ctx.currentTime);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(2200, this.ctx.currentTime);
+    filter.Q.setValueAtTime(4.0, this.ctx.currentTime);
+
+    this.turboOsc.connect(filter);
+    filter.connect(this.turboGain);
+    this.turboGain.connect(this.masterGain);
+
+    this.turboOsc.start();
+  }
+
+  _setupGrandstandCrowd() {
+    this.crowdGain = this.ctx.createGain();
+    this.crowdGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
+
+    this.crowdNoiseNode = this.ctx.createBufferSource();
+    this.crowdNoiseNode.buffer = this._createNoiseBuffer(4);
+    this.crowdNoiseNode.loop = true;
+
+    this.crowdFilter = this.ctx.createBiquadFilter();
+    this.crowdFilter.type = "bandpass";
+    this.crowdFilter.frequency.setValueAtTime(850, this.ctx.currentTime);
+    this.crowdFilter.Q.setValueAtTime(0.8, this.ctx.currentTime);
+
+    this.crowdNoiseNode.connect(this.crowdFilter);
+    this.crowdFilter.connect(this.crowdGain);
+    this.crowdGain.connect(this.masterGain);
+
+    this.crowdNoiseNode.start();
+  }
+
+  playCrowdCheer(intensity = 0.5) {
+    if (!this.crowdGain || !this.ctx || this.isMuted) return;
+    const t = this.ctx.currentTime;
+    this.crowdGain.gain.cancelScheduledValues(t);
+    this.crowdGain.gain.setValueAtTime(0.0, t);
+    this.crowdGain.gain.linearRampToValueAtTime(Math.min(0.45, intensity * 0.45), t + 0.3);
+    this.crowdGain.gain.exponentialRampToValueAtTime(0.001, t + 2.2);
   }
 
   _setupTireScrubbing() {
@@ -402,7 +462,7 @@ class CyberAudioEngine {
     this.flybyGain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
   }
 
-  update(rpmRatio, speedKmH, driftRatio, isNitro) {
+  update(rpmRatio, speedKmH, driftRatio, isNitro, throttle = 1) {
     if (!this.isInitialized || this.isMuted) return;
     const t = this.ctx.currentTime;
 
@@ -415,6 +475,14 @@ class CyberAudioEngine {
 
     const targetEngineVol = 0.42 + (rpmRatio * 0.42);
     this.engineGain.gain.setTargetAtTime(targetEngineVol, t, 0.06);
+
+    // Turbo Spool
+    if (this.turboGain && this.turboOsc) {
+      const turboPitch = 800 + (rpmRatio * 2400) + (isNitro ? 800 : 0);
+      this.turboOsc.frequency.setTargetAtTime(turboPitch, t, 0.08);
+      const turboVol = (throttle > 0 && speedKmH > 60) ? (0.15 + rpmRatio * 0.22) : 0.0;
+      this.turboGain.gain.setTargetAtTime(turboVol, t, 0.08);
+    }
 
     const targetTire = Math.min(0.55, driftRatio * 0.6);
     this.tireGain.gain.setTargetAtTime(targetTire, t, 0.08);

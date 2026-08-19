@@ -1,4 +1,4 @@
-// city.js - Pure Motorsport Realism: Rich Diverse City Traffic (Fire Trucks, Transit Buses, Sport Coupes, Sedans, Patrols), Ultra-HD 2048x2048 Asphalt, Sponsor Hoardings & Natural Lighting
+// city.js - Pure Motorsport Realism: Level Art, Environmental Storytelling, Braking Boards (150/100/50m), Marshal Posts, 3D Foliage, Dust Particles, Wet Puddles & Crowd Cheers
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -26,15 +26,19 @@ export class CityTrackManager {
     this.isRaining = timeOfDay === "RAINSTORM";
     this.rainParticles = null;
     this.rainGeom = null;
+    this.dustParticles = null;
+    this.dustGeom = null;
 
     this.onSpeedTrapCallback = null;
     this.lastKerbRumbleTime = 0;
+    this.lastCrowdCheerTime = 0;
 
     this.initTextures();
     this.initLighting();
     this.buildTrackEnvironment();
     this.buildMinimalistStudioGarage();
     this.buildRainSystem();
+    this.buildAtmosphericDustSystem();
   }
 
   // 🎨 ULTRA-HD 2048x2048 PBR TEXTURE GENERATOR
@@ -188,6 +192,7 @@ export class CityTrackManager {
     this.isRaining = timeOfDay === "RAINSTORM";
 
     if (this.rainParticles) this.rainParticles.visible = this.isRaining;
+    if (this.dustParticles) this.dustParticles.visible = !this.isRaining;
     cyberAudio.setRainActive(this.isRaining);
 
     if (timeOfDay === "SUNSET") {
@@ -393,6 +398,9 @@ export class CityTrackManager {
     }
 
     this.buildMotorsportSponsorHoardings();
+    this.buildBrakingDistanceMarkerBoards();
+    this.buildFIAMarshalPosts();
+    this.build3DFoliage();
     this.buildTireBarriers();
     this.buildF1GrandstandsAndPits();
     this.buildStartFinishGantry();
@@ -402,6 +410,163 @@ export class CityTrackManager {
     this.buildDestructibleProps();
     this.buildAIRivals();
     this.buildRichCityTrafficFleet();
+  }
+
+  // 🏁 BRAKING DISTANCE BOARDS (150m, 100m, 50m)
+  buildBrakingDistanceMarkerBoards() {
+    const boardGroup = new THREE.Group();
+    const turns = [0.10, 0.22, 0.42, 0.62, 0.82];
+    const halfWidth = this.trackWidth / 2;
+
+    const makeSign = (distText, pos, tangent, normal) => {
+      const c = document.createElement("canvas");
+      c.width = 256;
+      c.height = 128;
+      const ctx = c.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, 256, 128);
+      ctx.fillStyle = "#0f172a";
+      ctx.font = "900 72px Segoe UI, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(distText, 128, 90);
+
+      const tex = new THREE.CanvasTexture(c);
+      const signMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.3 });
+      const postMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.8 });
+
+      const g = new THREE.Group();
+      const board = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 2.0), signMat);
+      board.position.set(0, 2.4, 0);
+
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.4, 8), postMat);
+      post.position.set(0, 1.2, 0);
+
+      g.add(board, post);
+      g.position.set(pos.x, 0.10, pos.z);
+      g.lookAt(pos.x - tangent.x, 0.10, pos.z - tangent.z);
+      return g;
+    };
+
+    for (const u of turns) {
+      const tangent = this.trackCurve.getTangentAt(u).normalize();
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+      const p150 = this.trackCurve.getPointAt((u - 0.024 + 1.0) % 1.0).addScaledVector(normal, halfWidth + 2.5);
+      const p100 = this.trackCurve.getPointAt((u - 0.016 + 1.0) % 1.0).addScaledVector(normal, halfWidth + 2.5);
+      const p50 = this.trackCurve.getPointAt((u - 0.008 + 1.0) % 1.0).addScaledVector(normal, halfWidth + 2.5);
+
+      boardGroup.add(makeSign("150", p150, tangent, normal));
+      boardGroup.add(makeSign("100", p100, tangent, normal));
+      boardGroup.add(makeSign("50", p50, tangent, normal));
+    }
+
+    this.trackWorldGroup.add(boardGroup);
+  }
+
+  // 🚩 FIA MARSHAL POSTS WITH SIGNAL FLAGS
+  buildFIAMarshalPosts() {
+    const postGroup = new THREE.Group();
+    const halfWidth = this.trackWidth / 2;
+    const postLocations = [0.18, 0.48, 0.74, 0.92];
+
+    const hutMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 });
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.4 });
+    const flagMat = new THREE.MeshBasicMaterial({ color: 0x22c55e });
+
+    for (const u of postLocations) {
+      const pt = this.trackCurve.getPointAt(u);
+      const tangent = this.trackCurve.getTangentAt(u).normalize();
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+      const pos = pt.clone().addScaledVector(normal, halfWidth + 7.0);
+
+      const g = new THREE.Group();
+      const hut = new THREE.Mesh(new THREE.BoxGeometry(4.0, 3.2, 4.0), hutMat);
+      hut.position.y = 1.6;
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(3.2, 1.5, 4), roofMat);
+      roof.position.y = 3.9;
+      roof.rotation.y = Math.PI / 4;
+
+      const flagPole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 4.5, 8), hutMat);
+      flagPole.position.set(2.0, 3.5, 0);
+      const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.0), flagMat);
+      flag.position.set(2.8, 5.2, 0);
+
+      g.add(hut, roof, flagPole, flag);
+      g.position.set(pos.x, 0.10, pos.z);
+      g.lookAt(pt.x, 0.10, pt.z);
+      postGroup.add(g);
+    }
+
+    this.trackWorldGroup.add(postGroup);
+  }
+
+  // 🌴🌲 3D ROADSIDE FOLIAGE & BIOME TREES
+  build3DFoliage() {
+    const foliageGroup = new THREE.Group();
+    const halfWidth = this.trackWidth / 2;
+
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3e2723, roughness: 0.9 });
+    const leavesGreen = new THREE.MeshStandardMaterial({ color: 0x1b5e20, roughness: 0.8 });
+    const leavesPalm = new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.7 });
+
+    const makePalm = (x, z) => {
+      const g = new THREE.Group();
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 12, 8), trunkMat);
+      trunk.position.y = 6;
+      trunk.rotation.z = (Math.random() - 0.5) * 0.15;
+
+      for (let i = 0; i < 6; i++) {
+        const frond = new THREE.Mesh(new THREE.ConeGeometry(1.4, 6.5, 5), leavesPalm);
+        frond.position.set(0, 11.5, 0);
+        frond.rotation.z = 1.1;
+        frond.rotation.y = (i / 6) * Math.PI * 2;
+        g.add(frond);
+      }
+      g.add(trunk);
+      g.position.set(x, 0.10, z);
+      return g;
+    };
+
+    const makePine = (x, z) => {
+      const g = new THREE.Group();
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 10, 8), trunkMat);
+      trunk.position.y = 5;
+
+      for (let k = 0; k < 4; k++) {
+        const layer = new THREE.Mesh(new THREE.ConeGeometry(5.0 - k * 1.0, 4.0, 8), leavesGreen);
+        layer.position.y = 5 + k * 2.6;
+        g.add(layer);
+      }
+      g.add(trunk);
+      g.position.set(x, 0.10, z);
+      return g;
+    };
+
+    const count = 45;
+    for (let i = 0; i < count; i++) {
+      const u = i / count;
+      const pt = this.trackCurve.getPointAt(u);
+      const tangent = this.trackCurve.getTangentAt(u).normalize();
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+      const offsetL = halfWidth + 8.0 + Math.random() * 18.0;
+      const offsetR = -(halfWidth + 8.0 + Math.random() * 18.0);
+
+      const posL = pt.clone().addScaledVector(normal, offsetL);
+      const posR = pt.clone().addScaledVector(normal, offsetR);
+
+      if (this.trackIndex === 2) {
+        // Miami Coast Palms
+        foliageGroup.add(makePalm(posL.x, posL.z));
+        if (i % 2 === 0) foliageGroup.add(makePalm(posR.x, posR.z));
+      } else {
+        // Autodrome & Touge Conifers / Park Trees
+        foliageGroup.add(makePine(posL.x, posL.z));
+        if (i % 2 === 0) foliageGroup.add(makePine(posR.x, posR.z));
+      }
+    }
+
+    this.trackWorldGroup.add(foliageGroup);
   }
 
   buildMinimalistStudioGarage() {
@@ -856,14 +1021,12 @@ export class CityTrackManager {
     const hlMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
     const tlMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.2 });
 
-    // Cab
     const cab = new THREE.Mesh(new THREE.BoxGeometry(4.6, 2.8, 4.2), redMat);
     cab.position.set(0, 2.0, 4.2);
 
     const windshield = new THREE.Mesh(new THREE.BoxGeometry(4.4, 1.4, 0.1), glassMat);
     windshield.position.set(0, 2.4, 6.32);
 
-    // Equipment Body with silver roll-up shutters
     const body = new THREE.Mesh(new THREE.BoxGeometry(4.6, 3.2, 8.4), redMat);
     body.position.set(0, 2.2, -2.1);
 
@@ -872,19 +1035,16 @@ export class CityTrackManager {
     const shutterR = shutterL.clone();
     shutterR.position.x = -2.32;
 
-    // Roof Ladder
     const ladderL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 9.8), silverMat);
     ladderL.position.set(1.2, 4.0, -1.0);
     const ladderR = ladderL.clone();
     ladderR.position.x = 0.4;
     g.add(cab, windshield, body, shutterL, shutterR, ladderL, ladderR);
 
-    // Flasher Lightbar
     const flasher = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.35, 0.6), new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3 }));
     flasher.position.set(0, 3.55, 4.2);
     g.add(flasher);
 
-    // Wheels (3 Axles)
     const wheelGeom = new THREE.CylinderGeometry(0.72, 0.72, 0.55, 16);
     wheelGeom.rotateZ(Math.PI / 2);
 
@@ -923,20 +1083,17 @@ export class CityTrackManager {
     const hlMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
     const tlMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.2 });
 
-    // Main 12-meter bus body
     const body = new THREE.Mesh(new THREE.BoxGeometry(4.5, 3.4, 14.5), blueMat);
     body.position.set(0, 2.3, 0);
 
     const roof = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.2, 14.2), whiteMat);
     roof.position.set(0, 4.1, 0);
 
-    // Panoramic Side Windows
     const winL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.6, 13.0), glassMat);
     winL.position.set(2.28, 2.7, 0);
     const winR = winL.clone();
     winR.position.x = -2.28;
 
-    // Windshield & Route Display
     const frontGlass = new THREE.Mesh(new THREE.BoxGeometry(4.3, 2.0, 0.1), glassMat);
     frontGlass.position.set(0, 2.7, 7.27);
 
@@ -945,7 +1102,6 @@ export class CityTrackManager {
 
     g.add(body, roof, winL, winR, frontGlass, routeSign);
 
-    // Wheels (Dual rear axle)
     const wheelGeom = new THREE.CylinderGeometry(0.65, 0.65, 0.5, 16);
     wheelGeom.rotateZ(Math.PI / 2);
 
@@ -1177,6 +1333,32 @@ export class CityTrackManager {
     this.scene.add(this.rainParticles);
   }
 
+  // ✨ ATMOSPHERIC DUST & SUN POLLEN PARTICLES
+  buildAtmosphericDustSystem() {
+    const dustCount = 450;
+    this.dustGeom = new THREE.BufferGeometry();
+    const positions = new Float32Array(dustCount * 3);
+
+    for (let i = 0; i < dustCount; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 180;
+      positions[i * 3 + 1] = Math.random() * 25 + 0.5;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 180;
+    }
+
+    this.dustGeom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    const dustMat = new THREE.PointsMaterial({
+      color: 0xfffaed,
+      size: 0.45,
+      transparent: true,
+      opacity: 0.5,
+      blending: THREE.AdditiveBlending,
+    });
+
+    this.dustParticles = new THREE.Points(this.dustGeom, dustMat);
+    this.dustParticles.visible = !this.isRaining;
+    this.scene.add(this.dustParticles);
+  }
+
   getClosestU(pos) {
     let closestU = 0;
     let minDistSq = Infinity;
@@ -1246,6 +1428,15 @@ export class CityTrackManager {
       if (now - this.lastKerbRumbleTime > 80) {
         this.lastKerbRumbleTime = now;
         cyberAudio.playKerbRumble(Math.abs(car.speed));
+      }
+    }
+
+    // 📣 GRANDSTAND DRIFT CROWD CHEER
+    if (car.isDrifting && car.currentDriftScore > 600 && Math.abs(pz) < 260 && Math.abs(px) < 60) {
+      const now = Date.now();
+      if (now - this.lastCrowdCheerTime > 6000) {
+        this.lastCrowdCheerTime = now;
+        cyberAudio.playCrowdCheer(0.85);
       }
     }
 
@@ -1327,7 +1518,19 @@ export class CityTrackManager {
       posAttr.needsUpdate = true;
     }
 
-    // 2. AI RIVALS
+    // 2. Atmospheric Dust Motes
+    if (!this.isRaining && this.dustParticles) {
+      this.dustParticles.position.copy(playerPos);
+      const posAttr = this.dustGeom.attributes.position;
+      for (let i = 0; i < posAttr.count; i++) {
+        let y = posAttr.getY(i) + delta * 0.4;
+        if (y > 25) y = 0.5;
+        posAttr.setY(i, y);
+      }
+      posAttr.needsUpdate = true;
+    }
+
+    // 3. AI RIVALS
     for (let i = 0; i < this.aiRivals.length; i++) {
       const rival = this.aiRivals[i];
       if (isRaceRunning) {
@@ -1368,7 +1571,7 @@ export class CityTrackManager {
       }
     }
 
-    // 3. Speed Trap Cameras
+    // 4. Speed Trap Cameras
     for (const cam of this.speedCameras) {
       const dist = cam.pos.distanceTo(playerPos);
       if (dist < 12.0 && playerSpeed > 175) {
@@ -1384,7 +1587,7 @@ export class CityTrackManager {
       }
     }
 
-    // 4. Destructible Props
+    // 5. Destructible Props
     for (const prop of this.destructibleProps) {
       if (prop.isHit) {
         prop.group.position.addScaledVector(prop.velocity, delta);
@@ -1410,7 +1613,7 @@ export class CityTrackManager {
       }
     }
 
-    // 5. Rich City Traffic Fleet (Fire Trucks, Buses, Sport Coupes, Sedans, Patrols)
+    // 6. Rich City Traffic Fleet (Fire Trucks, Buses, Sport Coupes, Sedans, Patrols)
     for (const car of this.trafficCars) {
       car.u = (car.u + car.speed * delta) % 1.0;
       const pt = this.trackCurve.getPointAt(car.u);

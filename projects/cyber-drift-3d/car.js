@@ -1,4 +1,4 @@
-// car.js - Realistic Motorsport Supercars: GT-R R34, 911 GT3 RS, Venom F5 (Zero-Clipping Physics, Brembo Brakes, Underbody Contact Shadow, Tire Thermals & Rewind)
+// car.js - Realistic Motorsport Supercars: GT-R R34, 911 GT3 RS, Venom F5 (Active Aero Airbrake, Animated Cockpit Steering Wheel & Pilot Helmet, 4-Point Suspension, Glowing Brembo Discs & Pacejka Physics)
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -14,9 +14,10 @@ export class CyberCar {
     this.driftAngle = 0;
     this.verticalVelocity = 0;
 
-    // Suspension Dynamic Pitch & Roll
+    // Suspension Dynamic Pitch, Roll & 4-Wheel Compress
     this.bodyRoll = 0.0;
     this.bodyPitch = 0.0;
+    this.suspensionOffsets = [0, 0, 0, 0]; // FL, FR, RL, RR
 
     this.totalScore = 0;
     this.currentDriftScore = 0;
@@ -31,6 +32,9 @@ export class CyberCar {
     this.tireTemp = 0.0;
     this.prevThrottle = 0;
     this.boostCharge = 0.0;
+
+    // Active Aero Wing Angle
+    this.wingAngle = 0.0;
 
     // Rewind History Buffer (240 frames ~ 4 seconds)
     this.historyBuffer = [];
@@ -56,6 +60,9 @@ export class CyberCar {
     this.brakeDiscs = [];
     this.brakeCalipers = [];
     this.spoilerMesh = null;
+    this.activeWingMesh = null;
+    this.steeringWheelMesh = null;
+    this.driverHelmetMesh = null;
 
     this.initCarModel();
     this.initUnderbodyShadow();
@@ -82,7 +89,7 @@ export class CyberCar {
     const shadowMat = new THREE.MeshBasicMaterial({
       map: shadowTex,
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.82,
       depthWrite: false,
     });
 
@@ -189,6 +196,9 @@ export class CyberCar {
       this.bodyGroup.add(chassis, cabin, roof, diffuser, tl);
     }
 
+    // Cockpit Interior: 3D Steering Wheel & Pilot Helmet
+    this._buildCockpitInterior();
+
     // Titanium Exhaust Tips
     const exhaustMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.95, roughness: 0.2 });
     const pipeL = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.6, 16), exhaustMat);
@@ -222,6 +232,38 @@ export class CyberCar {
     this._buildWheelsWithBremboBrakes();
 
     this.mesh.position.copy(this.position);
+  }
+
+  _buildCockpitInterior() {
+    // Steering Wheel (3D Torus)
+    const wheelRimMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.8 });
+    const wheelHubMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.9 });
+
+    const wheelG = new THREE.Group();
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.04, 10, 24), wheelRimMat);
+    const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.65, 8), wheelHubMat);
+    spoke.rotateZ(Math.PI / 2);
+    wheelG.add(rim, spoke);
+    wheelG.position.set(-0.7, 1.28, 0.65);
+    wheelG.rotation.x = -0.35;
+    this.bodyGroup.add(wheelG);
+    this.steeringWheelMesh = wheelG;
+
+    // Pilot Helmet with Visor
+    const pilotG = new THREE.Group();
+    const helmetMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2, metalness: 0.4 });
+    const visorMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.05, metalness: 0.95 });
+
+    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 16), helmetMat);
+    helmet.scale.set(0.9, 1.05, 1.0);
+
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.18, 0.25), visorMat);
+    visor.position.set(0, 0.05, 0.25);
+
+    pilotG.add(helmet, visor);
+    pilotG.position.set(-0.7, 1.35, -0.2);
+    this.bodyGroup.add(pilotG);
+    this.driverHelmetMesh = pilotG;
   }
 
   _getPaintMaterial() {
@@ -278,18 +320,23 @@ export class CyberCar {
 
     const g = new THREE.Group();
     if (this.spoilerType === 0) {
+      // GT Wing with Active Airbrake Foil
       const postL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.3), carbonMat);
       postL.position.set(1.4, 1.25, -4.2);
       const postR = postL.clone();
       postR.position.x = -1.4;
+
       const blade = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.08, 1.2), carbonMat);
       blade.position.set(0, 1.55, -4.2);
+
       g.add(postL, postR, blade);
+      this.activeWingMesh = blade;
     } else if (this.spoilerType === 1) {
       const lip = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.25, 0.6), carbonMat);
       lip.position.set(0, 1.08, -4.6);
       lip.rotation.x = -0.35;
       g.add(lip);
+      this.activeWingMesh = lip;
     } else {
       const post1 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.9, 8), carbonMat);
       post1.position.set(1.1, 1.3, -4.3);
@@ -299,6 +346,7 @@ export class CyberCar {
       foil.position.set(0, 1.75, -4.3);
       foil.rotation.x = 0.1;
       g.add(post1, post2, foil);
+      this.activeWingMesh = foil;
     }
 
     this.spoilerMesh = g;
@@ -719,14 +767,35 @@ export class CyberCar {
       else if (this.speed < 0) this.speed = Math.min(0, this.speed + coastDrag);
     }
 
+    // 🛞 GLOWING BREMBO BRAKE DISCS
     for (const disc of this.brakeDiscs) {
       if (this.brakeHeat > 0.15) {
-        disc.material.emissive.setHex(0xff3300);
-        disc.material.emissiveIntensity = this.brakeHeat * 4.0;
+        disc.material.emissive.setHex(0xff3b00);
+        disc.material.emissiveIntensity = this.brakeHeat * 4.5;
       } else {
         disc.material.emissive.setHex(0x000000);
         disc.material.emissiveIntensity = 0.0;
       }
+    }
+
+    // 🏎️ ACTIVE AERO AIRBRAKE
+    if (this.activeWingMesh) {
+      let targetWingAngle = 0.0;
+      if (this.throttleInput < 0 && this.speed > 80) {
+        targetWingAngle = 0.48; // ~28 degrees Airbrake tilt
+      }
+      this.wingAngle = THREE.MathUtils.lerp(this.wingAngle, targetWingAngle, delta * 12.0);
+      this.activeWingMesh.rotation.x = this.wingAngle;
+    }
+
+    // 🏎️ ANIMATED STEERING WHEEL & PILOT HELMET G-LEAN
+    if (this.steeringWheelMesh) {
+      const targetSteerAngle = -this.steerInput * 1.65;
+      this.steeringWheelMesh.rotation.z = THREE.MathUtils.lerp(this.steeringWheelMesh.rotation.z, targetSteerAngle, delta * 14.0);
+    }
+    if (this.driverHelmetMesh) {
+      const targetHelmetLean = -this.steerInput * 0.22;
+      this.driverHelmetMesh.rotation.z = THREE.MathUtils.lerp(this.driverHelmetMesh.rotation.z, targetHelmetLean, delta * 10.0);
     }
 
     const speedRatio = Math.min(1.0, Math.abs(this.speed) / 100);
@@ -820,7 +889,8 @@ export class CyberCar {
       rpmRatio,
       Math.abs(this.speed),
       this.isDrifting ? 0.85 : 0.0,
-      isNitroFiring
+      isNitroFiring,
+      this.throttleInput
     );
 
     this._updateParticles(delta);
@@ -894,6 +964,7 @@ export class CyberCar {
     this.brakeHeat = 0;
     this.tireTemp = 0;
     this.boostCharge = 0;
+    this.wingAngle = 0;
     this.historyBuffer = [];
     this.mesh.position.copy(this.position);
     this.mesh.rotation.set(0, 0, 0);

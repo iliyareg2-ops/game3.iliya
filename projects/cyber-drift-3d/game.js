@@ -196,11 +196,16 @@ export class CyberDriftGame {
     this.driftPtsEl = document.getElementById("hud-drift-pts");
     this.driftMultEl = document.getElementById("hud-drift-mult");
     this.nitroBarEl = document.getElementById("hud-nitro-bar");
-    this.camModeEl = document.getElementById("hud-cam-mode");
     this.bannerEl = document.getElementById("hud-banner");
     this.countdownEl = document.getElementById("countdown-overlay");
     this.rewindOverlayEl = document.getElementById("rewind-overlay");
     this.skillBadgeEl = document.getElementById("hud-skill-badge");
+
+    this.rpmBarEl = document.getElementById("hud-rpm-bar");
+    this.rpmValEl = document.getElementById("hud-rpm-val");
+    this.shiftFlashEl = document.getElementById("hud-shift-flash");
+    this.speedVignetteEl = document.getElementById("speed-vignette");
+    this.deltaEl = document.getElementById("hud-delta");
 
     // 🗺️ 1. Track Location Switch
     document.querySelectorAll("[data-track]").forEach((btn) => {
@@ -627,6 +632,25 @@ export class CyberDriftGame {
     if (this.gearEl) this.gearEl.textContent = gear;
     if (this.scoreEl) this.scoreEl.textContent = this.car.totalScore;
     if (this.nitroBarEl) this.nitroBarEl.style.width = `${Math.round(this.car.nitroFuel)}%`;
+
+    // 📊 GT7 TACHOMETER & REDLINE SHIFT FLASH
+    const rpm = Math.floor(1200 + ((spd % 65) / 65) * 7200 + (this.car.throttleInput > 0 ? 800 : 0));
+    const rpmPercent = Math.min(100, Math.max(0, ((rpm - 1000) / 8000) * 100));
+    if (this.rpmBarEl) this.rpmBarEl.style.width = `${rpmPercent}%`;
+    if (this.rpmValEl) this.rpmValEl.textContent = `${rpm} RPM`;
+
+    if (this.shiftFlashEl) {
+      this.shiftFlashEl.style.opacity = (rpmPercent > 88 && spd > 30) ? "0.85" : "0.0";
+    }
+
+    // 🌪️ HIGH-SPEED MOTION BLUR VIGNETTE
+    if (this.speedVignetteEl) {
+      let targetVig = 0.0;
+      if (spd > 180 || (this.car.nitroActive && this.car.nitroFuel > 0)) {
+        targetVig = Math.min(0.75, (spd - 160) / 180 + (this.car.nitroActive ? 0.35 : 0));
+      }
+      this.speedVignetteEl.style.opacity = targetVig.toFixed(2);
+    }
 
     if (this.trackManager) {
       let rawPlayerU = this.trackManager.getClosestU(this.car.position);
