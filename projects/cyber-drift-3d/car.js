@@ -816,16 +816,11 @@ export class CyberCar {
     }
 
     const rpmRatio = Math.min(1.0, (Math.abs(this.speed) % 65) / 65 + (this.throttleInput > 0 ? 0.35 : 0));
-    const policeDist = trackManager ? trackManager.nearestPoliceDist : 999999;
-    const isHeli = trackManager && trackManager.helicopter ? (policeDist < 350) : false;
-
     cyberAudio.update(
       rpmRatio,
       Math.abs(this.speed),
       this.isDrifting ? 0.85 : 0.0,
-      isNitroFiring,
-      policeDist,
-      isHeli
+      isNitroFiring
     );
 
     this._updateParticles(delta);

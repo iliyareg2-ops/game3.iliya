@@ -103,30 +103,8 @@ export class CyberDriftGame {
     this.studioSpotR.target = this.car.mesh;
     this.scene.add(this.studioSpotR);
 
-    this.trackManager.onTakedownCallback = (bannerText) => {
-      this.screenShake = 1.4;
-      this.showBanner(bannerText, 3200);
-    };
-
-    this.trackManager.onBustedCallback = () => {
-      this.triggerBusted();
-    };
-
-    this.trackManager.onNitroPickupCallback = (bannerText) => {
-      this.showBanner(bannerText, 2200);
-    };
-
     this.trackManager.onSpeedTrapCallback = (speedKmH, pts) => {
       this.showBanner(`📸 РАДАР СКОРОСТИ: ${speedKmH} КМ/Ч! +${pts} PTS`, 2800);
-    };
-
-    this.trackManager.onWantedLevelChange = (level, isFlashing) => {
-      this.updateWantedUI(level, isFlashing);
-    };
-
-    this.trackManager.onEvasionSuccess = (bannerText) => {
-      this.showBanner(bannerText, 3500);
-      this.showSkillBadge("⭐ LOSE THE COPS EVASION +2500");
     };
   }
 
@@ -224,13 +202,6 @@ export class CyberDriftGame {
     this.rewindOverlayEl = document.getElementById("rewind-overlay");
     this.skillBadgeEl = document.getElementById("hud-skill-badge");
 
-    this.wantedStarsEl = document.getElementById("hud-wanted-stars");
-    this.stars = [
-      document.getElementById("star-1"),
-      document.getElementById("star-2"),
-      document.getElementById("star-3"),
-    ];
-
     // 🗺️ 1. Track Location Switch
     document.querySelectorAll("[data-track]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -304,34 +275,9 @@ export class CyberDriftGame {
       });
     }
 
-    const restartBtn = document.getElementById("btn-restart-busted");
-    if (restartBtn) {
-      restartBtn.addEventListener("click", () => this.resetCar());
-    }
-
     const finishRestartBtn = document.getElementById("btn-restart-finish");
     if (finishRestartBtn) {
       finishRestartBtn.addEventListener("click", () => this.resetCar());
-    }
-  }
-
-  updateWantedUI(level, isFlashing) {
-    if (!this.wantedStarsEl) return;
-    if (level === 0) {
-      this.wantedStarsEl.style.display = "none";
-      return;
-    }
-
-    this.wantedStarsEl.style.display = "flex";
-    for (let i = 0; i < 3; i++) {
-      const star = this.stars[i];
-      if (i < level) {
-        star.classList.add("active");
-        if (isFlashing) star.classList.add("flashing");
-        else star.classList.remove("flashing");
-      } else {
-        star.classList.remove("active", "flashing");
-      }
     }
   }
 
@@ -411,16 +357,6 @@ export class CyberDriftGame {
       ctx.fill();
     });
 
-    const isRedFlash = Math.sin(Date.now() * 0.015) > 0;
-    this.trackManager.policeUnits.forEach((cop) => {
-      const px = mapX(cop.group.position.x);
-      const pz = mapZ(cop.group.position.z);
-      ctx.fillStyle = isRedFlash ? "#ef4444" : "#3b82f6";
-      ctx.beginPath();
-      ctx.arc(px, pz, 4, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
     const px = mapX(this.car.position.x);
     const pz = mapZ(this.car.position.z);
     ctx.save();
@@ -458,7 +394,6 @@ export class CyberDriftGame {
     this.isRewinding = false;
 
     document.getElementById("garage-screen").style.display = "none";
-    document.getElementById("busted-screen").style.display = "none";
     document.getElementById("finish-screen").style.display = "none";
     document.getElementById("hud").style.display = "flex";
 
@@ -489,15 +424,6 @@ export class CyberDriftGame {
       this.countdownEl.style.display = "block";
       this.countdownEl.textContent = "3";
     }
-  }
-
-  triggerBusted() {
-    this.gameState = "BUSTED";
-    this.isRewinding = false;
-    this.stopRewind();
-    cyberAudio.playCrash();
-    document.getElementById("busted-score").textContent = this.car.totalScore;
-    document.getElementById("busted-screen").style.display = "grid";
   }
 
   triggerFinish(finalPos) {
@@ -548,9 +474,6 @@ export class CyberDriftGame {
   resetCar() {
     this.car.reset();
     this.startCountdown();
-    this.trackManager.bustedTimer = 0;
-    this.trackManager.wantedLevel = 0;
-    this.updateWantedUI(0, false);
     this.showBanner("🔄 РЕСТАРТ ГОНКИ! НА СТАРТ");
   }
 

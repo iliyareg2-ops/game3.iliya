@@ -118,34 +118,6 @@
       letter-spacing: 0.04em;
     }
 
-    /* ⭐ GTA WANTED STARS WIDGET */
-    #hud-wanted-stars {
-      display: none;
-      gap: 4px;
-      margin-top: 4px;
-    }
-
-    .star-icon {
-      font-size: 20px;
-      color: #334155;
-      text-shadow: 0 0 4px #000;
-      transition: all 0.2s ease;
-    }
-
-    .star-icon.active {
-      color: #facc15;
-      text-shadow: 0 0 10px rgba(250, 204, 21, 0.9);
-    }
-
-    .star-icon.flashing {
-      animation: starBlink 0.35s infinite alternate;
-    }
-
-    @keyframes starBlink {
-      from { color: #facc15; opacity: 1.0; }
-      to { color: #475569; opacity: 0.4; }
-    }
-
     /* 🏆 SKILL CHAIN FLOATING BADGES */
     #hud-skill-badge {
       position: absolute;
@@ -517,7 +489,6 @@
       text-align: center;
     }
 
-    /* Busted Screen */
     .screen-overlay {
       position: fixed;
       inset: 0;
@@ -528,23 +499,13 @@
       backdrop-filter: blur(14px);
       padding: 16px;
     }
-
-    .busted-card {
-      width: min(500px, 92vw);
-      background: #1e293b;
-      border: 2px solid #ef4444;
-      border-radius: 16px;
-      padding: 28px 24px;
-      box-shadow: 0 10px 40px rgba(239, 68, 68, 0.3);
-      text-align: center;
-    }
   </style>
 </head>
 <body>
   <div id="canvas-container"></div>
   <div id="countdown-overlay">3</div>
 
-  <!-- ⏪ REWIND OVERLAY (Clean Realism) -->
+  <!-- ⏪ REWIND OVERLAY -->
   <div id="rewind-overlay">
     <div id="rewind-banner">⏪ ПЕРЕМОТКА ВРЕМЕНИ (E)</div>
   </div>
@@ -571,16 +532,6 @@
       <div class="hud-pill">
         <span class="hud-label">КРУГ</span>
         <span class="hud-val" id="hud-lap" style="color: #f59e0b; font-size: 22px;">1 / 3</span>
-      </div>
-
-      <!-- ⭐ GTA WANTED STARS -->
-      <div class="hud-pill" id="hud-wanted-pill">
-        <span class="hud-label">РОЗЫСК (GTA)</span>
-        <div id="hud-wanted-stars">
-          <span class="star-icon" id="star-1">★</span>
-          <span class="star-icon" id="star-2">★</span>
-          <span class="star-icon" id="star-3">★</span>
-        </div>
       </div>
 
       <!-- ОЧКИ ДРИФТА -->
@@ -730,18 +681,6 @@
       </div>
 
       <button class="btn-main" id="btn-start-race">ВЫЕХАТЬ НА ТРАССУ (ENTER)</button>
-    </div>
-  </div>
-
-  <!-- Busted Screen -->
-  <div class="screen-overlay" id="busted-screen">
-    <div class="busted-card">
-      <h1 style="font-size: 38px; color: #ef4444; margin-bottom: 12px;">ЗАБЛОКИРОВАН! (BUSTED)</h1>
-      <p style="color: #cbd5e1; font-size: 16px; margin-bottom: 20px;">
-        Полицейские экипажи заблокировали спорткар.<br>
-        Итоговый счет: <b id="busted-score" style="color: #38bdf8; font-size: 24px;">0</b> PTS
-      </p>
-      <button class="btn-main" id="btn-restart-busted" style="background: #dc2626;">ПОВТОРИТЬ ЗАЕЗД (R)</button>
     </div>
   </div>
 

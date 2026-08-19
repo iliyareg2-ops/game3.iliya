@@ -1,4 +1,4 @@
-// audio.js - Realistic Automotive Sound Engine (Combustion, Blow-Off Valve, Rewind, Kerb Rumble, Backfires, Slipstream, Sirens, Helicopter)
+// audio.js - Realistic Automotive Sound Engine (Granular Combustion, Blow-Off Valve, Rewind, Kerb Rumble, Backfires, Slipstream, Rain)
 class CyberAudioEngine {
   constructor() {
     this.ctx = null;
@@ -33,15 +33,6 @@ class CyberAudioEngine {
     this.nitroFilter = null;
     this.nitroGain = null;
 
-    // Police Siren
-    this.sirenGain = null;
-    this.sirenOsc1 = null;
-    this.sirenFilter = null;
-
-    // Police Helicopter
-    this.heliGain = null;
-    this.heliOsc = null;
-
     // Traffic Passing Whoosh
     this.flybyGain = null;
     this.flybyFilter = null;
@@ -49,7 +40,7 @@ class CyberAudioEngine {
     // Rain
     this.rainGain = null;
 
-    // Forza Rewind Audio
+    // Rewind Audio
     this.rewindGain = null;
     this.rewindOsc = null;
 
@@ -74,8 +65,6 @@ class CyberAudioEngine {
       this._setupAerodynamicWind();
       this._setupSlipstreamSuction();
       this._setupPressurizedNitroJet();
-      this._setupAudiblePoliceSiren();
-      this._setupHelicopterRotor();
       this._setupTrafficFlyby();
       this._setupRainAcoustics();
       this._setupRewindAudio();
@@ -299,45 +288,6 @@ class CyberAudioEngine {
     nitroNoise.start();
   }
 
-  _setupAudiblePoliceSiren() {
-    this.sirenGain = this.ctx.createGain();
-    this.sirenGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
-
-    this.sirenOsc1 = this.ctx.createOscillator();
-    this.sirenOsc1.type = "sawtooth";
-    this.sirenOsc1.frequency.setValueAtTime(600, this.ctx.currentTime);
-
-    this.sirenFilter = this.ctx.createBiquadFilter();
-    this.sirenFilter.type = "lowpass";
-    this.sirenFilter.frequency.setValueAtTime(1600, this.ctx.currentTime);
-    this.sirenFilter.Q.setValueAtTime(2.0, this.ctx.currentTime);
-
-    this.sirenOsc1.connect(this.sirenFilter);
-    this.sirenFilter.connect(this.sirenGain);
-    this.sirenGain.connect(this.masterGain);
-
-    this.sirenOsc1.start();
-  }
-
-  _setupHelicopterRotor() {
-    this.heliGain = this.ctx.createGain();
-    this.heliGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
-
-    this.heliOsc = this.ctx.createOscillator();
-    this.heliOsc.type = "square";
-    this.heliOsc.frequency.setValueAtTime(26, this.ctx.currentTime);
-
-    const heliFilter = this.ctx.createBiquadFilter();
-    heliFilter.type = "lowpass";
-    heliFilter.frequency.setValueAtTime(140, this.ctx.currentTime);
-
-    this.heliOsc.connect(heliFilter);
-    heliFilter.connect(this.heliGain);
-    this.heliGain.connect(this.masterGain);
-
-    this.heliOsc.start();
-  }
-
   _setupTrafficFlyby() {
     this.flybyGain = this.ctx.createGain();
     this.flybyGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
@@ -376,7 +326,6 @@ class CyberAudioEngine {
     noiseNode.start();
   }
 
-  // ⏪ FORZA REWIND TAPE AUDIO
   _setupRewindAudio() {
     this.rewindGain = this.ctx.createGain();
     this.rewindGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
@@ -410,7 +359,6 @@ class CyberAudioEngine {
     this.rewindGain.gain.setTargetAtTime(0.0, this.ctx.currentTime, 0.08);
   }
 
-  // 📳 KERB RUMBLE STRIPS (trrr-trrr-trrr)
   _setupKerbRumbleAudio() {
     this.kerbGain = this.ctx.createGain();
     this.kerbGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
@@ -440,27 +388,6 @@ class CyberAudioEngine {
     this.kerbGain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
   }
 
-  // ⭐ GTA EVASION CHIME
-  playEvasionChime() {
-    if (!this.isInitialized || this.isMuted || !this.ctx) return;
-    const t = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(523.25, t);
-    osc.frequency.setValueAtTime(659.25, t + 0.12);
-    osc.frequency.setValueAtTime(783.99, t + 0.24);
-    osc.frequency.setValueAtTime(1046.50, t + 0.36);
-
-    const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.35, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
-
-    osc.connect(gain);
-    gain.connect(this.masterGain);
-    osc.start(t);
-    osc.stop(t + 0.75);
-  }
-
   setRainActive(isRaining) {
     if (!this.rainGain || !this.ctx) return;
     this.rainGain.gain.setTargetAtTime(isRaining ? 0.35 : 0.0, this.ctx.currentTime, 0.4);
@@ -475,7 +402,7 @@ class CyberAudioEngine {
     this.flybyGain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
   }
 
-  update(rpmRatio, speedKmH, driftRatio, isNitro, policeDist, isHeliActive) {
+  update(rpmRatio, speedKmH, driftRatio, isNitro) {
     if (!this.isInitialized || this.isMuted) return;
     const t = this.ctx.currentTime;
 
@@ -499,21 +426,6 @@ class CyberAudioEngine {
 
     const targetNitro = isNitro ? 0.45 : 0.0;
     this.nitroGain.gain.setTargetAtTime(targetNitro, t, 0.06);
-
-    if (policeDist < 350) {
-      const distRatio = Math.max(0, 1.0 - (policeDist / 350));
-      const sirenFreq = 620 + Math.sin(t * 5.2) * 260;
-      this.sirenOsc1.frequency.setValueAtTime(sirenFreq, t);
-      this.sirenGain.gain.setTargetAtTime(distRatio * 0.42, t, 0.08);
-    } else {
-      this.sirenGain.gain.setTargetAtTime(0.0, t, 0.2);
-    }
-
-    if (isHeliActive) {
-      this.heliGain.gain.setTargetAtTime(0.35, t, 0.15);
-    } else {
-      this.heliGain.gain.setTargetAtTime(0.0, t, 0.25);
-    }
   }
 
   playCrash() {
@@ -540,29 +452,7 @@ class CyberAudioEngine {
     noise.stop(t + 0.6);
   }
 
-  playTakedownCrunch() {
-    this.playCrash();
-  }
-
   playScoreChime() {}
-
-  playNitroPickupSound() {
-    if (!this.isInitialized || this.isMuted) return;
-    const t = this.ctx.currentTime;
-    const noise = this.ctx.createBufferSource();
-    noise.buffer = this._createNoiseBuffer(0.15);
-    const filter = this.ctx.createBiquadFilter();
-    filter.type = "bandpass";
-    filter.frequency.setValueAtTime(900, t);
-    const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.25, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-    noise.connect(filter);
-    filter.connect(gain);
-    gain.connect(this.masterGain);
-    noise.start(t);
-    noise.stop(t + 0.15);
-  }
 
   playCameraFlash() {
     if (!this.isInitialized || this.isMuted) return;
