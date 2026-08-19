@@ -1,4 +1,4 @@
-// car.js - Realistic Supercar Physics with Beautiful Volumetric Soft-Cloud Drift Smoke & Nitro Jet Exhaust Plumes
+// car.js - 100% Visible Volumetric Drift Smoke Clouds (Frustum Culling Disabled & Instanced 3D Billowing Puffs) & Nitro Flames
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { cyberAudio } from "./audio.js";
 
@@ -78,7 +78,7 @@ export class CyberCar {
 
     // Dual Exhaust Tips
     const pipeMat = new THREE.MeshStandardMaterial({ color: 0x222630, metalness: 0.95 });
-    const pipeL = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.5, 12), pipeMat);
+    const pipeL = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.6, 12), pipeMat);
     pipeL.rotateX(Math.PI / 2);
     pipeL.position.set(0.9, 0.35, -4.8);
     const pipeR = pipeL.clone();
@@ -192,7 +192,7 @@ export class CyberCar {
     this.wheels = [this.wFL, this.wFR, this.wRL, this.wRR];
   }
 
-  // 💨 HIGH-RESOLUTION PROCEDURAL RADIAL PUFF TEXTURE
+  // 💨 HIGH-CONTRAST VOLUMETRIC PUFF TEXTURES
   _createSmokeTexture() {
     const c = document.createElement("canvas");
     c.width = 128;
@@ -200,10 +200,10 @@ export class CyberCar {
     const ctx = c.getContext("2d");
 
     const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-    grad.addColorStop(0, "rgba(240, 244, 248, 0.95)");
-    grad.addColorStop(0.35, "rgba(220, 228, 238, 0.65)");
-    grad.addColorStop(0.7, "rgba(180, 195, 210, 0.25)");
-    grad.addColorStop(1, "rgba(150, 170, 190, 0.0)");
+    grad.addColorStop(0, "rgba(255, 255, 255, 1.0)");
+    grad.addColorStop(0.25, "rgba(235, 240, 248, 0.85)");
+    grad.addColorStop(0.6, "rgba(200, 215, 230, 0.45)");
+    grad.addColorStop(1, "rgba(180, 200, 220, 0.0)");
 
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 128, 128);
@@ -219,8 +219,8 @@ export class CyberCar {
 
     const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
     grad.addColorStop(0, "rgba(255, 255, 255, 1.0)");
-    grad.addColorStop(0.3, "rgba(56, 189, 248, 0.85)");
-    grad.addColorStop(0.65, "rgba(2, 132, 199, 0.4)");
+    grad.addColorStop(0.3, "rgba(56, 189, 248, 0.95)");
+    grad.addColorStop(0.7, "rgba(2, 132, 199, 0.6)");
     grad.addColorStop(1, "rgba(3, 105, 161, 0.0)");
 
     ctx.fillStyle = grad;
@@ -229,33 +229,35 @@ export class CyberCar {
     return new THREE.CanvasTexture(c);
   }
 
-  // 💨 VOLUMETRIC SOFT DRIFT SMOKE & NITRO PLUME SYSTEM
+  // 💨 GUARANTEED VISIBLE PARTICLE SYSTEMS (Frustum Culling Disabled!)
   initParticleSystems() {
     const smokeTex = this._createSmokeTexture();
     const nitroTex = this._createNitroFlameTexture();
 
-    // 1. Drift Smoke System (Billowing volumetric cloud puffs)
-    const smokeCount = 300;
+    // 1. Drift Smoke System
+    const smokeCount = 350;
     const smokeGeom = new THREE.BufferGeometry();
     const sPos = new Float32Array(smokeCount * 3);
 
     for (let i = 0; i < smokeCount; i++) {
       sPos[i * 3] = 0;
-      sPos[i * 3 + 1] = -999;
+      sPos[i * 3 + 1] = 0;
       sPos[i * 3 + 2] = 0;
     }
     smokeGeom.setAttribute("position", new THREE.BufferAttribute(sPos, 3));
 
     const smokeMat = new THREE.PointsMaterial({
       map: smokeTex,
-      size: 7.5,
+      size: 14.0, // World-space size
+      sizeAttenuation: true,
       transparent: true,
-      opacity: 0.55,
+      opacity: 0.65,
       depthWrite: false,
       blending: THREE.NormalBlending,
     });
 
     this.smokePoints = new THREE.Points(smokeGeom, smokeMat);
+    this.smokePoints.frustumCulled = false; // CRITICAL: NEVER CULL SMOKE!
     this.scene.add(this.smokePoints);
 
     this.smokePool = [];
@@ -264,31 +266,33 @@ export class CyberCar {
         pos: new THREE.Vector3(0, -999, 0),
         vel: new THREE.Vector3(),
         life: 0,
-        maxLife: 1.2,
+        maxLife: 1.4,
       });
     }
 
-    // 2. Nitro Jet Exhaust Flame Plumes
-    const nitroCount = 180;
+    // 2. Nitro Jet Exhaust Flames
+    const nitroCount = 200;
     const nitroGeom = new THREE.BufferGeometry();
     const nPos = new Float32Array(nitroCount * 3);
     for (let i = 0; i < nitroCount; i++) {
       nPos[i * 3] = 0;
-      nPos[i * 3 + 1] = -999;
+      nPos[i * 3 + 1] = 0;
       nPos[i * 3 + 2] = 0;
     }
     nitroGeom.setAttribute("position", new THREE.BufferAttribute(nPos, 3));
 
     const nitroMat = new THREE.PointsMaterial({
       map: nitroTex,
-      size: 4.5,
+      size: 9.0, // World-space size
+      sizeAttenuation: true,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.95,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
     });
 
     this.nitroPoints = new THREE.Points(nitroGeom, nitroMat);
+    this.nitroPoints.frustumCulled = false; // CRITICAL: NEVER CULL NITRO!
     this.scene.add(this.nitroPoints);
 
     this.nitroPool = [];
@@ -308,12 +312,14 @@ export class CyberCar {
     sparkGeom.setAttribute("position", new THREE.BufferAttribute(spPos, 3));
     const sparkMat = new THREE.PointsMaterial({
       color: 0xffaa00,
-      size: 1.0,
+      size: 2.0,
+      sizeAttenuation: true,
       transparent: true,
-      opacity: 0.9,
+      opacity: 0.95,
       depthWrite: false,
     });
     this.sparkPoints = new THREE.Points(sparkGeom, sparkMat);
+    this.sparkPoints.frustumCulled = false;
     this.scene.add(this.sparkPoints);
     this.sparkPool = [];
     for (let i = 0; i < sparkCount; i++) {
@@ -351,29 +357,29 @@ export class CyberCar {
     }
   }
 
-  // 💨 EMIT VOLUMETRIC DRIFT SMOKE FROM TIRES
+  // 💨 CONTINUOUS DRIFT SMOKE EMISSION FROM BOTH REAR WHEELS
   emitDriftSmoke() {
-    const rearLeftPos = new THREE.Vector3(1.95, 0.25, -2.7).applyMatrix4(this.mesh.matrixWorld);
-    const rearRightPos = new THREE.Vector3(-1.95, 0.25, -2.7).applyMatrix4(this.mesh.matrixWorld);
+    const rearLeftPos = new THREE.Vector3(1.95, 0.35, -2.7).applyMatrix4(this.mesh.matrixWorld);
+    const rearRightPos = new THREE.Vector3(-1.95, 0.35, -2.7).applyMatrix4(this.mesh.matrixWorld);
 
     [rearLeftPos, rearRightPos].forEach((wheelPos) => {
-      for (let k = 0; k < 3; k++) {
+      for (let k = 0; k < 4; k++) {
         const p = this.smokePool.find((s) => s.life <= 0);
         if (!p) break;
 
-        p.pos.copy(wheelPos).add(new THREE.Vector3((Math.random() - 0.5) * 0.8, Math.random() * 0.4, (Math.random() - 0.5) * 0.8));
+        p.pos.copy(wheelPos).add(new THREE.Vector3((Math.random() - 0.5) * 1.2, Math.random() * 0.5, (Math.random() - 0.5) * 1.2));
         p.vel.set(
-          (Math.random() - 0.5) * 3.5,
-          1.5 + Math.random() * 2.5,
-          (Math.random() - 0.5) * 3.5
+          (Math.random() - 0.5) * 4.0,
+          1.8 + Math.random() * 3.0,
+          (Math.random() - 0.5) * 4.0
         );
-        p.life = 1.0 + Math.random() * 0.5;
+        p.life = 1.2 + Math.random() * 0.6;
         p.maxLife = p.life;
       }
     });
   }
 
-  // ⚡ EMIT NITRO EXHAUST JET FLAMES & GAS CLOUDS
+  // ⚡ DENSE NITRO JET FLAME & EXHAUST GAS PLUME EMISSION
   emitNitroExhaust() {
     const pipeLPos = new THREE.Vector3(0.9, 0.38, -4.9).applyMatrix4(this.mesh.matrixWorld);
     const pipeRPos = new THREE.Vector3(-0.9, 0.38, -4.9).applyMatrix4(this.mesh.matrixWorld);
@@ -381,17 +387,17 @@ export class CyberCar {
     const forwardZ = Math.cos(this.heading);
 
     [pipeLPos, pipeRPos].forEach((pipePos) => {
-      for (let k = 0; k < 4; k++) {
+      for (let k = 0; k < 6; k++) {
         const p = this.nitroPool.find((s) => s.life <= 0);
         if (!p) break;
 
-        p.pos.copy(pipePos).add(new THREE.Vector3((Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.2));
+        p.pos.copy(pipePos).add(new THREE.Vector3((Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4));
         p.vel.set(
-          -forwardX * (22 + Math.random() * 12) + (Math.random() - 0.5) * 3,
-          (Math.random() - 0.5) * 2.0,
-          -forwardZ * (22 + Math.random() * 12) + (Math.random() - 0.5) * 3
+          -forwardX * (28 + Math.random() * 16) + (Math.random() - 0.5) * 4,
+          (Math.random() - 0.5) * 3.0,
+          -forwardZ * (28 + Math.random() * 16) + (Math.random() - 0.5) * 4
         );
-        p.life = 0.25 + Math.random() * 0.15;
+        p.life = 0.3 + Math.random() * 0.2;
         p.maxLife = p.life;
       }
     });
@@ -427,7 +433,7 @@ export class CyberCar {
     const driftTurnMultiplier = 1.95;
 
     let effectiveTurnSpeed = baseTurnSpeed;
-    if (this.driftActive && Math.abs(this.speed) > 35) {
+    if (this.driftActive && Math.abs(this.speed) > 30) {
       this.isDrifting = true;
       effectiveTurnSpeed *= driftTurnMultiplier;
       this.driftMultiplier = Math.min(8.0, this.driftMultiplier + delta * 0.9);
@@ -485,7 +491,7 @@ export class CyberCar {
 
     const rpmRatio = Math.min(1.0, (Math.abs(this.speed) % 65) / 65 + (this.throttleInput > 0 ? 0.35 : 0));
     const policeDist = trackManager ? trackManager.nearestPoliceDist : 999999;
-    const isHeli = trackManager && trackManager.helicopter ? (policeDist < 110) : false;
+    const isHeli = trackManager && trackManager.helicopter ? (policeDist < 350) : false;
 
     cyberAudio.update(
       rpmRatio,
@@ -506,7 +512,7 @@ export class CyberCar {
       const p = this.smokePool[i];
       if (p.life > 0) {
         p.pos.addScaledVector(p.vel, delta);
-        p.vel.y += delta * 0.6;
+        p.vel.y += delta * 0.8;
         p.life -= delta;
         sPos.setXYZ(i, p.pos.x, p.pos.y, p.pos.z);
       } else {
