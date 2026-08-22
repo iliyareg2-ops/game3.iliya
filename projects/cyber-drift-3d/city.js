@@ -2237,8 +2237,105 @@ export class CityTrackManager {
     return { mesh: g, wheels: wheels, strobes: [{ mesh: blueLight, invert: false }, { mesh: redLight, invert: true }] };
   }
 
+  _buildHyperSpeedNPC() {
+    const g = new THREE.Group();
+    const paintMat = new THREE.MeshPhysicalMaterial({
+      color: 0x06b6d4,
+      emissive: 0x1d4ed8,
+      emissiveIntensity: 0.6,
+      metalness: 0.95,
+      roughness: 0.1,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.1,
+    });
+    const neonCyanMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+    const neonMagentaMat = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+    const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x050811, roughness: 0.05, metalness: 0.9, transmission: 0.8, transparent: true });
+    const tireMat = new THREE.MeshStandardMaterial({ color: 0x141518, roughness: 0.85 });
+    const rimMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 2.0, metalness: 0.9, roughness: 0.1 });
+    const thrusterMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+
+    // Aerodynamic Hyper Overdrive Chassis
+    const body = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.72, 9.6), paintMat);
+    body.position.y = 0.65;
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.65, 5.0), glassMat);
+    cabin.position.set(0, 1.25, -0.2);
+
+    // Glowing Neon Side Light Strips
+    const stripeL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.14, 8.8), neonMagentaMat);
+    stripeL.position.set(2.22, 0.65, 0);
+    const stripeR = stripeL.clone();
+    stripeR.position.x = -2.22;
+
+    // Roof "99,999 KM/H" Holographic Light Sign
+    const signCanvas = document.createElement("canvas");
+    signCanvas.width = 512;
+    signCanvas.height = 128;
+    const sCtx = signCanvas.getContext("2d");
+    sCtx.fillStyle = "#000000";
+    sCtx.fillRect(0, 0, 512, 128);
+    sCtx.fillStyle = "#00ffff";
+    sCtx.font = "900 44px Impact, Arial Black, sans-serif";
+    sCtx.textAlign = "center";
+    sCtx.fillText("⚡ 99,999 KM/H ⚡", 256, 82);
+    const signTex = new THREE.CanvasTexture(signCanvas);
+    const signMat = new THREE.MeshBasicMaterial({ map: signTex });
+    const signMesh = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.48, 0.9), signMat);
+    signMesh.position.set(0, 1.82, -0.2);
+
+    // Dual Rocket Thrusters on Rear
+    const thrusterL = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.48, 1.4, 16), paintMat);
+    thrusterL.rotateX(Math.PI / 2);
+    thrusterL.position.set(1.25, 0.65, -4.9);
+    const thrusterR = thrusterL.clone();
+    thrusterR.position.x = -1.25;
+
+    // Plasma Fire Jet Cones
+    const plumeL = new THREE.Mesh(new THREE.ConeGeometry(0.36, 3.2, 16), thrusterMat);
+    plumeL.rotateX(-Math.PI / 2);
+    plumeL.position.set(1.25, 0.65, -6.5);
+    const plumeR = plumeL.clone();
+    plumeR.position.x = -1.25;
+
+    g.add(body, cabin, stripeL, stripeR, signMesh, thrusterL, thrusterR, plumeL, plumeR);
+
+    // Glowing Neon Wheels
+    const wheelGeom = new THREE.CylinderGeometry(0.52, 0.52, 0.38, 16);
+    wheelGeom.rotateZ(Math.PI / 2);
+    const rimGeom = new THREE.CylinderGeometry(0.36, 0.36, 0.4, 16);
+    rimGeom.rotateZ(Math.PI / 2);
+
+    const wheels = [];
+    const makeW = (x, z) => {
+      const wg = new THREE.Group();
+      const tire = new THREE.Mesh(wheelGeom, tireMat);
+      const rim = new THREE.Mesh(rimGeom, rimMat);
+      wg.add(tire, rim);
+      wg.position.set(x, 0.52, z);
+      g.add(wg);
+      wheels.push(wg);
+    };
+
+    makeW(1.95, 2.7);
+    makeW(-1.95, 2.7);
+    makeW(1.95, -2.7);
+    makeW(-1.95, -2.7);
+
+    // Headlights & Tail Lights
+    const hlL = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.25, 0.1), neonCyanMat);
+    hlL.position.set(1.45, 0.7, 4.81);
+    const hlR = hlL.clone();
+    hlR.position.x = -1.45;
+    const tl = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.22, 0.1), neonMagentaMat);
+    tl.position.set(0, 0.7, -4.81);
+
+    g.add(hlL, hlR, tl);
+    return { mesh: g, wheels: wheels, strobes: [], plumes: [plumeL, plumeR] };
+  }
+
   buildRichCityTrafficFleet() {
     const fleetDefinitions = [
+      { type: "HYPER_99999", u: 0.35, lane: 0.0, speed: 4.8 }, // 🚀 99,999 KM/H Overdrive Civilian NPC!
       { type: "FIRE_TRUCK", u: 0.12, lane: 7.0, speed: 0.010 },
       { type: "BUS", u: 0.28, lane: -7.0, speed: 0.009 },
       { type: "SPORT_YELLOW", u: 0.40, lane: 6.0, speed: 0.015 },
@@ -2250,6 +2347,7 @@ export class CityTrackManager {
     ];
 
     const massTable = {
+      HYPER_99999: 8.0,
       FIRE_TRUCK: 3.8,
       BUS: 4.2,
       PATROL: 1.6,
@@ -2259,6 +2357,7 @@ export class CityTrackManager {
       SPORT_RED: 1.0
     };
     const radiusTable = {
+      HYPER_99999: 3.8,
       FIRE_TRUCK: 4.8,
       BUS: 5.4,
       PATROL: 3.5,
@@ -2270,7 +2369,9 @@ export class CityTrackManager {
 
     for (const item of fleetDefinitions) {
       let vehicleObj;
-      if (item.type === "FIRE_TRUCK") {
+      if (item.type === "HYPER_99999") {
+        vehicleObj = this._buildHyperSpeedNPC();
+      } else if (item.type === "FIRE_TRUCK") {
         vehicleObj = this._buildFireTruck();
       } else if (item.type === "BUS") {
         vehicleObj = this._buildCityBus();
@@ -2299,6 +2400,7 @@ export class CityTrackManager {
         baseLane: item.lane,
         wheels: vehicleObj.wheels,
         strobes: vehicleObj.strobes || [],
+        plumes: vehicleObj.plumes || [],
         mass: massTable[item.type] || 1.3,
         radius: radiusTable[item.type] || 3.4,
         knockbackOffset: new THREE.Vector3(),
@@ -2312,6 +2414,7 @@ export class CityTrackManager {
 
   resetTrafficPositions() {
     const defaultPositions = [
+      { u: 0.35, lane: 0.0 },
       { u: 0.12, lane: 7.0 },
       { u: 0.28, lane: -7.0 },
       { u: 0.40, lane: 6.0 },
@@ -2879,7 +2982,7 @@ export class CityTrackManager {
           playerCar.applyCollisionImpulse(new THREE.Vector3(nx, 0.5, nz), hitIntensity, 0, contactPt);
 
           // 💥 Spawn flying 3D car parts and shattered glass
-          const trafficColor = (traffic.type === "FIRE_TRUCK") ? 0xb91c1c : ((traffic.type === "BUS") ? 0x0284c7 : ((traffic.type === "PATROL") ? 0x0a0c12 : 0xf8fafc));
+          const trafficColor = (traffic.type === "HYPER_99999") ? 0x00ffff : ((traffic.type === "FIRE_TRUCK") ? 0xb91c1c : ((traffic.type === "BUS") ? 0x0284c7 : ((traffic.type === "PATROL") ? 0x0a0c12 : 0xf8fafc)));
           this.spawnCrashDebris(contactPt, new THREE.Vector3(nx, 0.5, nz), hitIntensity, playerCar.bodyColorHex || 0xdc2626, trafficColor);
           cyberAudio.playGlassShatter(hitIntensity);
 
@@ -2887,11 +2990,11 @@ export class CityTrackManager {
           traffic.yawVelocity += (Math.random() - 0.5) * (hitIntensity / massRatio) * 12;
           traffic.laneOffset -= nx * (hitIntensity / massRatio) * 3.2;
 
-          if (Math.abs(playerSpeed) > 120) {
-            const pts = Math.round(200 * massRatio);
+          if (Math.abs(playerSpeed) > 120 || traffic.type === "HYPER_99999") {
+            const pts = traffic.type === "HYPER_99999" ? 99999 : Math.round(200 * massRatio);
             playerCar.totalScore += pts;
             if (this.onTakedownCallback) {
-              const label = traffic.type === "FIRE_TRUCK" ? "🚒 ТАРАН ПОЖАРНОЙ МАШИНЫ!" : (traffic.type === "BUS" ? "🚌 ТАРАН АВТОБУСА!" : (traffic.type === "PATROL" ? "🚔 ТАРАН ПОЛИЦЕЙСКОГО ПАТРУЛЯ!" : "🚗 СТОЛКНОВЕНИЕ В ТРАФИКЕ!"));
+              const label = traffic.type === "HYPER_99999" ? "🚀 ГИПЕР-СТОЛКНОВЕНИЕ НА 99,999 КМ/Ч!" : (traffic.type === "FIRE_TRUCK" ? "🚒 ТАРАН ПОЖАРНОЙ МАШИНЫ!" : (traffic.type === "BUS" ? "🚌 ТАРАН АВТОБУСА!" : (traffic.type === "PATROL" ? "🚔 ТАРАН ПОЛИЦЕЙСКОГО ПАТРУЛЯ!" : "🚗 СТОЛКНОВЕНИЕ В ТРАФИКЕ!")));
               this.onTakedownCallback(`${label} +${pts} PTS`);
             }
           }
@@ -3198,11 +3301,24 @@ export class CityTrackManager {
         w.rotation.x += delta * 12;
       }
 
+      // Animate Rocket Thruster Plumes for 99,999 KM/H Hyper Overdrive NPC
+      if (car.plumes && car.plumes.length > 0) {
+        const pScale = 0.8 + Math.sin(now * 0.05) * 0.4;
+        for (const pl of car.plumes) {
+          pl.scale.set(1.0, pScale, 1.0);
+        }
+      }
+
       const d = car.mesh.position.distanceTo(playerPos);
-      if (d < 9.0 && playerSpeed > 110 && !car.passedAudio) {
+      if (d < 16.0 && !car.passedAudio) {
         car.passedAudio = true;
-        cyberAudio.playTrafficFlyby();
-      } else if (d > 22.0) {
+        if (car.type === "HYPER_99999") {
+          cyberAudio.playTrafficFlyby();
+          cyberAudio.playTurboBlowoff();
+        } else if (playerSpeed > 110) {
+          cyberAudio.playTrafficFlyby();
+        }
+      } else if (d > 28.0) {
         car.passedAudio = false;
       }
     }
