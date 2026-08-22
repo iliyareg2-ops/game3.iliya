@@ -560,6 +560,24 @@ class CyberAudioEngine {
     noise.stop(t + 0.35);
   }
 
+  playConeHit() {
+    if (!this.isInitialized || this.isMuted) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(360, t);
+    osc.frequency.exponentialRampToValueAtTime(90, t + 0.12);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.32, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.13);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.14);
+  }
+
   playScoreChime() {}
 
   playCameraFlash() {

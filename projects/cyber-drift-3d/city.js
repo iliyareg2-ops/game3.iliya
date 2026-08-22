@@ -1331,10 +1331,11 @@ export class CityTrackManager {
 
   buildDestructibleProps() {
     const halfWidth = this.trackWidth / 2;
-    const coneGeom = new THREE.ConeGeometry(0.4, 1.1, 10);
-    const coneBaseGeom = new THREE.BoxGeometry(0.7, 0.1, 0.7);
-    const coneMat = new THREE.MeshStandardMaterial({ color: 0xea580c, roughness: 0.5 });
-    const whiteStripeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
+    const coneGeom = new THREE.ConeGeometry(0.42, 1.15, 14);
+    const coneBaseGeom = new THREE.BoxGeometry(0.78, 0.12, 0.78);
+    const coneMat = new THREE.MeshStandardMaterial({ color: 0xff5500, roughness: 0.35, metalness: 0.1 });
+    const rubberBaseMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.9 });
+    const retroReflectiveMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2, metalness: 0.4, emissive: 0x222222 });
 
     for (let i = 0; i < 20; i++) {
       const u = (i / 20);
@@ -1344,12 +1345,18 @@ export class CityTrackManager {
 
       const g = new THREE.Group();
       const cone = new THREE.Mesh(coneGeom, coneMat);
-      cone.position.y = 0.55;
-      const base = new THREE.Mesh(coneBaseGeom, coneMat);
-      base.position.y = 0.05;
-      const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.3, 10), whiteStripeMat);
-      stripe.position.y = 0.65;
-      g.add(cone, base, stripe);
+      cone.position.y = 0.58;
+
+      const base = new THREE.Mesh(coneBaseGeom, rubberBaseMat);
+      base.position.y = 0.06;
+
+      const stripeUpper = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.18, 14), retroReflectiveMat);
+      stripeUpper.position.y = 0.72;
+
+      const stripeLower = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.36, 0.18, 14), retroReflectiveMat);
+      stripeLower.position.y = 0.45;
+
+      g.add(cone, base, stripeUpper, stripeLower);
 
       const offset = (i % 4 === 0 ? halfWidth - 2.5 : -(halfWidth - 2.5));
       const pos = pt.clone().addScaledVector(normal, offset);
@@ -2071,6 +2078,7 @@ export class CityTrackManager {
         u: item.u,
         speed: item.speed,
         laneOffset: item.lane,
+        baseLane: item.lane,
         wheels: vehicleObj.wheels,
         strobes: vehicleObj.strobes || [],
         mass: massTable[item.type] || 1.3,
@@ -2439,31 +2447,31 @@ export class CityTrackManager {
     for (const prop of this.destructibleProps) {
       if (prop.isHit) continue;
       const dist = prop.group.position.distanceTo(car.position);
-      if (dist < 3.2) {
+      if (dist < 3.0) {
         prop.isHit = true;
-        const hitSpeed = Math.max(25, Math.abs(car.speed));
+        const hitSpeed = Math.max(30, Math.abs(car.speed));
         const forwardX = Math.sin(car.heading);
         const forwardZ = Math.cos(car.heading);
 
+        // Light plastic cone deflection: flies away cleanly with soft sound, no speed penalty or hard crash
         prop.velocity.set(
-          forwardX * hitSpeed * 0.3 + (Math.random() - 0.5) * 10,
-          6.0 + Math.random() * 8.0,
-          forwardZ * hitSpeed * 0.3 + (Math.random() - 0.5) * 10
+          forwardX * hitSpeed * 0.45 + (Math.random() - 0.5) * 8,
+          8.0 + Math.random() * 8.0,
+          forwardZ * hitSpeed * 0.45 + (Math.random() - 0.5) * 8
         );
         prop.rotVelocity.set(
-          (Math.random() - 0.5) * 15,
-          (Math.random() - 0.5) * 15,
-          (Math.random() - 0.5) * 15
+          (Math.random() - 0.5) * 25,
+          (Math.random() - 0.5) * 25,
+          (Math.random() - 0.5) * 25
         );
 
-        car.emitSparks(prop.group.position);
-        cyberAudio.playCrash();
+        cyberAudio.playConeHit();
         car.totalScore += 100;
       }
     }
   }
 
-  // 💥 REALISTIC CAR-TO-CAR PHYSICAL COLLISION ENGINE (AI Rivals & City Traffic)
+  // 💥 REALISTIC MULTI-VEHICLE PHYSICAL COLLISION ENGINE (Player, AI Rivals, City Traffic)
   handleVehicleToVehicleCollisions(playerCar, delta) {
     if (!playerCar || !playerCar.mesh) return;
     const playerPos = playerCar.mesh.position;
@@ -2484,7 +2492,7 @@ export class CityTrackManager {
         const nz = dz / dist;
         const overlap = minSeparation - dist;
 
-        // Position pushout separation
+        // Clean position separation
         playerCar.position.x += nx * (overlap * 0.55);
         playerCar.position.z += nz * (overlap * 0.55);
         playerCar.mesh.position.copy(playerCar.position);
@@ -2496,7 +2504,6 @@ export class CityTrackManager {
           rival.lastCollisionTime = now;
           const hitIntensity = Math.min(2.2, Math.max(0.4, Math.abs(playerSpeed) / 100));
 
-          // Physical Impulse Transfer
           const contactPt = new THREE.Vector3(
             (playerPos.x + rivalPos.x) * 0.5,
             0.65,
@@ -2535,7 +2542,6 @@ export class CityTrackManager {
         const overlap = minSeparation - dist;
         const massRatio = (traffic.mass || 1.3) / 1.0;
 
-        // Heavy traffic (buses / fire trucks) push the player back harder
         const playerWeight = Math.min(0.85, 0.5 * (1.0 / (massRatio * 0.8)));
         const trafficWeight = 1.0 - playerWeight;
 
@@ -2573,6 +2579,76 @@ export class CityTrackManager {
         }
       }
     }
+
+    // 3. 🏎️ ⚡ AI Rivals vs City Traffic (Rivals crash and deflect off traffic)
+    for (let i = 0; i < this.aiRivals.length; i++) {
+      const rival = this.aiRivals[i];
+      const rPos = rival.mesh.position;
+      for (let j = 0; j < this.trafficCars.length; j++) {
+        const traffic = this.trafficCars[j];
+        const tPos = traffic.mesh.position;
+        const dx = rPos.x - tPos.x;
+        const dz = rPos.z - tPos.z;
+        const dist = Math.hypot(dx, dz);
+        const minSep = (traffic.radius || 3.6) + 1.2;
+
+        if (dist < minSep && dist > 0.05) {
+          const nx = dx / dist;
+          const nz = dz / dist;
+          const overlap = minSep - dist;
+
+          rival.knockbackOffset.x += nx * (overlap * 0.6);
+          rival.knockbackOffset.z += nz * (overlap * 0.6);
+          traffic.knockbackOffset.x -= nx * (overlap * 0.4);
+          traffic.knockbackOffset.z -= nz * (overlap * 0.4);
+
+          if (now - rival.lastCollisionTime > 250) {
+            rival.lastCollisionTime = now;
+            rival.knockbackVelocity.set(nx * 18, 0, nz * 18);
+            rival.yawVelocity += (Math.random() - 0.5) * 10;
+            traffic.knockbackVelocity.set(-nx * 8, 0, -nz * 8);
+
+            const dPlayer = playerPos.distanceTo(rPos);
+            if (dPlayer < 45) {
+              cyberAudio.playMetalCrunch(0.7);
+              if (playerCar.emitCollisionSparks) {
+                playerCar.emitCollisionSparks(new THREE.Vector3((rPos.x + tPos.x) * 0.5, 0.7, (rPos.z + tPos.z) * 0.5), new THREE.Vector3(nx, 0.5, nz), 0.8);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 4. 🏎️ 🏎️ AI Rivals vs AI Rivals (Bumping for racing line)
+    for (let i = 0; i < this.aiRivals.length; i++) {
+      const r1 = this.aiRivals[i];
+      for (let j = i + 1; j < this.aiRivals.length; j++) {
+        const r2 = this.aiRivals[j];
+        const dx = r1.mesh.position.x - r2.mesh.position.x;
+        const dz = r1.mesh.position.z - r2.mesh.position.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist < 3.8 && dist > 0.05) {
+          const nx = dx / dist;
+          const nz = dz / dist;
+          const overlap = 3.8 - dist;
+
+          r1.knockbackOffset.x += nx * (overlap * 0.5);
+          r1.knockbackOffset.z += nz * (overlap * 0.5);
+          r2.knockbackOffset.x -= nx * (overlap * 0.5);
+          r2.knockbackOffset.z -= nz * (overlap * 0.5);
+
+          r1.laneOffset += nx * 0.5;
+          r2.laneOffset -= nx * 0.5;
+
+          const dPlayer = playerPos.distanceTo(r1.mesh.position);
+          if (dPlayer < 35 && now - r1.lastCollisionTime > 300) {
+            r1.lastCollisionTime = now;
+            cyberAudio.playMetalCrunch(0.6);
+          }
+        }
+      }
+    }
   }
 
   update(delta, playerCar, isRaceRunning = true, playerLaps = 0) {
@@ -2580,6 +2656,7 @@ export class CityTrackManager {
     const playerSpeed = Math.abs(playerCar.speed);
     const playerU = this.getClosestU(playerPos);
     const now = Date.now();
+    const halfRoad = this.trackWidth / 2 - 2.8;
 
     if (this.garageGroup) {
       this.garageGroup.visible = !isRaceRunning;
@@ -2617,6 +2694,11 @@ export class CityTrackManager {
       rival.yawVelocity *= Math.pow(0.05, delta);
       rival.yawOffset += rival.yawVelocity * delta;
       rival.yawOffset *= Math.pow(0.08, delta);
+
+      // Lane stabilization and road bound limit
+      const targetLane = (i % 2 === 0) ? 5.5 : -5.5;
+      rival.laneOffset = THREE.MathUtils.lerp(rival.laneOffset, targetLane, delta * 0.9);
+      rival.laneOffset = THREE.MathUtils.clamp(rival.laneOffset, -halfRoad, halfRoad);
 
       if (isRaceRunning) {
         const playerTotal = playerLaps + playerU;
@@ -2739,6 +2821,10 @@ export class CityTrackManager {
       car.yawVelocity *= Math.pow(0.05, delta);
       car.yawOffset += car.yawVelocity * delta;
       car.yawOffset *= Math.pow(0.08, delta);
+
+      // Lane stabilization and road bound limit
+      car.laneOffset = THREE.MathUtils.lerp(car.laneOffset, car.baseLane || car.laneOffset, delta * 0.8);
+      car.laneOffset = THREE.MathUtils.clamp(car.laneOffset, -halfRoad, halfRoad);
 
       // Emergency Strobe Flashers
       if (car.strobes && car.strobes.length > 0) {
