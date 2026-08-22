@@ -39,6 +39,11 @@ export class CityTrackManager {
     this.lastKerbRumbleTime = 0;
     this.lastCrowdCheerTime = 0;
 
+    // 💥 3D High-Velocity Flying Car Parts & Debris System
+    this.crashDebrisGroup = new THREE.Group();
+    this.scene.add(this.crashDebrisGroup);
+    this.activeCrashDebris = [];
+
     this.initTextures();
     this.initLighting();
     this.buildTrackEnvironment();
@@ -2438,7 +2443,9 @@ export class CityTrackManager {
         if (Math.abs(car.speed) > 15) {
           car.speed = -car.speed * 0.45;
           car.emitSparks(new THREE.Vector3(cx, 0.6, cz));
+          this.spawnCrashDebris(new THREE.Vector3(cx, 0.6, cz), new THREE.Vector3(nx, 0.5, nz), 1.2, car.bodyColorHex || 0xdc2626, 0x64748b);
           cyberAudio.playCrash();
+          cyberAudio.playGlassShatter(1.0);
         }
         break;
       }
@@ -2468,6 +2475,62 @@ export class CityTrackManager {
         cyberAudio.playConeHit();
         car.totalScore += 100;
       }
+    }
+  }
+
+  // 🚗 💥 VISIBLE 3D FLYING CAR BODY PARTS & DETACHED DEBRIS GENERATOR
+  spawnCrashDebris(pos, normal, intensity = 1.0, colorA = 0xdc2626, colorB = 0x0284c7) {
+    const matA = new THREE.MeshPhysicalMaterial({ color: colorA, metalness: 0.85, roughness: 0.2, clearcoat: 1.0 });
+    const matB = new THREE.MeshPhysicalMaterial({ color: colorB, metalness: 0.85, roughness: 0.2, clearcoat: 1.0 });
+    const carbonMat = new THREE.MeshStandardMaterial({ color: 0x181a20, roughness: 0.35, metalness: 0.8 });
+    const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xe0f2fe, roughness: 0.05, metalness: 0.1, transmission: 0.9, transparent: true });
+    const chromeMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.95, roughness: 0.1 });
+
+    const geoms = [
+      { geom: new THREE.BoxGeometry(1.25, 0.32, 0.35), mat: matA },       // Front bumper corner piece
+      { geom: new THREE.BoxGeometry(0.95, 0.45, 0.14), mat: matB },       // Door / Fender skin plate
+      { geom: new THREE.BoxGeometry(0.45, 0.28, 0.22), mat: carbonMat },  // Aerodynamic side mirror
+      { geom: new THREE.BoxGeometry(1.4, 0.08, 0.35), mat: carbonMat },   // Carbon winglet / splitter blade
+      { geom: new THREE.TetrahedronGeometry(0.32), mat: glassMat },        // Shattered headlight crystal
+      { geom: new THREE.BoxGeometry(0.85, 0.08, 0.08), mat: chromeMat },   // Chrome trim moulding
+    ];
+
+    const partCount = Math.min(8, Math.max(4, Math.round(5 * intensity)));
+    for (let i = 0; i < partCount; i++) {
+      const template = geoms[i % geoms.length];
+      const mesh = new THREE.Mesh(template.geom, template.mat);
+      mesh.castShadow = true;
+
+      const spawnPos = pos.clone().add(new THREE.Vector3(
+        (Math.random() - 0.5) * 0.8,
+        0.35 + Math.random() * 0.5,
+        (Math.random() - 0.5) * 0.8
+      ));
+      mesh.position.copy(spawnPos);
+      mesh.rotation.set(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2);
+
+      this.crashDebrisGroup.add(mesh);
+
+      const normPower = (9 + Math.random() * 12) * Math.min(2.2, intensity);
+      const vel = new THREE.Vector3(
+        normal.x * normPower + (Math.random() - 0.5) * 11,
+        6.0 + Math.random() * 8.0 * Math.min(2.0, intensity),
+        normal.z * normPower + (Math.random() - 0.5) * 11
+      );
+
+      const rotVel = new THREE.Vector3(
+        (Math.random() - 0.5) * 28,
+        (Math.random() - 0.5) * 28,
+        (Math.random() - 0.5) * 28
+      );
+
+      this.activeCrashDebris.push({
+        mesh: mesh,
+        pos: spawnPos,
+        vel: vel,
+        rotVel: rotVel,
+        life: 12.0,
+      });
     }
   }
 
@@ -2511,6 +2574,10 @@ export class CityTrackManager {
           );
 
           playerCar.applyCollisionImpulse(new THREE.Vector3(nx, 0.4, nz), hitIntensity, 0, contactPt);
+
+          // 💥 Spawn high-visibility flying 3D car parts (Bumpers, Mirrors, Winglets, Glass crystals)
+          this.spawnCrashDebris(contactPt, new THREE.Vector3(nx, 0.5, nz), hitIntensity, playerCar.bodyColorHex || 0xdc2626, rival.color || 0xeab308);
+          cyberAudio.playGlassShatter(hitIntensity);
 
           rival.knockbackVelocity.set(-nx * hitIntensity * 32, 0, -nz * hitIntensity * 32);
           rival.yawVelocity += (Math.random() - 0.5) * hitIntensity * 16;
@@ -2564,6 +2631,11 @@ export class CityTrackManager {
 
           playerCar.applyCollisionImpulse(new THREE.Vector3(nx, 0.5, nz), hitIntensity, 0, contactPt);
 
+          // 💥 Spawn flying 3D car parts and shattered glass
+          const trafficColor = (traffic.type === "FIRE_TRUCK") ? 0xb91c1c : ((traffic.type === "BUS") ? 0x0284c7 : ((traffic.type === "PATROL") ? 0x0a0c12 : 0xf8fafc));
+          this.spawnCrashDebris(contactPt, new THREE.Vector3(nx, 0.5, nz), hitIntensity, playerCar.bodyColorHex || 0xdc2626, trafficColor);
+          cyberAudio.playGlassShatter(hitIntensity);
+
           traffic.knockbackVelocity.set(-nx * (hitIntensity / massRatio) * 26, 0, -nz * (hitIntensity / massRatio) * 26);
           traffic.yawVelocity += (Math.random() - 0.5) * (hitIntensity / massRatio) * 12;
           traffic.laneOffset -= nx * (hitIntensity / massRatio) * 3.2;
@@ -2608,11 +2680,15 @@ export class CityTrackManager {
             rival.yawVelocity += (Math.random() - 0.5) * 10;
             traffic.knockbackVelocity.set(-nx * 8, 0, -nz * 8);
 
+            const contactPt = new THREE.Vector3((rPos.x + tPos.x) * 0.5, 0.7, (rPos.z + tPos.z) * 0.5);
+            this.spawnCrashDebris(contactPt, new THREE.Vector3(nx, 0.5, nz), 1.0, rival.color || 0xeab308, 0x0284c7);
+
             const dPlayer = playerPos.distanceTo(rPos);
             if (dPlayer < 45) {
               cyberAudio.playMetalCrunch(0.7);
+              cyberAudio.playGlassShatter(0.6);
               if (playerCar.emitCollisionSparks) {
-                playerCar.emitCollisionSparks(new THREE.Vector3((rPos.x + tPos.x) * 0.5, 0.7, (rPos.z + tPos.z) * 0.5), new THREE.Vector3(nx, 0.5, nz), 0.8);
+                playerCar.emitCollisionSparks(contactPt, new THREE.Vector3(nx, 0.5, nz), 0.8);
               }
             }
           }
@@ -2641,9 +2717,11 @@ export class CityTrackManager {
           r1.laneOffset += nx * 0.5;
           r2.laneOffset -= nx * 0.5;
 
+          const contactPt = new THREE.Vector3((r1.mesh.position.x + r2.mesh.position.x) * 0.5, 0.6, (r1.mesh.position.z + r2.mesh.position.z) * 0.5);
           const dPlayer = playerPos.distanceTo(r1.mesh.position);
           if (dPlayer < 35 && now - r1.lastCollisionTime > 300) {
             r1.lastCollisionTime = now;
+            this.spawnCrashDebris(contactPt, new THREE.Vector3(nx, 0.5, nz), 0.8, r1.color || 0xeab308, r2.color || 0xdc2626);
             cyberAudio.playMetalCrunch(0.6);
           }
         }
@@ -2669,6 +2747,30 @@ export class CityTrackManager {
     // Check Vehicle-to-Vehicle Collisions
     if (isRaceRunning) {
       this.handleVehicleToVehicleCollisions(playerCar, delta);
+    }
+
+    // 💥 Animate 3D Tumbling Flying Car Body Parts & Debris
+    for (let i = this.activeCrashDebris.length - 1; i >= 0; i--) {
+      const d = this.activeCrashDebris[i];
+      d.pos.addScaledVector(d.vel, delta);
+      d.vel.y -= delta * 24.0;
+      d.rotVel.multiplyScalar(Math.pow(0.96, delta));
+      d.mesh.rotation.x += d.rotVel.x * delta;
+      d.mesh.rotation.y += d.rotVel.y * delta;
+      d.mesh.rotation.z += d.rotVel.z * delta;
+
+      if (d.pos.y < 0.14) {
+        d.pos.y = 0.14;
+        d.vel.y = -d.vel.y * 0.38;
+        d.vel.x *= 0.76;
+        d.vel.z *= 0.76;
+      }
+      d.mesh.position.copy(d.pos);
+      d.life -= delta;
+      if (d.life <= 0) {
+        this.crashDebrisGroup.remove(d.mesh);
+        this.activeCrashDebris.splice(i, 1);
+      }
     }
 
     // 1. Rain

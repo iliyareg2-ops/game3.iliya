@@ -820,30 +820,30 @@ export class CyberCar {
   }
 
   emitCollisionSparks(pos, normal = new THREE.Vector3(0, 1, 0), intensity = 1.0) {
-    const numSparks = Math.min(30, Math.round(16 * intensity));
+    const numSparks = Math.min(50, Math.round(28 * intensity));
     for (let i = 0; i < numSparks; i++) {
       const p = this.sparkPool.find((s) => s.life <= 0);
       if (!p) break;
-      p.pos.copy(pos).add(new THREE.Vector3((Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4));
+      p.pos.copy(pos).add(new THREE.Vector3((Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6));
       p.vel.set(
-        normal.x * 12 + (Math.random() - 0.5) * 16,
-        Math.max(2, normal.y * 10 + Math.random() * 12),
-        normal.z * 12 + (Math.random() - 0.5) * 16
-      ).multiplyScalar(0.7 + intensity * 0.4);
-      p.life = 0.35 + Math.random() * 0.25;
+        normal.x * 14 + (Math.random() - 0.5) * 18,
+        Math.max(3, normal.y * 12 + Math.random() * 14),
+        normal.z * 14 + (Math.random() - 0.5) * 18
+      ).multiplyScalar(0.8 + intensity * 0.5);
+      p.life = 0.45 + Math.random() * 0.35;
     }
 
-    const numDebris = Math.min(16, Math.round(8 * intensity));
+    const numDebris = Math.min(28, Math.round(14 * intensity));
     for (let i = 0; i < numDebris; i++) {
       const d = this.debrisPool.find((s) => s.life <= 0);
       if (!d) break;
       d.pos.copy(pos);
       d.vel.set(
-        normal.x * 8 + (Math.random() - 0.5) * 12,
-        4.0 + Math.random() * 8.0,
-        normal.z * 8 + (Math.random() - 0.5) * 12
-      ).multiplyScalar(0.6 + intensity * 0.5);
-      d.life = 0.65 + Math.random() * 0.35;
+        normal.x * 10 + (Math.random() - 0.5) * 14,
+        5.0 + Math.random() * 9.0,
+        normal.z * 10 + (Math.random() - 0.5) * 14
+      ).multiplyScalar(0.7 + intensity * 0.5);
+      d.life = 0.85 + Math.random() * 0.45;
     }
   }
 
@@ -866,6 +866,7 @@ export class CyberCar {
     this.bodyPitch += 0.15 * impulseMagnitude;
 
     cyberAudio.playHeavyImpact(impulseMagnitude);
+    cyberAudio.playMetalCrunch(impulseMagnitude);
   }
 
   emitDriftSmoke() {
