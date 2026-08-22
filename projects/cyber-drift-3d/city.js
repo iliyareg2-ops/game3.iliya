@@ -1198,7 +1198,7 @@ export class CityTrackManager {
     g.add(pillarL, barrierL, pillarR, barrierR, upperSpan, lowerSpan, bannerF, bannerB);
 
     // 4. 🚦 5 FIA FORMULA 1 STARTING LIGHT PODS (CLUSTERS)
-    // Suspended directly above the road, facing backwards (-Z) straight at the starting cars & camera!
+    // Ordered strictly LEFT TO RIGHT (X: -5.2 -> +5.2) facing oncoming cars at Z = 0..16
     const podSpacing = 2.6;
     const bulbGeom = new THREE.CylinderGeometry(0.48, 0.48, 0.18, 28);
     bulbGeom.rotateX(Math.PI / 2);
@@ -1207,8 +1207,10 @@ export class CityTrackManager {
     visorGeom.rotateZ(Math.PI);
     visorGeom.rotateX(Math.PI / 2);
 
+    const haloGeom = new THREE.SphereGeometry(0.68, 16, 16);
+
     for (let i = 0; i < 5; i++) {
-      const podX = (i - 2) * podSpacing;
+      const podX = (i - 2) * podSpacing; // i=0 is FAR LEFT (-5.2), i=4 is FAR RIGHT (+5.2)
       const podGroup = new THREE.Group();
       podGroup.position.set(podX, 6.8, -0.6);
 
@@ -1225,13 +1227,13 @@ export class CityTrackManager {
       hanger.position.set(0, 3.2, 0);
       podGroup.add(hanger);
 
-      // 3 Vertical Lamps per Pod (Facing -Z directly into windshield / chase camera):
-      // Top: Status Light (White/Green)
+      // 3 Vertical Lamps per Pod:
+      // Top: Status Light (Pure Radioactive Green #00ff44)
       const topBulbMat = new THREE.MeshStandardMaterial({
-        color: 0x0f172a,
+        color: 0x051a0e,
         emissive: 0x000000,
         emissiveIntensity: 0.0,
-        roughness: 0.15,
+        roughness: 0.1,
         metalness: 0.2,
       });
       const topBulb = new THREE.Mesh(bulbGeom, topBulbMat);
@@ -1239,14 +1241,24 @@ export class CityTrackManager {
       const topVisor = new THREE.Mesh(visorGeom, hoodMat);
       topVisor.position.set(0, 1.15, -0.55);
       topVisor.rotation.y = Math.PI;
-      podGroup.add(topBulb, topVisor);
 
-      // Middle: Red LED 1
+      const topHaloMat = new THREE.MeshBasicMaterial({
+        color: 0x00ff44,
+        transparent: true,
+        opacity: 0.0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+      const topHalo = new THREE.Mesh(haloGeom, topHaloMat);
+      topHalo.position.set(0, 1.15, -0.42);
+      podGroup.add(topBulb, topVisor, topHalo);
+
+      // Middle: Red LED 1 (Pure Crimson Neon Red #ff0022)
       const red1BulbMat = new THREE.MeshStandardMaterial({
-        color: 0x2b0404,
+        color: 0x240206,
         emissive: 0x000000,
         emissiveIntensity: 0.0,
-        roughness: 0.15,
+        roughness: 0.1,
         metalness: 0.2,
       });
       const red1Bulb = new THREE.Mesh(bulbGeom, red1BulbMat);
@@ -1254,14 +1266,24 @@ export class CityTrackManager {
       const red1Visor = new THREE.Mesh(visorGeom, hoodMat);
       red1Visor.position.set(0, 0.0, -0.55);
       red1Visor.rotation.y = Math.PI;
-      podGroup.add(red1Bulb, red1Visor);
 
-      // Bottom: Red LED 2
+      const red1HaloMat = new THREE.MeshBasicMaterial({
+        color: 0xff0022,
+        transparent: true,
+        opacity: 0.0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+      const red1Halo = new THREE.Mesh(haloGeom, red1HaloMat);
+      red1Halo.position.set(0, 0.0, -0.42);
+      podGroup.add(red1Bulb, red1Visor, red1Halo);
+
+      // Bottom: Red LED 2 (Pure Crimson Neon Red #ff0022)
       const red2BulbMat = new THREE.MeshStandardMaterial({
-        color: 0x2b0404,
+        color: 0x240206,
         emissive: 0x000000,
         emissiveIntensity: 0.0,
-        roughness: 0.15,
+        roughness: 0.1,
         metalness: 0.2,
       });
       const red2Bulb = new THREE.Mesh(bulbGeom, red2BulbMat);
@@ -1269,17 +1291,30 @@ export class CityTrackManager {
       const red2Visor = new THREE.Mesh(visorGeom, hoodMat);
       red2Visor.position.set(0, -1.15, -0.55);
       red2Visor.rotation.y = Math.PI;
-      podGroup.add(red2Bulb, red2Visor);
+
+      const red2HaloMat = new THREE.MeshBasicMaterial({
+        color: 0xff0022,
+        transparent: true,
+        opacity: 0.0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+      const red2Halo = new THREE.Mesh(haloGeom, red2HaloMat);
+      red2Halo.position.set(0, -1.15, -0.42);
+      podGroup.add(red2Bulb, red2Visor, red2Halo);
 
       // Dynamic Point Light illuminating the track asphalt & car hood in front of the gantry
-      const pointLight = new THREE.PointLight(0xff0000, 0.0, 45, 1.2);
+      const pointLight = new THREE.PointLight(0xff0022, 0.0, 55, 1.1);
       pointLight.position.set(0, 0.0, -2.2);
       podGroup.add(pointLight);
 
       this.f1LightUnits.push({
         topBulbMat,
+        topHaloMat,
         red1BulbMat,
+        red1HaloMat,
         red2BulbMat,
+        red2HaloMat,
         pointLight,
       });
 
@@ -1312,42 +1347,53 @@ export class CityTrackManager {
     this.trackWorldGroup.add(g);
   }
 
-  // 🚦 FIA FORMULA 1 STARTING LIGHTS CONTROLLER
+  // 🚦 FIA FORMULA 1 STARTING LIGHTS CONTROLLER (Strictly Left-to-Right + Vibrant Crimson & Emerald)
   setF1StartLights(activeRedCount, isGreen = false) {
     if (!this.f1LightUnits || this.f1LightUnits.length === 0) return;
 
     for (let i = 0; i < this.f1LightUnits.length; i++) {
       const unit = this.f1LightUnits[i];
       if (activeRedCount >= (i + 1)) {
-        // Red lights ON for this pod
-        unit.red1BulbMat.color.setHex(0xff0000);
-        unit.red1BulbMat.emissive.setHex(0xff0000);
-        unit.red1BulbMat.emissiveIntensity = 5.5;
+        // Red lights ON for this pod (from i=0 Left to i=4 Right)
+        unit.red1BulbMat.color.setHex(0xff0022);
+        unit.red1BulbMat.emissive.setHex(0xff0011);
+        unit.red1BulbMat.emissiveIntensity = 8.5;
+        unit.red1HaloMat.opacity = 0.85;
 
-        unit.red2BulbMat.color.setHex(0xff0000);
-        unit.red2BulbMat.emissive.setHex(0xff0000);
-        unit.red2BulbMat.emissiveIntensity = 5.5;
+        unit.red2BulbMat.color.setHex(0xff0022);
+        unit.red2BulbMat.emissive.setHex(0xff0011);
+        unit.red2BulbMat.emissiveIntensity = 8.5;
+        unit.red2HaloMat.opacity = 0.85;
 
         unit.topBulbMat.emissiveIntensity = 0.0;
+        unit.topHaloMat.opacity = 0.0;
 
-        unit.pointLight.color.setHex(0xff1111);
-        unit.pointLight.intensity = 4.5;
+        unit.pointLight.color.setHex(0xff0022);
+        unit.pointLight.intensity = 6.5;
       } else if (isGreen) {
-        // Green Go Light ON
+        // Saturated Green Go Light ON
         unit.red1BulbMat.emissiveIntensity = 0.0;
+        unit.red1HaloMat.opacity = 0.0;
         unit.red2BulbMat.emissiveIntensity = 0.0;
+        unit.red2HaloMat.opacity = 0.0;
 
-        unit.topBulbMat.color.setHex(0x22c55e);
-        unit.topBulbMat.emissive.setHex(0x16a34a);
-        unit.topBulbMat.emissiveIntensity = 6.0;
+        unit.topBulbMat.color.setHex(0x00ff44);
+        unit.topBulbMat.emissive.setHex(0x00ff33);
+        unit.topBulbMat.emissiveIntensity = 9.5;
+        unit.topHaloMat.opacity = 0.95;
 
-        unit.pointLight.color.setHex(0x22c55e);
-        unit.pointLight.intensity = 5.0;
+        unit.pointLight.color.setHex(0x00ff44);
+        unit.pointLight.intensity = 8.0;
       } else {
         // All Lights OFF
         unit.red1BulbMat.emissiveIntensity = 0.0;
+        unit.red1HaloMat.opacity = 0.0;
         unit.red2BulbMat.emissiveIntensity = 0.0;
+        unit.red2HaloMat.opacity = 0.0;
+
         unit.topBulbMat.emissiveIntensity = 0.0;
+        unit.topHaloMat.opacity = 0.0;
+
         unit.pointLight.intensity = 0.0;
       }
     }
