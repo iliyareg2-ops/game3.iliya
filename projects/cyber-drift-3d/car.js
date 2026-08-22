@@ -78,6 +78,13 @@ export class CyberCar {
       headlightR: true,
       spoilerDetached: false,
     };
+    this.crashCount = 0;
+    this.maxCrashes = 20;
+    this.isTotalled = false;
+    this.lastCrashCountTime = 0;
+    this.onCrashCallback = null;
+    this.onTotalledCallback = null;
+
     this.detachedPartsGroup = new THREE.Group();
     this.scene.add(this.detachedPartsGroup);
     this.detachedParts = [];
@@ -848,11 +855,26 @@ export class CyberCar {
   }
 
   applyCollisionImpulse(normalVec, impulseMagnitude, otherSpeed = 0, contactPoint = null) {
+    if (this.isTotalled) return;
+
     const contact = contactPoint || this.position.clone();
     this.emitCollisionSparks(contact, normalVec, impulseMagnitude);
 
+    // 🛠️ Crash Counter (20 Crashes Total Limit)
+    const now = Date.now();
+    if (now - this.lastCrashCountTime > 180) {
+      this.lastCrashCountTime = now;
+      this.crashCount = Math.min(this.maxCrashes, this.crashCount + 1);
+      if (this.onCrashCallback) {
+        this.onCrashCallback(this.crashCount, this.maxCrashes);
+      }
+      if (this.crashCount >= this.maxCrashes) {
+        this.triggerTotalDestruction(contact, normalVec);
+        return;
+      }
+    }
+
     // Realistic vehicle recoil & speed reduction
-    const speedRatio = Math.abs(this.speed) / 250;
     const impactDamp = Math.max(0.2, 1.0 - (impulseMagnitude * 0.35));
     this.speed = this.speed * impactDamp;
 
@@ -867,6 +889,130 @@ export class CyberCar {
 
     cyberAudio.playHeavyImpact(impulseMagnitude);
     cyberAudio.playMetalCrunch(impulseMagnitude);
+  }
+
+  // 💥 CATASTROPHIC 20-CRASH TOTAL VEHICLE BREAKDOWN & EXPLOSION
+  triggerTotalDestruction(contactPoint = null, normalVec = null) {
+    if (this.isTotalled) return;
+    this.isTotalled = true;
+    this.speed = 0;
+    this.angularVelocity = 0;
+    this.throttleInput = 0;
+    this.steerInput = 0;
+    this.nitroActive = false;
+    this.isDrifting = false;
+
+    const heading = this.heading;
+    const forward = new THREE.Vector3(Math.sin(heading), 0, Math.cos(heading));
+    const right = new THREE.Vector3(Math.cos(heading), 0, -Math.sin(heading));
+
+    const paintMat = new THREE.MeshStandardMaterial({
+      color: this.bodyColorHex || 0xdc2626,
+      roughness: 0.25,
+      metalness: 0.85,
+    });
+    const carbonMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4, metalness: 0.8 });
+    const tireMat = new THREE.MeshStandardMaterial({ color: 0x141518, roughness: 0.85 });
+    const rimMat = new THREE.MeshStandardMaterial({ color: this.rimColorHex || 0xd4d4d8, metalness: 0.9, roughness: 0.2 });
+    const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x38bdf8, roughness: 0.1, transmission: 0.8, transparent: true, opacity: 0.8 });
+
+    // 1. 4 Detached Flying Wheels that roll and bounce away
+    const wheelGeom = new THREE.CylinderGeometry(0.52, 0.52, 0.38, 16);
+    wheelGeom.rotateZ(Math.PI / 2);
+    const rimGeom = new THREE.CylinderGeometry(0.36, 0.36, 0.4, 16);
+    rimGeom.rotateZ(Math.PI / 2);
+
+    const wheelOffsets = [
+      { x: 1.85, z: 2.6 },   // Front Left
+      { x: -1.85, z: 2.6 },  // Front Right
+      { x: 1.85, z: -2.6 },  // Rear Left
+      { x: -1.85, z: -2.6 }, // Rear Right
+    ];
+
+    wheelOffsets.forEach((wOff) => {
+      const wg = new THREE.Group();
+      wg.add(new THREE.Mesh(wheelGeom, tireMat));
+      wg.add(new THREE.Mesh(rimGeom, rimMat));
+      const wPos = this.position.clone().addScaledVector(right, wOff.x).addScaledVector(forward, wOff.z);
+      wPos.y = 0.5;
+      wg.position.copy(wPos);
+      this.detachedPartsGroup.add(wg);
+
+      this.detachedParts.push({
+        mesh: wg,
+        pos: wPos,
+        vel: new THREE.Vector3(
+          Math.sign(wOff.x) * (9 + Math.random() * 12) + (Math.random() - 0.5) * 6,
+          7.0 + Math.random() * 9.0,
+          Math.sign(wOff.z) * (8 + Math.random() * 12) + (Math.random() - 0.5) * 6
+        ),
+        rotVel: new THREE.Vector3(Math.random() * 22, Math.random() * 18, Math.random() * 22),
+        life: 25.0,
+      });
+    });
+
+    // 2. Detached Front & Rear Bumpers, Hood, Doors, Carbon Wing, Side Mirrors
+    const partsDef = [
+      { geom: new THREE.BoxGeometry(4.4, 0.7, 0.6), mat: paintMat, offset: new THREE.Vector3(0, 0.5, 4.8), velMult: new THREE.Vector3(0, 1.2, 1.8) },  // Front Bumper
+      { geom: new THREE.BoxGeometry(4.4, 0.7, 0.6), mat: paintMat, offset: new THREE.Vector3(0, 0.5, -4.8), velMult: new THREE.Vector3(0, 1.2, -1.8) }, // Rear Bumper
+      { geom: new THREE.BoxGeometry(3.6, 0.15, 3.2), mat: paintMat, offset: new THREE.Vector3(0, 0.95, 2.4), velMult: new THREE.Vector3(0, 2.0, 1.2) },  // Hood
+      { geom: new THREE.BoxGeometry(0.2, 0.9, 2.8), mat: paintMat, offset: new THREE.Vector3(2.1, 0.8, 0), velMult: new THREE.Vector3(1.8, 1.4, 0) },    // Left Door
+      { geom: new THREE.BoxGeometry(0.2, 0.9, 2.8), mat: paintMat, offset: new THREE.Vector3(-2.1, 0.8, 0), velMult: new THREE.Vector3(-1.8, 1.4, 0) },  // Right Door
+      { geom: new THREE.BoxGeometry(4.6, 0.15, 1.2), mat: carbonMat, offset: new THREE.Vector3(0, 1.6, -4.2), velMult: new THREE.Vector3(0, 2.2, -1.6) }, // Carbon Wing
+      { geom: new THREE.BoxGeometry(0.4, 0.3, 0.4), mat: paintMat, offset: new THREE.Vector3(2.2, 1.1, 1.4), velMult: new THREE.Vector3(1.9, 1.5, 0.5) },   // Left Mirror
+      { geom: new THREE.BoxGeometry(0.4, 0.3, 0.4), mat: paintMat, offset: new THREE.Vector3(-2.2, 1.1, 1.4), velMult: new THREE.Vector3(-1.9, 1.5, 0.5) }, // Right Mirror
+    ];
+
+    partsDef.forEach((pd) => {
+      const mesh = new THREE.Mesh(pd.geom, pd.mat);
+      const pPos = this.position.clone().addScaledVector(right, pd.offset.x).addScaledVector(forward, pd.offset.z);
+      pPos.y = pd.offset.y;
+      mesh.position.copy(pPos);
+      this.detachedPartsGroup.add(mesh);
+
+      const baseVel = new THREE.Vector3(
+        right.x * pd.velMult.x * 14 + forward.x * pd.velMult.z * 14 + (Math.random() - 0.5) * 6,
+        pd.velMult.y * (9 + Math.random() * 9),
+        right.z * pd.velMult.x * 14 + forward.z * pd.velMult.z * 14 + (Math.random() - 0.5) * 6
+      );
+
+      this.detachedParts.push({
+        mesh,
+        pos: pPos,
+        vel: baseVel,
+        rotVel: new THREE.Vector3(Math.random() * 26, Math.random() * 26, Math.random() * 26),
+        life: 25.0,
+      });
+    });
+
+    // 3. 24 Shattered Glass Shards
+    for (let g = 0; g < 24; g++) {
+      const gMesh = new THREE.Mesh(new THREE.TetrahedronGeometry(0.25 + Math.random() * 0.35), glassMat);
+      const gPos = this.position.clone().add(new THREE.Vector3((Math.random() - 0.5) * 3.5, 1.2 + Math.random() * 0.8, (Math.random() - 0.5) * 5.0));
+      gMesh.position.copy(gPos);
+      this.detachedPartsGroup.add(gMesh);
+
+      this.detachedParts.push({
+        mesh: gMesh,
+        pos: gPos,
+        vel: new THREE.Vector3((Math.random() - 0.5) * 24, 7 + Math.random() * 12, (Math.random() - 0.5) * 24),
+        rotVel: new THREE.Vector3(Math.random() * 35, Math.random() * 35, Math.random() * 35),
+        life: 20.0,
+      });
+    }
+
+    // Hide car body and wheels
+    this.bodyGroup.visible = false;
+    this.wheelGroup.visible = false;
+
+    // Catastrophic collision sound effects
+    cyberAudio.playHeavyImpact(3.5);
+    cyberAudio.playMetalCrunch(3.5);
+    cyberAudio.playGlassShatter(3.5);
+
+    if (this.onTotalledCallback) {
+      this.onTotalledCallback();
+    }
   }
 
   emitDriftSmoke() {
@@ -974,6 +1120,30 @@ export class CyberCar {
   }
 
   updatePhysics(delta, trackManager) {
+    if (this.isTotalled) {
+      this.speed = 0;
+      this.angularVelocity = 0;
+      this.throttleInput = 0;
+      this.steerInput = 0;
+      this.nitroActive = false;
+
+      // Heavy black smoke from wrecked engine bay
+      if (Math.random() > 0.3) {
+        const enginePos = this.position.clone().add(new THREE.Vector3((Math.random() - 0.5) * 1.6, 0.4, 1.4));
+        const p = this.smokePool.find((s) => s.life <= 0);
+        if (p) {
+          p.pos.copy(enginePos);
+          p.vel.set((Math.random() - 0.5) * 1.2, 2.5 + Math.random() * 2.8, (Math.random() - 0.5) * 1.2);
+          p.life = 1.4;
+          p.maxLife = 1.4;
+        }
+      }
+
+      cyberAudio.stopEngine();
+      this._updateParticles(delta);
+      return;
+    }
+
     this.recordHistoryState();
 
     const stageSpeedBonus = [0, 22, 44, 70][this.stage || 0] || 0;
@@ -1291,9 +1461,22 @@ export class CyberCar {
     this._buildUnderglowNeon();
   }
 
-  setStage(stageNum) {
-    this.stage = stageNum;
-    this.isWarpSpeed = (stageNum === 4);
+  repairCar() {
+    this.damageState = {
+      headlightL: true,
+      headlightR: true,
+      spoilerDetached: false,
+    };
+    this.crashCount = 0;
+    this.isTotalled = false;
+    this.bodyGroup.visible = true;
+    this.wheelGroup.visible = true;
+
+    while (this.detachedPartsGroup.children.length > 0) {
+      this.detachedPartsGroup.remove(this.detachedPartsGroup.children[0]);
+    }
+    this.detachedParts = [];
+    this.initCarModel();
   }
 
   reset() {

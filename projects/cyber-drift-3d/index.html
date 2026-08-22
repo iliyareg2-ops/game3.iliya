@@ -274,6 +274,23 @@
       line-height: 1.1;
     }
 
+    .damage-block {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 4px 14px;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .damage-val {
+      font-size: 20px;
+      font-weight: 900;
+      color: #22c55e;
+      line-height: 1.1;
+      letter-spacing: 0.02em;
+      transition: color 0.15s ease;
+    }
+
     .quick-actions {
       display: flex;
       gap: 8px;
@@ -789,6 +806,11 @@
           <span class="lap-label">ОЧКИ</span>
           <span class="score-val" id="hud-score">0</span>
         </div>
+
+        <div class="damage-block" id="hud-damage-block">
+          <span class="lap-label">КУЗОВ</span>
+          <span class="damage-val" id="hud-car-health">20/20 HP</span>
+        </div>
       </div>
 
       <div class="quick-actions">
@@ -839,6 +861,22 @@
           <span class="gauge-rpm-label" id="hud-rpm-val">1200 RPM</span>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- 💥 CAR TOTALLED / WRECKED OVERLAY -->
+  <div class="screen-overlay" id="totalled-screen">
+    <div class="finish-card" style="border: 2px solid #ef4444; box-shadow: 0 0 50px rgba(239, 68, 68, 0.5);">
+      <div style="font-size: 56px; margin-bottom: 8px;">💥</div>
+      <h2 style="color: #ef4444; font-size: 26px; font-weight: 900; margin-bottom: 8px;">МАШИНА РАЗБИТА В ТОТАЛ!</h2>
+      <p style="color: #cbd5e1; font-size: 15px; margin-bottom: 18px; line-height: 1.4;">
+        Кузов получил 20 критических повреждений и полностью развалился на части. Движение невозможно.
+      </p>
+      <div style="background: rgba(15, 23, 42, 0.8); border-radius: 10px; padding: 14px; margin-bottom: 20px; border: 1px solid rgba(239, 68, 68, 0.3);">
+        <div style="color: #94a3b8; font-size: 12px; margin-bottom: 4px;">ПРИЧИНА АВАРИИ</div>
+        <div style="color: #f87171; font-size: 18px; font-weight: 800;">20 СТОЛКНОВЕНИЙ НА ТРАССЕ (ТОТАЛ)</div>
+      </div>
+      <button class="btn-main" id="btn-totalled-respawn" style="background: #dc2626; box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5);">🛠️ ВОССТАНОВИТЬ СПОРТКАР [R]</button>
     </div>
   </div>
 

@@ -120,6 +120,26 @@ export class CyberDriftGame {
       this.triggerGamepadVibration(280, 0.85, 0.95);
     };
 
+    // 🛠️ 20-Crash Destruction & Totalled Breakdown System
+    this.car.onCrashCallback = (crashCount, maxCrashes) => {
+      const remaining = Math.max(0, maxCrashes - crashCount);
+      this.updateDamageHUD(crashCount, maxCrashes);
+      if (remaining > 0) {
+        this.showBanner(`⚠️ УДАР [${crashCount}/20] • ОСТАЛОСЬ ${remaining} ХП ДО РАЗРУШЕНИЯ!`, 2200);
+        this.screenShake = Math.min(2.5, this.screenShake + 0.6);
+        this.triggerGamepadVibration(180, 0.6, 0.7);
+      }
+    };
+
+    this.car.onTotalledCallback = () => {
+      this.updateDamageHUD(20, 20);
+      this.screenShake = 4.0;
+      this.triggerGamepadVibration(600, 1.0, 1.0);
+      this.showBanner("💥 МАШИНА ПОЛНОСТЬЮ РАЗБИТА В ТОТАЛ (20/20 СТОЛКНОВЕНИЙ)!", 5000);
+      const totScreen = document.getElementById("totalled-screen");
+      if (totScreen) totScreen.style.display = "grid";
+    };
+
     // 🎮 Gamepad State
     this.gamepadIndex = -1;
     this.lastGamepadCamPress = 0;
@@ -496,6 +516,20 @@ export class CyberDriftGame {
       finishRestartBtn.addEventListener("click", () => this.resetCar());
       finishRestartBtn.addEventListener("touchstart", () => this.resetCar(), { passive: true });
     }
+
+    const btnTotRespawn = document.getElementById("btn-totalled-respawn");
+    if (btnTotRespawn) {
+      btnTotRespawn.addEventListener("click", () => {
+        const totScreen = document.getElementById("totalled-screen");
+        if (totScreen) totScreen.style.display = "none";
+        this.resetCar();
+      });
+      btnTotRespawn.addEventListener("touchstart", () => {
+        const totScreen = document.getElementById("totalled-screen");
+        if (totScreen) totScreen.style.display = "none";
+        this.resetCar();
+      }, { passive: true });
+    }
   }
 
   showSkillBadge(text) {
@@ -745,10 +779,33 @@ export class CyberDriftGame {
     if (this.camModeEl) this.camModeEl.textContent = label;
   }
 
+  updateDamageHUD(crashCount, maxCrashes = 20) {
+    const healthEl = document.getElementById("hud-car-health");
+    if (!healthEl) return;
+    const remaining = Math.max(0, maxCrashes - crashCount);
+    healthEl.textContent = `${remaining}/${maxCrashes} HP`;
+    if (remaining >= 15) {
+      healthEl.style.color = "#22c55e";
+    } else if (remaining >= 8) {
+      healthEl.style.color = "#f59e0b";
+    } else if (remaining > 0) {
+      healthEl.style.color = "#ef4444";
+    } else {
+      healthEl.textContent = "💥 ТОТАЛ";
+      healthEl.style.color = "#dc2626";
+    }
+  }
+
   resetCar() {
+    const totScreen = document.getElementById("totalled-screen");
+    if (totScreen) totScreen.style.display = "none";
+    const finScreen = document.getElementById("finish-screen");
+    if (finScreen) finScreen.style.display = "none";
+
+    this.updateDamageHUD(0, 20);
     this.car.reset();
     this.startCountdown();
-    this.showBanner("🔄 РЕСТАРТ ГОНКИ! НА СТАРТ");
+    this.showBanner("🔄 РЕСТАРТ ГОНКИ! АВТОМОБИЛЬ ВОССТАНОВЛЕН");
   }
 
   showBanner(text, duration = 2800) {
