@@ -2795,12 +2795,10 @@ export class CityTrackManager {
         car.position.z += nz * (overlap + 0.35);
         car.mesh.position.copy(car.position);
 
-        if (Math.abs(car.speed) > 15) {
-          car.speed = -car.speed * 0.45;
-          car.emitSparks(new THREE.Vector3(cx, 0.6, cz));
+        if (Math.abs(car.speed) > 12) {
+          const hitIntensity = Math.min(2.5, Math.max(0.6, Math.abs(car.speed) / 55));
+          car.applyCollisionImpulse(new THREE.Vector3(nx, 0.5, nz), hitIntensity, 0, new THREE.Vector3(cx, 0.6, cz));
           this.spawnCrashDebris(new THREE.Vector3(cx, 0.6, cz), new THREE.Vector3(nx, 0.5, nz), 1.2, car.bodyColorHex || 0xdc2626, 0x64748b);
-          cyberAudio.playCrash();
-          cyberAudio.playGlassShatter(1.0);
         }
         break;
       }

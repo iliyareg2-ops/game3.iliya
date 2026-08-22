@@ -122,20 +122,15 @@ export class CyberDriftGame {
 
     // 🛠️ 20-Crash Destruction & Totalled Breakdown System
     this.car.onCrashCallback = (crashCount, maxCrashes) => {
-      const remaining = Math.max(0, maxCrashes - crashCount);
       this.updateDamageHUD(crashCount, maxCrashes);
-      if (remaining > 0) {
-        this.showBanner(`⚠️ УДАР [${crashCount}/20] • ОСТАЛОСЬ ${remaining} ХП ДО РАЗРУШЕНИЯ!`, 2200);
-        this.screenShake = Math.min(2.5, this.screenShake + 0.6);
-        this.triggerGamepadVibration(180, 0.6, 0.7);
-      }
+      this.screenShake = Math.min(2.5, this.screenShake + 0.6);
+      this.triggerGamepadVibration(180, 0.6, 0.7);
     };
 
     this.car.onTotalledCallback = () => {
       this.updateDamageHUD(20, 20);
       this.screenShake = 4.0;
       this.triggerGamepadVibration(600, 1.0, 1.0);
-      this.showBanner("💥 МАШИНА ПОЛНОСТЬЮ РАЗБИТА В ТОТАЛ (20/20 СТОЛКНОВЕНИЙ)!", 5000);
       const totScreen = document.getElementById("totalled-screen");
       if (totScreen) totScreen.style.display = "grid";
     };
