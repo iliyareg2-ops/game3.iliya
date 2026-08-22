@@ -276,12 +276,14 @@ export class CyberDriftGame {
         this.car.isWarpSpeed = !this.car.isWarpSpeed;
         if (this.car.isWarpSpeed) {
           this.car.stage = 4;
+          this.car.speed = Math.max(this.car.speed, 350);
           cyberAudio.playScoreChime();
-          this.showBanner("🚀 СКОРОСТЬ 11,000 КМ/Ч АКТИВИРОВАНА! ⚡", 4000);
-          this.showSkillBadge("🚀 11,000 KM/H HYPER OVERDRIVE");
+          this.showBanner("🚀 СКОРОСТЬ 99,999 КМ/Ч АКТИВИРОВАНА! ⚡", 4000);
+          this.showSkillBadge("🚀 99,999 KM/H HYPER OVERDRIVE");
+          this.triggerGamepadVibration(400, 0.7, 0.7);
         } else {
           this.car.stage = 0;
-          this.showBanner("🛑 Режим 11,000 КМ/Ч выключен", 2000);
+          this.showBanner("🛑 Режим 99,999 КМ/Ч выключен", 2000);
         }
       }
 
@@ -892,7 +894,7 @@ export class CyberDriftGame {
     const spd = Math.round(Math.abs(this.car.speed));
     if (this.speedEl) {
       if (this.car.isWarpSpeed && (spd > 15 || this.keys.forward || this.keys.nitro)) {
-        this.speedEl.textContent = "11,000";
+        this.speedEl.textContent = "99,999";
         this.speedEl.style.fontSize = "38px";
         this.speedEl.style.letterSpacing = "0.04em";
         this.speedEl.style.background = "linear-gradient(90deg, #38bdf8, #818cf8, #f43f5e, #facc15)";
