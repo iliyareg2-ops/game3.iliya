@@ -2403,6 +2403,8 @@ export class CityTrackManager {
         plumes: vehicleObj.plumes || [],
         mass: massTable[item.type] || 1.3,
         radius: radiusTable[item.type] || 3.4,
+        lapsCompleted: 0,
+        isFinished: false,
         knockbackOffset: new THREE.Vector3(),
         knockbackVelocity: new THREE.Vector3(),
         yawOffset: 0,
@@ -2431,6 +2433,9 @@ export class CityTrackManager {
       tc.u = def.u;
       tc.laneOffset = def.lane;
       tc.baseLane = def.lane;
+      tc.lapsCompleted = 0;
+      tc.isFinished = false;
+      tc.mesh.visible = true;
       tc.knockbackOffset.set(0, 0, 0);
       tc.knockbackVelocity.set(0, 0, 0);
       tc.yawOffset = 0;
@@ -2947,6 +2952,7 @@ export class CityTrackManager {
     // 2. 🚒 🚌 🚔 Player vs City Traffic Fleet
     for (let i = 0; i < this.trafficCars.length; i++) {
       const traffic = this.trafficCars[i];
+      if (traffic.isFinished) continue;
       const trafficPos = traffic.mesh.position;
       const dx = playerPos.x - trafficPos.x;
       const dz = playerPos.z - trafficPos.z;
@@ -3266,6 +3272,8 @@ export class CityTrackManager {
     // 6. Rich City Traffic Fleet (Physical Knockback & Strobe Animation)
     const isStrobeActive = Math.sin(now * 0.024) > 0;
     for (const car of this.trafficCars) {
+      if (car.isFinished) continue;
+
       // Damping physical knockback and spinout
       car.knockbackVelocity.multiplyScalar(Math.pow(0.04, delta));
       car.knockbackOffset.addScaledVector(car.knockbackVelocity, delta);
@@ -3285,7 +3293,18 @@ export class CityTrackManager {
         }
       }
 
-      car.u = (car.u + car.speed * delta) % 1.0;
+      car.u += car.speed * delta;
+      if (car.u >= 1.0) {
+        car.u = car.u % 1.0;
+        car.lapsCompleted = (car.lapsCompleted || 0) + 1;
+        if (car.type === "HYPER_1000" && car.lapsCompleted >= 2) {
+          car.isFinished = true;
+          car.mesh.visible = false;
+          car.mesh.position.set(0, -999, 0);
+          continue;
+        }
+      }
+
       const pt = this.trackCurve.getPointAt(car.u);
       const tangent = this.trackCurve.getTangentAt(car.u).normalize();
       const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
