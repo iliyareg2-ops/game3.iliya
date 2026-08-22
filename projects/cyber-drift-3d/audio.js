@@ -474,28 +474,90 @@ class CyberAudioEngine {
     this.nitroGain.gain.setTargetAtTime(targetNitro, t, 0.06);
   }
 
-  playCrash() {
+  playCrash(intensity = 1.0) {
+    this.playHeavyImpact(intensity);
+  }
+
+  playHeavyImpact(intensity = 1.0) {
     if (!this.isInitialized || this.isMuted) return;
     const t = this.ctx.currentTime;
+    const clampedInt = Math.min(2.0, Math.max(0.2, intensity));
 
-    const noiseBuffer = this._createNoiseBuffer(0.6);
+    // 1. Low Thud Impact Body Impulse
+    const osc = this.ctx.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(140 * clampedInt, t);
+    osc.frequency.exponentialRampToValueAtTime(25, t + 0.35);
+
+    const oscGain = this.ctx.createGain();
+    oscGain.gain.setValueAtTime(0.85 * clampedInt, t);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
+
+    osc.connect(oscGain);
+    oscGain.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.4);
+
+    // 2. Metal Crumple & Glass Crunch Noise
+    const noiseBuffer = this._createNoiseBuffer(0.5);
     const noise = this.ctx.createBufferSource();
     noise.buffer = noiseBuffer;
 
     const filter = this.ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.setValueAtTime(350, t);
-    filter.frequency.exponentialRampToValueAtTime(30, t + 0.5);
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(800 * clampedInt, t);
+    filter.frequency.exponentialRampToValueAtTime(80, t + 0.45);
+    filter.Q.setValueAtTime(2.2, t);
+
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.8 * clampedInt, t);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.48);
+
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(this.masterGain);
+    noise.start(t);
+    noise.stop(t + 0.5);
+
+    // 3. Resonant Metal Screech Ring
+    const ring = this.ctx.createOscillator();
+    ring.type = "sine";
+    ring.frequency.setValueAtTime(440 + Math.random() * 200, t);
+    ring.frequency.exponentialRampToValueAtTime(110, t + 0.28);
+
+    const ringGain = this.ctx.createGain();
+    ringGain.gain.setValueAtTime(0.35 * clampedInt, t);
+    ringGain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+
+    ring.connect(ringGain);
+    ringGain.connect(this.masterGain);
+    ring.start(t);
+    ring.stop(t + 0.32);
+  }
+
+  playMetalCrunch(intensity = 1.0) {
+    if (!this.isInitialized || this.isMuted) return;
+    const t = this.ctx.currentTime;
+    const clampedInt = Math.min(1.5, Math.max(0.2, intensity));
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = this._createNoiseBuffer(0.35);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(1200, t);
+    filter.frequency.exponentialRampToValueAtTime(250, t + 0.3);
+    filter.Q.setValueAtTime(3.5, t);
 
     const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.75, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+    gain.gain.setValueAtTime(0.6 * clampedInt, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
 
     noise.connect(filter);
     filter.connect(gain);
     gain.connect(this.masterGain);
     noise.start(t);
-    noise.stop(t + 0.6);
+    noise.stop(t + 0.35);
   }
 
   playScoreChime() {}

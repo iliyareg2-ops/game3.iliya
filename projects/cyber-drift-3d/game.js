@@ -113,6 +113,12 @@ export class CyberDriftGame {
       this.showSkillBadge("⚡ N2O NITRO BOTTLE REFILL +100%");
     };
 
+    this.trackManager.onTakedownCallback = (bannerText) => {
+      this.showBanner(bannerText, 2500);
+      this.showSkillBadge(bannerText);
+      this.screenShake = Math.min(3.5, this.screenShake + 1.2);
+    };
+
     // 👻 Holographic Ghost Car System
     this.currentLapTelemetry = [];
     this.bestLapTelemetry = [];

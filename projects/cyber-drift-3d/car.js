@@ -744,7 +744,7 @@ export class CyberCar {
       this.backfirePool.push({ pos: new THREE.Vector3(0, -9999, 0), life: 0, vel: new THREE.Vector3() });
     }
 
-    const sparkCount = 60;
+    const sparkCount = 120;
     const sparkGeom = new THREE.BufferGeometry();
     const spkPos = new Float32Array(sparkCount * 3);
     for (let i = 0; i < sparkCount; i++) {
@@ -754,12 +754,13 @@ export class CyberCar {
     }
     sparkGeom.setAttribute("position", new THREE.BufferAttribute(spkPos, 3));
     const sparkMat = new THREE.PointsMaterial({
-      color: 0xffaa00,
-      size: 0.8,
+      color: 0xffdd44,
+      size: 1.4,
       sizeAttenuation: true,
       transparent: true,
-      opacity: 0.9,
+      opacity: 0.95,
       depthWrite: false,
+      blending: THREE.AdditiveBlending,
     });
     this.sparkPoints = new THREE.Points(sparkGeom, sparkMat);
     this.sparkPoints.frustumCulled = false;
@@ -768,60 +769,85 @@ export class CyberCar {
     for (let i = 0; i < sparkCount; i++) {
       this.sparkPool.push({ pos: new THREE.Vector3(0, -9999, 0), life: 0, vel: new THREE.Vector3() });
     }
-  }
 
-  setCarType(typeIndex) {
-    this.carTypeIndex = typeIndex;
-    this.initCarModel();
-  }
-
-  setBodyColor(hex) {
-    this.bodyColorHex = hex;
-    this.initCarModel();
-  }
-
-  setSpoilerType(type) {
-    this.spoilerType = type;
-    this.initCarModel();
-  }
-
-  setFinishType(finish) {
-    this.finishType = finish;
-    this.initCarModel();
-  }
-
-  setWindowTint(tint) {
-    this.windowTint = tint;
-    this.initCarModel();
-  }
-
-  setRimColor(hex) {
-    this.rimColorHex = hex;
-    this.initCarModel();
-  }
-
-  setBodykit(bodykit) {
-    this.bodykit = bodykit;
-    this.initCarModel();
-  }
-
-  setUnderglowNeon(neon) {
-    this.underglowNeon = neon;
-    this.initCarModel();
-  }
-
-  setStage(stage) {
-    this.stage = stage;
+    // 💥 High-Impact Crash Debris & Shards
+    const debrisCount = 80;
+    const debrisGeom = new THREE.BufferGeometry();
+    const debPos = new Float32Array(debrisCount * 3);
+    for (let i = 0; i < debrisCount; i++) {
+      debPos[i * 3] = 0;
+      debPos[i * 3 + 1] = -9999;
+      debPos[i * 3 + 2] = 0;
+    }
+    debrisGeom.setAttribute("position", new THREE.BufferAttribute(debPos, 3));
+    const debrisMat = new THREE.PointsMaterial({
+      color: 0x1e293b,
+      size: 2.2,
+      sizeAttenuation: true,
+      transparent: true,
+      opacity: 0.95,
+      depthWrite: false,
+    });
+    this.debrisPoints = new THREE.Points(debrisGeom, debrisMat);
+    this.debrisPoints.frustumCulled = false;
+    this.scene.add(this.debrisPoints);
+    this.debrisPool = [];
+    for (let i = 0; i < debrisCount; i++) {
+      this.debrisPool.push({ pos: new THREE.Vector3(0, -9999, 0), life: 0, vel: new THREE.Vector3() });
+    }
   }
 
   emitSparks(pos) {
-    for (let i = 0; i < 15; i++) {
+    this.emitCollisionSparks(pos, new THREE.Vector3(0, 1, 0), 1.0);
+  }
+
+  emitCollisionSparks(pos, normal = new THREE.Vector3(0, 1, 0), intensity = 1.0) {
+    const numSparks = Math.min(30, Math.round(16 * intensity));
+    for (let i = 0; i < numSparks; i++) {
       const p = this.sparkPool.find((s) => s.life <= 0);
       if (!p) break;
-      p.pos.copy(pos);
-      p.vel.set((Math.random() - 0.5) * 12, Math.random() * 8 + 2, (Math.random() - 0.5) * 12);
-      p.life = 0.35;
+      p.pos.copy(pos).add(new THREE.Vector3((Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4));
+      p.vel.set(
+        normal.x * 12 + (Math.random() - 0.5) * 16,
+        Math.max(2, normal.y * 10 + Math.random() * 12),
+        normal.z * 12 + (Math.random() - 0.5) * 16
+      ).multiplyScalar(0.7 + intensity * 0.4);
+      p.life = 0.35 + Math.random() * 0.25;
     }
+
+    const numDebris = Math.min(16, Math.round(8 * intensity));
+    for (let i = 0; i < numDebris; i++) {
+      const d = this.debrisPool.find((s) => s.life <= 0);
+      if (!d) break;
+      d.pos.copy(pos);
+      d.vel.set(
+        normal.x * 8 + (Math.random() - 0.5) * 12,
+        4.0 + Math.random() * 8.0,
+        normal.z * 8 + (Math.random() - 0.5) * 12
+      ).multiplyScalar(0.6 + intensity * 0.5);
+      d.life = 0.65 + Math.random() * 0.35;
+    }
+  }
+
+  applyCollisionImpulse(normalVec, impulseMagnitude, otherSpeed = 0, contactPoint = null) {
+    const contact = contactPoint || this.position.clone();
+    this.emitCollisionSparks(contact, normalVec, impulseMagnitude);
+
+    // Realistic vehicle recoil & speed reduction
+    const speedRatio = Math.abs(this.speed) / 250;
+    const impactDamp = Math.max(0.2, 1.0 - (impulseMagnitude * 0.35));
+    this.speed = this.speed * impactDamp;
+
+    // Angular torque & spin
+    const tangent = new THREE.Vector3(-normalVec.z, 0, normalVec.x);
+    const spinSign = Math.sign((tangent.x * Math.sin(this.heading)) + (tangent.z * Math.cos(this.heading))) || 1;
+    this.angularVelocity += spinSign * impulseMagnitude * 1.8;
+
+    // Dynamic chassis jolt & suspension roll
+    this.bodyRoll += spinSign * 0.22 * impulseMagnitude;
+    this.bodyPitch += 0.15 * impulseMagnitude;
+
+    cyberAudio.playHeavyImpact(impulseMagnitude);
   }
 
   emitDriftSmoke() {
@@ -1161,6 +1187,7 @@ export class CyberCar {
       const p = this.sparkPool[i];
       if (p.life > 0) {
         p.pos.addScaledVector(p.vel, delta);
+        p.vel.y -= delta * 22;
         p.life -= delta;
         spkPos.setXYZ(i, p.pos.x, p.pos.y, p.pos.z);
       } else {
@@ -1168,6 +1195,22 @@ export class CyberCar {
       }
     }
     spkPos.needsUpdate = true;
+
+    if (this.debrisPoints && this.debrisPool) {
+      const debPos = this.debrisPoints.geometry.attributes.position;
+      for (let i = 0; i < this.debrisPool.length; i++) {
+        const d = this.debrisPool[i];
+        if (d.life > 0) {
+          d.pos.addScaledVector(d.vel, delta);
+          d.vel.y -= delta * 26;
+          d.life -= delta;
+          debPos.setXYZ(i, d.pos.x, d.pos.y, d.pos.z);
+        } else {
+          debPos.setXYZ(i, 0, -9999, 0);
+        }
+      }
+      debPos.needsUpdate = true;
+    }
   }
 
   setCarType(typeIndex) {

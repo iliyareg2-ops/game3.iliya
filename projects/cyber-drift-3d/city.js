@@ -35,6 +35,7 @@ export class CityTrackManager {
     this.shorelineFoamMesh = null;
     this.onNitroPickupCallback = null;
     this.onSpeedTrapCallback = null;
+    this.onTakedownCallback = null;
     this.lastKerbRumbleTime = 0;
     this.lastCrowdCheerTime = 0;
 
@@ -1473,6 +1474,13 @@ export class CityTrackManager {
         currentSpeedU: 0.0,
         lapsCompleted: 0,
         namePlate: namePlate,
+        mass: 1.0,
+        radius: 3.4,
+        knockbackOffset: new THREE.Vector3(),
+        knockbackVelocity: new THREE.Vector3(),
+        yawOffset: 0,
+        yawVelocity: 0,
+        lastCollisionTime: 0,
       });
     }
   }
@@ -1683,21 +1691,34 @@ export class CityTrackManager {
     return { group: g, wheels: wheels };
   }
 
-  // 🚒 🚌 🏎️ DIVERSE CITY VEHICLE FLEET BUILDERS
+  // 🚒 🚌 🏎️ DIVERSE HIGH-DETAIL CITY VEHICLE FLEET BUILDERS
   _buildFireTruck() {
     const g = new THREE.Group();
-    const redMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.25, metalness: 0.6 });
-    const silverMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.9, roughness: 0.2 });
-    const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
-    const tireMat = new THREE.MeshStandardMaterial({ color: 0x18191c, roughness: 0.9 });
-    const hlMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
-    const tlMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.2 });
+    const redMat = new THREE.MeshPhysicalMaterial({ color: 0xb91c1c, roughness: 0.2, metalness: 0.7, clearcoat: 1.0 });
+    const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35 });
+    const silverMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.95, roughness: 0.15 });
+    const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x050811, roughness: 0.05, metalness: 0.9, transmission: 0.8, transparent: true });
+    const tireMat = new THREE.MeshStandardMaterial({ color: 0x141518, roughness: 0.85 });
+    const rimMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.9, roughness: 0.2 });
+    const hlMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const tlMat = new THREE.MeshBasicMaterial({ color: 0xdc2626 });
+    const strobeRedMat = new THREE.MeshBasicMaterial({ color: 0xff0044 });
+    const strobeAmberMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
 
     const cab = new THREE.Mesh(new THREE.BoxGeometry(4.6, 2.8, 4.2), redMat);
     cab.position.set(0, 2.0, 4.2);
 
+    const cabStripe = new THREE.Mesh(new THREE.BoxGeometry(4.65, 0.4, 4.22), whiteMat);
+    cabStripe.position.set(0, 1.3, 4.2);
+
     const windshield = new THREE.Mesh(new THREE.BoxGeometry(4.4, 1.4, 0.1), glassMat);
     windshield.position.set(0, 2.4, 6.32);
+
+    const grill = new THREE.Mesh(new THREE.BoxGeometry(3.6, 1.1, 0.15), silverMat);
+    grill.position.set(0, 1.1, 6.33);
+
+    const bumper = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.5, 0.6), silverMat);
+    bumper.position.set(0, 0.5, 6.4);
 
     const body = new THREE.Mesh(new THREE.BoxGeometry(4.6, 3.2, 8.4), redMat);
     body.position.set(0, 2.2, -2.1);
@@ -1711,18 +1732,25 @@ export class CityTrackManager {
     ladderL.position.set(1.2, 4.0, -1.0);
     const ladderR = ladderL.clone();
     ladderR.position.x = 0.4;
-    g.add(cab, windshield, body, shutterL, shutterR, ladderL, ladderR);
 
-    const flasher = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.35, 0.6), new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3 }));
-    flasher.position.set(0, 3.55, 4.2);
-    g.add(flasher);
+    const strobe1 = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.35, 0.6), strobeRedMat);
+    strobe1.position.set(1.0, 3.55, 4.2);
+    const strobe2 = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.35, 0.6), strobeAmberMat);
+    strobe2.position.set(-1.0, 3.55, 4.2);
+
+    g.add(cab, cabStripe, windshield, grill, bumper, body, shutterL, shutterR, ladderL, ladderR, strobe1, strobe2);
 
     const wheelGeom = new THREE.CylinderGeometry(0.72, 0.72, 0.55, 16);
     wheelGeom.rotateZ(Math.PI / 2);
+    const rimGeom = new THREE.CylinderGeometry(0.48, 0.48, 0.57, 16);
+    rimGeom.rotateZ(Math.PI / 2);
 
     const wheels = [];
     const makeW = (x, z) => {
-      const wg = new THREE.Mesh(wheelGeom, tireMat);
+      const wg = new THREE.Group();
+      const tire = new THREE.Mesh(wheelGeom, tireMat);
+      const rim = new THREE.Mesh(rimGeom, rimMat);
+      wg.add(tire, rim);
       wg.position.set(x, 0.72, z);
       g.add(wg);
       wheels.push(wg);
@@ -1743,17 +1771,19 @@ export class CityTrackManager {
     tl.position.set(0, 1.2, -6.32);
 
     g.add(hlL, hlR, tl);
-    return { mesh: g, wheels: wheels };
+    return { mesh: g, wheels: wheels, strobes: [{ mesh: strobe1, invert: false }, { mesh: strobe2, invert: true }] };
   }
 
   _buildCityBus() {
     const g = new THREE.Group();
-    const blueMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3, metalness: 0.4 });
-    const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 });
-    const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
-    const tireMat = new THREE.MeshStandardMaterial({ color: 0x18191c, roughness: 0.9 });
-    const hlMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
-    const tlMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.2 });
+    const blueMat = new THREE.MeshPhysicalMaterial({ color: 0x0284c7, roughness: 0.22, metalness: 0.5, clearcoat: 1.0 });
+    const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35 });
+    const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x050811, roughness: 0.05, metalness: 0.9, transmission: 0.8, transparent: true });
+    const tireMat = new THREE.MeshStandardMaterial({ color: 0x141518, roughness: 0.9 });
+    const rimMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.9, roughness: 0.2 });
+    const hlMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const tlMat = new THREE.MeshBasicMaterial({ color: 0xdc2626 });
+    const signMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
 
     const body = new THREE.Mesh(new THREE.BoxGeometry(4.5, 3.4, 14.5), blueMat);
     body.position.set(0, 2.3, 0);
@@ -1769,17 +1799,22 @@ export class CityTrackManager {
     const frontGlass = new THREE.Mesh(new THREE.BoxGeometry(4.3, 2.0, 0.1), glassMat);
     frontGlass.position.set(0, 2.7, 7.27);
 
-    const routeSign = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.5, 0.1), new THREE.MeshStandardMaterial({ color: 0xf59e0b }));
+    const routeSign = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.5, 0.1), signMat);
     routeSign.position.set(0, 3.8, 7.27);
 
     g.add(body, roof, winL, winR, frontGlass, routeSign);
 
     const wheelGeom = new THREE.CylinderGeometry(0.65, 0.65, 0.5, 16);
     wheelGeom.rotateZ(Math.PI / 2);
+    const rimGeom = new THREE.CylinderGeometry(0.42, 0.42, 0.52, 16);
+    rimGeom.rotateZ(Math.PI / 2);
 
     const wheels = [];
     const makeW = (x, z) => {
-      const wg = new THREE.Mesh(wheelGeom, tireMat);
+      const wg = new THREE.Group();
+      const tire = new THREE.Mesh(wheelGeom, tireMat);
+      const rim = new THREE.Mesh(rimGeom, rimMat);
+      wg.add(tire, rim);
       wg.position.set(x, 0.65, z);
       g.add(wg);
       wheels.push(wg);
@@ -1800,17 +1835,19 @@ export class CityTrackManager {
     tl.position.set(0, 1.1, -7.27);
 
     g.add(hlL, hlR, tl);
-    return { mesh: g, wheels: wheels };
+    return { mesh: g, wheels: wheels, strobes: [] };
   }
 
   _buildSportCoupe(colorHex) {
     const g = new THREE.Group();
-    const paintMat = new THREE.MeshStandardMaterial({ color: colorHex, metalness: 0.85, roughness: 0.18 });
-    const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
-    const carbonMat = new THREE.MeshStandardMaterial({ color: 0x181a20, roughness: 0.4 });
-    const tireMat = new THREE.MeshStandardMaterial({ color: 0x18191c, roughness: 0.85 });
-    const hlMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
-    const tlMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.2 });
+    const paintMat = new THREE.MeshPhysicalMaterial({ color: colorHex, metalness: 0.9, roughness: 0.16, clearcoat: 1.0, clearcoatRoughness: 0.05 });
+    const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x050811, roughness: 0.05, metalness: 0.9, transmission: 0.8, transparent: true });
+    const carbonMat = new THREE.MeshStandardMaterial({ color: 0x181a20, roughness: 0.35, metalness: 0.8 });
+    const tireMat = new THREE.MeshStandardMaterial({ color: 0x141518, roughness: 0.85 });
+    const rimMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.92, roughness: 0.18 });
+    const caliperMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, metalness: 0.5, roughness: 0.3 });
+    const hlMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const tlMat = new THREE.MeshBasicMaterial({ color: 0xdc2626 });
 
     const body = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.65, 8.5), paintMat);
     body.position.y = 0.65;
@@ -1818,13 +1855,26 @@ export class CityTrackManager {
     cabin.position.set(0, 1.25, -0.2);
     const roof = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.06, 3.4), carbonMat);
     roof.position.set(0, 1.56, -0.2);
+    const splitter = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.08, 1.0), carbonMat);
+    splitter.position.set(0, 0.32, 4.2);
+    const spoiler = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.06, 0.8), carbonMat);
+    spoiler.position.set(0, 1.15, -4.1);
 
-    const wheelGeom = new THREE.CylinderGeometry(0.5, 0.5, 0.35, 14);
+    g.add(body, cabin, roof, splitter, spoiler);
+
+    const wheelGeom = new THREE.CylinderGeometry(0.5, 0.5, 0.35, 16);
     wheelGeom.rotateZ(Math.PI / 2);
+    const rimGeom = new THREE.CylinderGeometry(0.35, 0.35, 0.37, 16);
+    rimGeom.rotateZ(Math.PI / 2);
 
     const wheels = [];
     const makeW = (x, z) => {
-      const wg = new THREE.Mesh(wheelGeom, tireMat);
+      const wg = new THREE.Group();
+      const tire = new THREE.Mesh(wheelGeom, tireMat);
+      const rim = new THREE.Mesh(rimGeom, rimMat);
+      const caliper = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.22, 0.14), caliperMat);
+      caliper.position.set(0, 0.18, 0);
+      wg.add(tire, rim, caliper);
       wg.position.set(x, 0.5, z);
       g.add(wg);
       wheels.push(wg);
@@ -1842,17 +1892,19 @@ export class CityTrackManager {
     const tl = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.18, 0.1), tlMat);
     tl.position.set(0, 0.7, -4.26);
 
-    g.add(body, cabin, roof, hlL, hlR, tl);
-    return { mesh: g, wheels: wheels };
+    g.add(hlL, hlR, tl);
+    return { mesh: g, wheels: wheels, strobes: [] };
   }
 
   _buildExecutiveSedan(colorHex) {
     const g = new THREE.Group();
-    const paintMat = new THREE.MeshStandardMaterial({ color: colorHex, metalness: 0.8, roughness: 0.22 });
-    const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
-    const tireMat = new THREE.MeshStandardMaterial({ color: 0x18191c, roughness: 0.85 });
-    const hlMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
-    const tlMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.2 });
+    const paintMat = new THREE.MeshPhysicalMaterial({ color: colorHex, metalness: 0.88, roughness: 0.2, clearcoat: 1.0 });
+    const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x050811, roughness: 0.05, metalness: 0.9, transmission: 0.8, transparent: true });
+    const chromeMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.95, roughness: 0.12 });
+    const tireMat = new THREE.MeshStandardMaterial({ color: 0x141518, roughness: 0.85 });
+    const rimMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.9, roughness: 0.2 });
+    const hlMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const tlMat = new THREE.MeshBasicMaterial({ color: 0xdc2626 });
 
     const body = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.72, 9.2), paintMat);
     body.position.y = 0.65;
@@ -1860,13 +1912,22 @@ export class CityTrackManager {
     cabin.position.set(0, 1.3, -0.1);
     const roof = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.06, 3.8), paintMat);
     roof.position.set(0, 1.64, -0.1);
+    const grill = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.45, 0.1), chromeMat);
+    grill.position.set(0, 0.7, 4.62);
 
-    const wheelGeom = new THREE.CylinderGeometry(0.52, 0.52, 0.38, 14);
+    g.add(body, cabin, roof, grill);
+
+    const wheelGeom = new THREE.CylinderGeometry(0.52, 0.52, 0.38, 16);
     wheelGeom.rotateZ(Math.PI / 2);
+    const rimGeom = new THREE.CylinderGeometry(0.36, 0.36, 0.4, 16);
+    rimGeom.rotateZ(Math.PI / 2);
 
     const wheels = [];
     const makeW = (x, z) => {
-      const wg = new THREE.Mesh(wheelGeom, tireMat);
+      const wg = new THREE.Group();
+      const tire = new THREE.Mesh(wheelGeom, tireMat);
+      const rim = new THREE.Mesh(rimGeom, rimMat);
+      wg.add(tire, rim);
       wg.position.set(x, 0.52, z);
       g.add(wg);
       wheels.push(wg);
@@ -1884,18 +1945,22 @@ export class CityTrackManager {
     const tl = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.2, 0.1), tlMat);
     tl.position.set(0, 0.7, -4.61);
 
-    g.add(body, cabin, roof, hlL, hlR, tl);
-    return { mesh: g, wheels: wheels };
+    g.add(hlL, hlR, tl);
+    return { mesh: g, wheels: wheels, strobes: [] };
   }
 
   _buildPolicePatrol() {
     const g = new THREE.Group();
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.25, metalness: 0.8 });
-    const whiteDoorMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 });
-    const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
-    const tireMat = new THREE.MeshStandardMaterial({ color: 0x18191c, roughness: 0.85 });
-    const hlMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
-    const tlMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.2 });
+    const bodyMat = new THREE.MeshPhysicalMaterial({ color: 0x0a0c12, roughness: 0.2, metalness: 0.85, clearcoat: 1.0 });
+    const whiteDoorMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35 });
+    const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x050811, roughness: 0.05, metalness: 0.9, transmission: 0.8, transparent: true });
+    const tireMat = new THREE.MeshStandardMaterial({ color: 0x141518, roughness: 0.85 });
+    const rimMat = new THREE.MeshStandardMaterial({ color: 0x18181b, metalness: 0.9, roughness: 0.2 });
+    const bullbarMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4, metalness: 0.8 });
+    const hlMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const tlMat = new THREE.MeshBasicMaterial({ color: 0xdc2626 });
+    const blueStrobeMat = new THREE.MeshBasicMaterial({ color: 0x0066ff });
+    const redStrobeMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
 
     const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.8, 9.4), bodyMat);
     chassis.position.y = 0.65;
@@ -1905,17 +1970,27 @@ export class CityTrackManager {
     const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.68, 4.8), glassMat);
     cabin.position.set(0, 1.3, -0.1);
 
-    const blueLight = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.25, 0.5), new THREE.MeshStandardMaterial({ color: 0x1d4ed8 }));
-    blueLight.position.set(0.6, 1.75, -0.3);
-    const redLight = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.25, 0.5), new THREE.MeshStandardMaterial({ color: 0xdc2626 }));
-    redLight.position.set(-0.6, 1.75, -0.3);
+    const bullbar = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.6, 0.4), bullbarMat);
+    bullbar.position.set(0, 0.65, 4.8);
 
-    const wheelGeom = new THREE.CylinderGeometry(0.52, 0.52, 0.38, 14);
+    const blueLight = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.25, 0.5), blueStrobeMat);
+    blueLight.position.set(0.75, 1.75, -0.3);
+    const redLight = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.25, 0.5), redStrobeMat);
+    redLight.position.set(-0.75, 1.75, -0.3);
+
+    g.add(chassis, doors, cabin, bullbar, blueLight, redLight);
+
+    const wheelGeom = new THREE.CylinderGeometry(0.52, 0.52, 0.38, 16);
     wheelGeom.rotateZ(Math.PI / 2);
+    const rimGeom = new THREE.CylinderGeometry(0.36, 0.36, 0.4, 16);
+    rimGeom.rotateZ(Math.PI / 2);
 
     const wheels = [];
     const makeW = (x, z) => {
-      const wg = new THREE.Mesh(wheelGeom, tireMat);
+      const wg = new THREE.Group();
+      const tire = new THREE.Mesh(wheelGeom, tireMat);
+      const rim = new THREE.Mesh(rimGeom, rimMat);
+      wg.add(tire, rim);
       wg.position.set(x, 0.52, z);
       g.add(wg);
       wheels.push(wg);
@@ -1933,8 +2008,8 @@ export class CityTrackManager {
     const tl = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.2, 0.1), tlMat);
     tl.position.set(0, 0.7, -4.71);
 
-    g.add(chassis, doors, cabin, blueLight, redLight, hlL, hlR, tl);
-    return { mesh: g, wheels: wheels };
+    g.add(hlL, hlR, tl);
+    return { mesh: g, wheels: wheels, strobes: [{ mesh: blueLight, invert: false }, { mesh: redLight, invert: true }] };
   }
 
   buildRichCityTrafficFleet() {
@@ -1948,6 +2023,25 @@ export class CityTrackManager {
       { type: "SPORT_RED", u: 0.88, lane: 6.0, speed: 0.016 },
       { type: "SEDAN_BLACK", u: 0.96, lane: -6.0, speed: 0.013 },
     ];
+
+    const massTable = {
+      FIRE_TRUCK: 3.8,
+      BUS: 4.2,
+      PATROL: 1.6,
+      SEDAN_SILVER: 1.3,
+      SEDAN_BLACK: 1.3,
+      SPORT_YELLOW: 1.0,
+      SPORT_RED: 1.0
+    };
+    const radiusTable = {
+      FIRE_TRUCK: 4.8,
+      BUS: 5.4,
+      PATROL: 3.5,
+      SEDAN_SILVER: 3.4,
+      SEDAN_BLACK: 3.4,
+      SPORT_YELLOW: 3.2,
+      SPORT_RED: 3.2
+    };
 
     for (const item of fleetDefinitions) {
       let vehicleObj;
@@ -1972,11 +2066,20 @@ export class CityTrackManager {
       this.trackWorldGroup.add(vehicleObj.mesh);
 
       this.trafficCars.push({
+        type: item.type,
         mesh: vehicleObj.mesh,
         u: item.u,
         speed: item.speed,
         laneOffset: item.lane,
         wheels: vehicleObj.wheels,
+        strobes: vehicleObj.strobes || [],
+        mass: massTable[item.type] || 1.3,
+        radius: radiusTable[item.type] || 3.4,
+        knockbackOffset: new THREE.Vector3(),
+        knockbackVelocity: new THREE.Vector3(),
+        yawOffset: 0,
+        yawVelocity: 0,
+        lastCollisionTime: 0,
       });
     }
   }
@@ -2360,6 +2463,118 @@ export class CityTrackManager {
     }
   }
 
+  // 💥 REALISTIC CAR-TO-CAR PHYSICAL COLLISION ENGINE (AI Rivals & City Traffic)
+  handleVehicleToVehicleCollisions(playerCar, delta) {
+    if (!playerCar || !playerCar.mesh) return;
+    const playerPos = playerCar.mesh.position;
+    const playerSpeed = playerCar.speed;
+    const now = Date.now();
+
+    // 1. 🏎️ Player vs AI Rivals
+    for (let i = 0; i < this.aiRivals.length; i++) {
+      const rival = this.aiRivals[i];
+      const rivalPos = rival.mesh.position;
+      const dx = playerPos.x - rivalPos.x;
+      const dz = playerPos.z - rivalPos.z;
+      const dist = Math.hypot(dx, dz);
+      const minSeparation = 3.8;
+
+      if (dist < minSeparation && dist > 0.05) {
+        const nx = dx / dist;
+        const nz = dz / dist;
+        const overlap = minSeparation - dist;
+
+        // Position pushout separation
+        playerCar.position.x += nx * (overlap * 0.55);
+        playerCar.position.z += nz * (overlap * 0.55);
+        playerCar.mesh.position.copy(playerCar.position);
+
+        rival.knockbackOffset.x -= nx * (overlap * 0.55);
+        rival.knockbackOffset.z -= nz * (overlap * 0.55);
+
+        if (now - rival.lastCollisionTime > 160) {
+          rival.lastCollisionTime = now;
+          const hitIntensity = Math.min(2.2, Math.max(0.4, Math.abs(playerSpeed) / 100));
+
+          // Physical Impulse Transfer
+          const contactPt = new THREE.Vector3(
+            (playerPos.x + rivalPos.x) * 0.5,
+            0.65,
+            (playerPos.z + rivalPos.z) * 0.5
+          );
+
+          playerCar.applyCollisionImpulse(new THREE.Vector3(nx, 0.4, nz), hitIntensity, 0, contactPt);
+
+          rival.knockbackVelocity.set(-nx * hitIntensity * 32, 0, -nz * hitIntensity * 32);
+          rival.yawVelocity += (Math.random() - 0.5) * hitIntensity * 16;
+          rival.laneOffset -= nx * hitIntensity * 4.2;
+          rival.currentSpeedU *= 0.55;
+
+          if (Math.abs(playerSpeed) > 135) {
+            playerCar.totalScore += 500;
+            if (this.onTakedownCallback) {
+              this.onTakedownCallback(`💥 ТАКДАУН! СБИТ ${rival.name} +500 PTS`);
+            }
+          }
+        }
+      }
+    }
+
+    // 2. 🚒 🚌 🚔 Player vs City Traffic Fleet
+    for (let i = 0; i < this.trafficCars.length; i++) {
+      const traffic = this.trafficCars[i];
+      const trafficPos = traffic.mesh.position;
+      const dx = playerPos.x - trafficPos.x;
+      const dz = playerPos.z - trafficPos.z;
+      const dist = Math.hypot(dx, dz);
+      const minSeparation = traffic.radius || 3.6;
+
+      if (dist < minSeparation && dist > 0.05) {
+        const nx = dx / dist;
+        const nz = dz / dist;
+        const overlap = minSeparation - dist;
+        const massRatio = (traffic.mass || 1.3) / 1.0;
+
+        // Heavy traffic (buses / fire trucks) push the player back harder
+        const playerWeight = Math.min(0.85, 0.5 * (1.0 / (massRatio * 0.8)));
+        const trafficWeight = 1.0 - playerWeight;
+
+        playerCar.position.x += nx * (overlap * (1.0 - playerWeight));
+        playerCar.position.z += nz * (overlap * (1.0 - playerWeight));
+        playerCar.mesh.position.copy(playerCar.position);
+
+        traffic.knockbackOffset.x -= nx * (overlap * trafficWeight);
+        traffic.knockbackOffset.z -= nz * (overlap * trafficWeight);
+
+        if (now - traffic.lastCollisionTime > 160) {
+          traffic.lastCollisionTime = now;
+          const hitIntensity = Math.min(2.5, Math.max(0.5, (Math.abs(playerSpeed) / 95) * Math.sqrt(massRatio)));
+
+          const contactPt = new THREE.Vector3(
+            (playerPos.x + trafficPos.x) * 0.5,
+            0.8,
+            (playerPos.z + trafficPos.z) * 0.5
+          );
+
+          playerCar.applyCollisionImpulse(new THREE.Vector3(nx, 0.5, nz), hitIntensity, 0, contactPt);
+
+          traffic.knockbackVelocity.set(-nx * (hitIntensity / massRatio) * 26, 0, -nz * (hitIntensity / massRatio) * 26);
+          traffic.yawVelocity += (Math.random() - 0.5) * (hitIntensity / massRatio) * 12;
+          traffic.laneOffset -= nx * (hitIntensity / massRatio) * 3.2;
+
+          if (Math.abs(playerSpeed) > 120) {
+            const pts = Math.round(200 * massRatio);
+            playerCar.totalScore += pts;
+            if (this.onTakedownCallback) {
+              const label = traffic.type === "FIRE_TRUCK" ? "🚒 ТАРАН ПОЖАРНОЙ МАШИНЫ!" : (traffic.type === "BUS" ? "🚌 ТАРАН АВТОБУСА!" : (traffic.type === "PATROL" ? "🚔 ТАРАН ПОЛИЦЕЙСКОГО ПАТРУЛЯ!" : "🚗 СТОЛКНОВЕНИЕ В ТРАФИКЕ!"));
+              this.onTakedownCallback(`${label} +${pts} PTS`);
+            }
+          }
+        }
+      }
+    }
+  }
+
   update(delta, playerCar, isRaceRunning = true, playerLaps = 0) {
     const playerPos = playerCar.mesh.position;
     const playerSpeed = Math.abs(playerCar.speed);
@@ -2374,6 +2589,11 @@ export class CityTrackManager {
       this.recordAIRivalsHistory();
     }
 
+    // Check Vehicle-to-Vehicle Collisions
+    if (isRaceRunning) {
+      this.handleVehicleToVehicleCollisions(playerCar, delta);
+    }
+
     // 1. Rain
     if (this.isRaining && this.rainParticles) {
       this.rainParticles.position.copy(playerPos);
@@ -2386,9 +2606,18 @@ export class CityTrackManager {
       posAttr.needsUpdate = true;
     }
 
-    // 2. AI RIVALS - TRUE CONTINUOUS PROGRESS TRACKING & CLOSE COMPETITIVE RACING
+    // 2. AI RIVALS - TRUE CONTINUOUS PROGRESS TRACKING & PHYSICAL REACTION
     for (let i = 0; i < this.aiRivals.length; i++) {
       const rival = this.aiRivals[i];
+
+      // Damping physical knockback and spinout torque
+      rival.knockbackVelocity.multiplyScalar(Math.pow(0.04, delta));
+      rival.knockbackOffset.addScaledVector(rival.knockbackVelocity, delta);
+      rival.knockbackOffset.multiplyScalar(Math.pow(0.08, delta));
+      rival.yawVelocity *= Math.pow(0.05, delta);
+      rival.yawOffset += rival.yawVelocity * delta;
+      rival.yawOffset *= Math.pow(0.08, delta);
+
       if (isRaceRunning) {
         const playerTotal = playerLaps + playerU;
         const rivalTotal = rival.lapsCompleted + rival.u;
@@ -2418,11 +2647,12 @@ export class CityTrackManager {
       const tangent = this.trackCurve.getTangentAt(rival.u).normalize();
       const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
 
-      rival.mesh.position.copy(pt).addScaledVector(normal, rival.laneOffset);
+      rival.mesh.position.copy(pt).addScaledVector(normal, rival.laneOffset).add(rival.knockbackOffset);
       rival.mesh.position.y = 0.15;
 
       const lookPt = pt.clone().addScaledVector(tangent, 6).addScaledVector(normal, rival.laneOffset);
       rival.mesh.lookAt(lookPt.x, 0.15, lookPt.z);
+      rival.mesh.rotation.y += rival.yawOffset;
 
       if (rival.wheels && rival.currentSpeedU > 0) {
         const rotDelta = rival.currentSpeedU * delta * 1400;
@@ -2499,18 +2729,35 @@ export class CityTrackManager {
       }
     }
 
-    // 6. Rich City Traffic Fleet (Fire Trucks, Buses, Sport Coupes, Sedans, Patrols)
+    // 6. Rich City Traffic Fleet (Physical Knockback & Strobe Animation)
+    const isStrobeActive = Math.sin(now * 0.024) > 0;
     for (const car of this.trafficCars) {
+      // Damping physical knockback and spinout
+      car.knockbackVelocity.multiplyScalar(Math.pow(0.04, delta));
+      car.knockbackOffset.addScaledVector(car.knockbackVelocity, delta);
+      car.knockbackOffset.multiplyScalar(Math.pow(0.08, delta));
+      car.yawVelocity *= Math.pow(0.05, delta);
+      car.yawOffset += car.yawVelocity * delta;
+      car.yawOffset *= Math.pow(0.08, delta);
+
+      // Emergency Strobe Flashers
+      if (car.strobes && car.strobes.length > 0) {
+        for (const st of car.strobes) {
+          st.mesh.visible = st.invert ? !isStrobeActive : isStrobeActive;
+        }
+      }
+
       car.u = (car.u + car.speed * delta) % 1.0;
       const pt = this.trackCurve.getPointAt(car.u);
       const tangent = this.trackCurve.getTangentAt(car.u).normalize();
       const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
 
-      car.mesh.position.copy(pt).addScaledVector(normal, car.laneOffset);
+      car.mesh.position.copy(pt).addScaledVector(normal, car.laneOffset).add(car.knockbackOffset);
       car.mesh.position.y = 0.15;
 
       const lookPt = pt.clone().addScaledVector(tangent, 5).addScaledVector(normal, car.laneOffset);
       car.mesh.lookAt(lookPt.x, 0.15, lookPt.z);
+      car.mesh.rotation.y += car.yawOffset;
 
       for (const w of car.wheels) {
         w.rotation.x += delta * 12;
