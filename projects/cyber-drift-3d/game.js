@@ -688,6 +688,10 @@ export class CyberDriftGame {
         });
       }
 
+      if (this.trackManager.trafficCars && this.trackManager.trafficCars.length > 0) {
+        this.trackManager.resetTrafficPositions();
+      }
+
       cyberAudio.setOceanAmbience(false);
       this.gameState = "COUNTDOWN";
       this.countdownTimer = 3.6;

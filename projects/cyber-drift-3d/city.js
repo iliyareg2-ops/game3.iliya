@@ -2189,6 +2189,7 @@ export class CityTrackManager {
 
   buildRichCityTrafficFleet() {
     const fleetDefinitions = [
+      { type: "SEDAN_BLACK", u: 0.015, lane: 5.5, speed: 0.007 }, // 🚗 Black civilian car right ahead on the starting straight!
       { type: "FIRE_TRUCK", u: 0.12, lane: 7.0, speed: 0.010 },
       { type: "BUS", u: 0.28, lane: -7.0, speed: 0.009 },
       { type: "SPORT_YELLOW", u: 0.40, lane: 6.0, speed: 0.015 },
@@ -2196,7 +2197,6 @@ export class CityTrackManager {
       { type: "PATROL", u: 0.65, lane: 6.5, speed: 0.012 },
       { type: "BUS", u: 0.78, lane: -7.0, speed: 0.009 },
       { type: "SPORT_RED", u: 0.88, lane: 6.0, speed: 0.016 },
-      { type: "SEDAN_BLACK", u: 0.96, lane: -6.0, speed: 0.013 },
     ];
 
     const massTable = {
@@ -2257,6 +2257,40 @@ export class CityTrackManager {
         yawVelocity: 0,
         lastCollisionTime: 0,
       });
+    }
+  }
+
+  resetTrafficPositions() {
+    const defaultPositions = [
+      { u: 0.015, lane: 5.5 },
+      { u: 0.12, lane: 7.0 },
+      { u: 0.28, lane: -7.0 },
+      { u: 0.40, lane: 6.0 },
+      { u: 0.52, lane: -6.0 },
+      { u: 0.65, lane: 6.5 },
+      { u: 0.78, lane: -7.0 },
+      { u: 0.88, lane: 6.0 },
+    ];
+
+    for (let i = 0; i < this.trafficCars.length; i++) {
+      const tc = this.trafficCars[i];
+      const def = defaultPositions[i % defaultPositions.length];
+      tc.u = def.u;
+      tc.laneOffset = def.lane;
+      tc.baseLane = def.lane;
+      tc.knockbackOffset.set(0, 0, 0);
+      tc.knockbackVelocity.set(0, 0, 0);
+      tc.yawOffset = 0;
+      tc.yawVelocity = 0;
+      tc.lastCollisionTime = 0;
+
+      const pt = this.trackCurve.getPointAt(tc.u);
+      const tangent = this.trackCurve.getTangentAt(tc.u).normalize();
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+      tc.mesh.position.copy(pt).addScaledVector(normal, tc.laneOffset);
+      tc.mesh.position.y = 0.15;
+      const lookPt = pt.clone().addScaledVector(tangent, 6).addScaledVector(normal, tc.laneOffset);
+      tc.mesh.lookAt(lookPt.x, 0.15, lookPt.z);
     }
   }
 
