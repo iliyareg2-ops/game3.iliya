@@ -2242,7 +2242,7 @@ export class CityTrackManager {
       { type: "PATROL", u: 0.65, lane: 6.5, speed: 0.012 },
       { type: "BUS", u: 0.78, lane: -7.0, speed: 0.009 },
       { type: "SPORT_RED", u: 0.88, lane: 6.0, speed: 0.016 },
-      { type: "SEDAN_BLACK", u: 0.96, lane: -6.0, speed: 0.005 },
+      { type: "SEDAN_BLACK", u: 0.96, lane: -6.0, speed: 0.011 },
     ];
 
     const massTable = {
