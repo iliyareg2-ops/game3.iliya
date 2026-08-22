@@ -578,6 +578,56 @@ class CyberAudioEngine {
     osc.stop(t + 0.14);
   }
 
+  playGlassShatter(intensity = 1.0) {
+    if (!this.isInitialized || this.isMuted) return;
+    const t = this.ctx.currentTime;
+    const clampedInt = Math.min(1.5, Math.max(0.3, intensity));
+
+    // High frequency crystalline crunch & tinkling
+    for (let i = 0; i < 4; i++) {
+      const osc = this.ctx.createOscillator();
+      osc.type = "sawtooth";
+      const freq = 2200 + Math.random() * 3200;
+      osc.frequency.setValueAtTime(freq, t + i * 0.025);
+      osc.frequency.exponentialRampToValueAtTime(300, t + 0.22 + i * 0.025);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.25 * clampedInt, t + i * 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.24 + i * 0.025);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t + i * 0.025);
+      osc.stop(t + 0.26 + i * 0.025);
+    }
+  }
+
+  playMetalTear(intensity = 1.0) {
+    if (!this.isInitialized || this.isMuted) return;
+    const t = this.ctx.currentTime;
+    const clampedInt = Math.min(1.8, Math.max(0.4, intensity));
+
+    const osc = this.ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(580, t);
+    osc.frequency.exponentialRampToValueAtTime(80, t + 0.35);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(800, t);
+    filter.Q.setValueAtTime(4.0, t);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.55 * clampedInt, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.4);
+  }
+
   playScoreChime() {}
 
   playCameraFlash() {

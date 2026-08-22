@@ -117,59 +117,136 @@ export class CyberDriftGame {
       this.showBanner(bannerText, 2500);
       this.showSkillBadge(bannerText);
       this.screenShake = Math.min(3.5, this.screenShake + 1.2);
+      this.triggerGamepadVibration(280, 0.85, 0.95);
     };
 
-    // 👻 Holographic Ghost Car System
-    this.currentLapTelemetry = [];
-    this.bestLapTelemetry = [];
-    this.ghostCarMesh = this._createGhostCarMesh();
-    this.scene.add(this.ghostCarMesh);
-    this.ghostCarMesh.visible = false;
+    // 🎮 Gamepad State
+    this.gamepadIndex = -1;
+    this.lastGamepadCamPress = 0;
+    this.lastGamepadWeatherPress = 0;
+    this.lastGamepadRadioPress = 0;
+    this.lastGamepadResetPress = 0;
   }
 
-  _createGhostCarMesh() {
-    const g = new THREE.Group();
-    const ghostMat = new THREE.MeshPhysicalMaterial({
-      color: 0x38bdf8,
-      transparent: true,
-      opacity: 0.5,
-      roughness: 0.1,
-      metalness: 0.8,
-      emissive: 0x0284c7,
-      emissiveIntensity: 0.9,
-    });
-    const body = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.75, 9.2), ghostMat);
-    body.position.y = 0.68;
-    const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.68, 4.8), ghostMat);
-    cabin.position.set(0, 1.32, -0.2);
-    const wing = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.1, 1.2), ghostMat);
-    wing.position.set(0, 1.6, -4.2);
-    g.add(body, cabin, wing);
-    return g;
-  }
-
-  updateGhostCar(delta) {
-    if (!this.ghostCarMesh) return;
-    if (this.bestLapTelemetry && this.bestLapTelemetry.length > 10 && this.gameState === "RACING" && this.gameMode !== "BEACH") {
-      this.ghostCarMesh.visible = true;
-      const rawPlayerU = this.trackManager.getClosestU(this.car.position);
-      let closestPt = this.bestLapTelemetry[0];
-      let minDiff = 999;
-      for (const pt of this.bestLapTelemetry) {
-        const diff = Math.abs(pt.u - rawPlayerU);
-        if (diff < minDiff) {
-          minDiff = diff;
-          closestPt = pt;
-        }
+  triggerGamepadVibration(durationMs = 200, weakMagnitude = 0.5, strongMagnitude = 0.5) {
+    if (typeof navigator === "undefined" || !navigator.getGamepads) return;
+    const gamepads = navigator.getGamepads();
+    for (const gp of gamepads) {
+      if (gp && gp.vibrationActuator && gp.vibrationActuator.playEffect) {
+        gp.vibrationActuator.playEffect("dual-rumble", {
+          startDelay: 0,
+          duration: durationMs,
+          weakMagnitude: THREE.MathUtils.clamp(weakMagnitude, 0, 1),
+          strongMagnitude: THREE.MathUtils.clamp(strongMagnitude, 0, 1),
+        }).catch(() => {});
       }
-      this.ghostCarMesh.position.lerp(new THREE.Vector3(closestPt.x, 0.15, closestPt.z), delta * 12.0);
-      this.ghostCarMesh.rotation.y = THREE.MathUtils.lerp(this.ghostCarMesh.rotation.y, closestPt.heading, delta * 12.0);
-    } else {
-      this.ghostCarMesh.visible = false;
+    }
+  }
+
+  pollGamepadInput(delta) {
+    if (typeof navigator === "undefined" || !navigator.getGamepads) return;
+    const gamepads = navigator.getGamepads();
+    const gp = gamepads[0] || gamepads[1] || gamepads[2] || gamepads[3];
+    if (!gp || !gp.connected) return;
+
+    cyberAudio.init();
+    cyberAudio.resume();
+
+    const now = Date.now();
+
+    // 1. Steering: Left Stick X (Axis 0) or D-Pad Left/Right
+    const stickX = Math.abs(gp.axes[0]) > 0.12 ? gp.axes[0] : 0;
+    const dpadLeft = gp.buttons[14] && gp.buttons[14].pressed;
+    const dpadRight = gp.buttons[15] && gp.buttons[15].pressed;
+
+    if (stickX !== 0) {
+      this.car.steerInput = stickX;
+    } else if (dpadLeft) {
+      this.car.steerInput = -1.0;
+    } else if (dpadRight) {
+      this.car.steerInput = 1.0;
+    }
+
+    // 2. Throttle / Brake: RT (Button 7) & LT (Button 6) or A/X buttons
+    const rtVal = gp.buttons[7] ? gp.buttons[7].value : (gp.buttons[0] && gp.buttons[0].pressed ? 1.0 : 0);
+    const ltVal = gp.buttons[6] ? gp.buttons[6].value : (gp.buttons[1] && gp.buttons[1].pressed ? 1.0 : 0);
+
+    if (rtVal > 0.08 || ltVal > 0.08) {
+      this.car.throttleInput = rtVal - ltVal;
+    }
+
+    // 3. Nitro: A / Cross (Button 0) or RB (Button 5)
+    const btnA = (gp.buttons[0] && gp.buttons[0].pressed) || (gp.buttons[5] && gp.buttons[5].pressed);
+    if (btnA) {
+      this.keys.nitro = true;
+      this.triggerGamepadVibration(60, 0.35, 0.15);
+    } else if (!this.keys._kbNitro) {
+      this.keys.nitro = false;
+    }
+
+    // 4. Handbrake / Drift: X / Square (Button 2) or LB (Button 4)
+    const btnX = (gp.buttons[2] && gp.buttons[2].pressed) || (gp.buttons[4] && gp.buttons[4].pressed);
+    if (btnX) {
+      this.keys.drift = true;
+      this.triggerGamepadVibration(40, 0.25, 0.0);
+    } else if (!this.keys._kbDrift) {
+      this.keys.drift = false;
+    }
+
+    // 5. Rewind: B / Circle (Button 1)
+    const btnB = gp.buttons[1] && gp.buttons[1].pressed;
+    if (btnB && this.gameState === "RACING") {
+      if (!this.keys.rewind) {
+        this.keys.rewind = true;
+        this.startRewind();
+      }
+    } else if (this.keys.rewind && !btnB && !this.keys._kbRewind) {
+      this.keys.rewind = false;
+      this.stopRewind();
+    }
+
+    // 6. Camera Switch: Y / Triangle (Button 3)
+    const btnY = gp.buttons[3] && gp.buttons[3].pressed;
+    if (btnY && now - this.lastGamepadCamPress > 350) {
+      this.lastGamepadCamPress = now;
+      this.toggleCamera();
+    }
+
+    // 7. Reset / Repair Car: Select/Share (Button 8) or Left Stick click (Button 10)
+    const btnReset = (gp.buttons[8] && gp.buttons[8].pressed) || (gp.buttons[10] && gp.buttons[10].pressed);
+    if (btnReset && now - this.lastGamepadResetPress > 600) {
+      this.lastGamepadResetPress = now;
+      this.resetCar();
+    }
+
+    // 8. Weather & Radio: D-Pad Up / Down (Button 12/13)
+    if (gp.buttons[12] && gp.buttons[12].pressed && now - this.lastGamepadWeatherPress > 400) {
+      this.lastGamepadWeatherPress = now;
+      this.toggleWeather();
+    }
+    if (gp.buttons[13] && gp.buttons[13].pressed && now - this.lastGamepadRadioPress > 400) {
+      this.lastGamepadRadioPress = now;
+      this.nextRadioStation();
+    }
+
+    // Garage Start Game on Button A / Start
+    if (this.gameState === "GARAGE" && (btnA || (gp.buttons[9] && gp.buttons[9].pressed))) {
+      this.startCountdown();
     }
   }
 
   initInputs() {
+    window.addEventListener("gamepadconnected", (e) => {
+      this.gamepadIndex = e.gamepad.index;
+      this.showBanner(`🎮 ГЕЙМПАД ПОДКЛЮЧЕН: ${e.gamepad.id.slice(0, 24)}... ⚡`, 3500);
+      this.showSkillBadge("🎮 GAMEPAD ACTIVATED");
+      this.triggerGamepadVibration(300, 0.6, 0.6);
+    });
+
+    window.addEventListener("gamepaddisconnected", () => {
+      this.showBanner("🛑 Геймпад отключен", 2000);
+    });
+
     window.addEventListener("keydown", (e) => {
       cyberAudio.init();
       cyberAudio.resume();
@@ -178,13 +255,14 @@ export class CyberDriftGame {
       if (e.code === "KeyS" || e.code === "ArrowDown") this.keys.backward = true;
       if (e.code === "KeyA" || e.code === "ArrowLeft") this.keys.left = true;
       if (e.code === "KeyD" || e.code === "ArrowRight") this.keys.right = true;
-      if (e.code === "Space") this.keys.drift = true;
-      if (e.code === "ShiftLeft" || e.code === "ShiftRight") this.keys.nitro = true;
+      if (e.code === "Space") { this.keys.drift = true; this.keys._kbDrift = true; }
+      if (e.code === "ShiftLeft" || e.code === "ShiftRight") { this.keys.nitro = true; this.keys._kbNitro = true; }
 
       // ⏪ FORZA REWIND KEY
       if (e.code === "KeyE" && this.gameState === "RACING") {
         if (!this.keys.rewind) {
           this.keys.rewind = true;
+          this.keys._kbRewind = true;
           this.startRewind();
         }
       }
@@ -217,11 +295,12 @@ export class CyberDriftGame {
       if (e.code === "KeyS" || e.code === "ArrowDown") this.keys.backward = false;
       if (e.code === "KeyA" || e.code === "ArrowLeft") this.keys.left = false;
       if (e.code === "KeyD" || e.code === "ArrowRight") this.keys.right = false;
-      if (e.code === "Space") this.keys.drift = false;
-      if (e.code === "ShiftLeft" || e.code === "ShiftRight") this.keys.nitro = false;
+      if (e.code === "Space") { this.keys.drift = false; this.keys._kbDrift = false; }
+      if (e.code === "ShiftLeft" || e.code === "ShiftRight") { this.keys.nitro = false; this.keys._kbNitro = false; }
 
       if (e.code === "KeyE") {
         this.keys.rewind = false;
+        this.keys._kbRewind = false;
         this.stopRewind();
       }
     });
@@ -896,12 +975,6 @@ export class CyberDriftGame {
         if (this.prevPlayerU > 0.85 && rawPlayerU < 0.15 && this.gameState === "RACING") {
           this.playerLapsCompleted++;
 
-          if (this.currentLapTelemetry.length > 20) {
-            this.bestLapTelemetry = [...this.currentLapTelemetry];
-            this.currentLapTelemetry = [];
-            this.showSkillBadge("👻 ПРИЗРАК ЛУЧШЕГО КРУГА ОБНОВЛЕН!");
-          }
-
           if (this.playerLapsCompleted >= this.maxLaps) {
             let finalPos = 1;
             for (const rival of this.trackManager.aiRivals) {
@@ -965,6 +1038,9 @@ export class CyberDriftGame {
     requestAnimationFrame(this.animate);
     const delta = Math.min(this.clock.getDelta(), 0.05);
 
+    // 🎮 Continuous Gamepad Input Polling (Xbox / PlayStation / Generic)
+    this.pollGamepadInput(delta);
+
     if (this.gameState === "COUNTDOWN") {
       this.countdownTimer -= delta;
       if (this.countdownEl) {
@@ -995,20 +1071,18 @@ export class CyberDriftGame {
           }
         }
       } else {
-        this.car.throttleInput = (this.keys.forward ? 1 : 0) - (this.keys.backward ? 1 : 0);
-        this.car.steerInput = (this.keys.right ? 1 : 0) - (this.keys.left ? 1 : 0);
+        if (!this.car.steerInput || Math.abs(this.car.steerInput) === 1.0) {
+          this.car.steerInput = (this.keys.right ? 1 : 0) - (this.keys.left ? 1 : 0);
+        }
+        if (!this.car.throttleInput || Math.abs(this.car.throttleInput) === 1.0) {
+          this.car.throttleInput = (this.keys.forward ? 1 : 0) - (this.keys.backward ? 1 : 0);
+        }
         this.car.driftActive = this.keys.drift;
         this.car.nitroActive = this.keys.nitro;
 
         this.car.updatePhysics(delta, this.trackManager);
         this.trackManager.update(delta, this.car, true, this.playerLapsCompleted);
         this.checkSkillChains();
-
-        if (this.gameMode !== "BEACH") {
-          const u = this.trackManager.getClosestU(this.car.position);
-          this.currentLapTelemetry.push({ u: u, x: this.car.position.x, z: this.car.position.z, heading: this.car.heading });
-          this.updateGhostCar(delta);
-        }
       }
 
       this.updateHUD();
