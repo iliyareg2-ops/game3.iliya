@@ -131,8 +131,6 @@ export class CyberDriftGame {
       this.updateDamageHUD(20, 20);
       this.screenShake = 4.0;
       this.triggerGamepadVibration(600, 1.0, 1.0);
-      const totScreen = document.getElementById("totalled-screen");
-      if (totScreen) totScreen.style.display = "grid";
     };
 
     // 🎮 Gamepad State
@@ -511,20 +509,6 @@ export class CyberDriftGame {
       finishRestartBtn.addEventListener("click", () => this.resetCar());
       finishRestartBtn.addEventListener("touchstart", () => this.resetCar(), { passive: true });
     }
-
-    const btnTotRespawn = document.getElementById("btn-totalled-respawn");
-    if (btnTotRespawn) {
-      btnTotRespawn.addEventListener("click", () => {
-        const totScreen = document.getElementById("totalled-screen");
-        if (totScreen) totScreen.style.display = "none";
-        this.resetCar();
-      });
-      btnTotRespawn.addEventListener("touchstart", () => {
-        const totScreen = document.getElementById("totalled-screen");
-        if (totScreen) totScreen.style.display = "none";
-        this.resetCar();
-      }, { passive: true });
-    }
   }
 
   showSkillBadge(text) {
@@ -792,8 +776,6 @@ export class CyberDriftGame {
   }
 
   resetCar() {
-    const totScreen = document.getElementById("totalled-screen");
-    if (totScreen) totScreen.style.display = "none";
     const finScreen = document.getElementById("finish-screen");
     if (finScreen) finScreen.style.display = "none";
 
