@@ -1347,14 +1347,18 @@ export class CityTrackManager {
     this.trackWorldGroup.add(g);
   }
 
-  // 🚦 FIA FORMULA 1 STARTING LIGHTS CONTROLLER (Strictly Left-to-Right + Vibrant Crimson & Emerald)
+  // 🚦 FIA FORMULA 1 STARTING LIGHTS CONTROLLER (Strictly Right-to-Left + Vibrant Crimson & Emerald)
   setF1StartLights(activeRedCount, isGreen = false) {
     if (!this.f1LightUnits || this.f1LightUnits.length === 0) return;
 
     for (let i = 0; i < this.f1LightUnits.length; i++) {
       const unit = this.f1LightUnits[i];
-      if (activeRedCount >= (i + 1)) {
-        // Red lights ON for this pod (from i=0 Left to i=4 Right)
+      // i=4 is Far RIGHT, i=0 is Far LEFT.
+      // Light up strictly from Right to Left: i=4 -> i=3 -> i=2 -> i=1 -> i=0
+      const isRedActive = (4 - i) < activeRedCount;
+
+      if (isRedActive) {
+        // Red lights ON for this pod (from Right to Left)
         unit.red1BulbMat.color.setHex(0xff0022);
         unit.red1BulbMat.emissive.setHex(0xff0011);
         unit.red1BulbMat.emissiveIntensity = 8.5;
