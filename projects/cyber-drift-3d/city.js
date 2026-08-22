@@ -2235,7 +2235,6 @@ export class CityTrackManager {
 
   buildRichCityTrafficFleet() {
     const fleetDefinitions = [
-      { type: "SEDAN_BLACK", u: 0.015, lane: 5.5, speed: 0.007 }, // 🚗 Black civilian car right ahead on the starting straight!
       { type: "FIRE_TRUCK", u: 0.12, lane: 7.0, speed: 0.010 },
       { type: "BUS", u: 0.28, lane: -7.0, speed: 0.009 },
       { type: "SPORT_YELLOW", u: 0.40, lane: 6.0, speed: 0.015 },
@@ -2243,6 +2242,7 @@ export class CityTrackManager {
       { type: "PATROL", u: 0.65, lane: 6.5, speed: 0.012 },
       { type: "BUS", u: 0.78, lane: -7.0, speed: 0.009 },
       { type: "SPORT_RED", u: 0.88, lane: 6.0, speed: 0.016 },
+      { type: "SEDAN_BLACK", u: 0.96, lane: -6.0, speed: 0.013 },
     ];
 
     const massTable = {
@@ -2308,7 +2308,6 @@ export class CityTrackManager {
 
   resetTrafficPositions() {
     const defaultPositions = [
-      { u: 0.015, lane: 5.5 },
       { u: 0.12, lane: 7.0 },
       { u: 0.28, lane: -7.0 },
       { u: 0.40, lane: 6.0 },
@@ -2316,6 +2315,7 @@ export class CityTrackManager {
       { u: 0.65, lane: 6.5 },
       { u: 0.78, lane: -7.0 },
       { u: 0.88, lane: 6.0 },
+      { u: 0.96, lane: -6.0 },
     ];
 
     for (let i = 0; i < this.trafficCars.length; i++) {
