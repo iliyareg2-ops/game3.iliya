@@ -2267,7 +2267,7 @@ export class CityTrackManager {
     const stripeR = stripeL.clone();
     stripeR.position.x = -2.22;
 
-    // Roof "99,999 KM/H" Holographic Light Sign
+    // Roof "1,000 KM/H" Holographic Light Sign
     const signCanvas = document.createElement("canvas");
     signCanvas.width = 512;
     signCanvas.height = 128;
@@ -2277,7 +2277,7 @@ export class CityTrackManager {
     sCtx.fillStyle = "#00ffff";
     sCtx.font = "900 44px Impact, Arial Black, sans-serif";
     sCtx.textAlign = "center";
-    sCtx.fillText("⚡ 99,999 KM/H ⚡", 256, 82);
+    sCtx.fillText("⚡ 1,000 KM/H ⚡", 256, 82);
     const signTex = new THREE.CanvasTexture(signCanvas);
     const signMat = new THREE.MeshBasicMaterial({ map: signTex });
     const signMesh = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.48, 0.9), signMat);
@@ -2335,7 +2335,7 @@ export class CityTrackManager {
 
   buildRichCityTrafficFleet() {
     const fleetDefinitions = [
-      { type: "HYPER_99999", u: 0.35, lane: 0.0, speed: 4.8 }, // 🚀 99,999 KM/H Overdrive Civilian NPC!
+      { type: "HYPER_1000", u: 0.35, lane: 0.0, speed: 0.095 }, // 🚀 1,000 KM/H Overdrive Civilian NPC!
       { type: "FIRE_TRUCK", u: 0.12, lane: 7.0, speed: 0.010 },
       { type: "BUS", u: 0.28, lane: -7.0, speed: 0.009 },
       { type: "SPORT_YELLOW", u: 0.40, lane: 6.0, speed: 0.015 },
@@ -2347,7 +2347,7 @@ export class CityTrackManager {
     ];
 
     const massTable = {
-      HYPER_99999: 8.0,
+      HYPER_1000: 5.5,
       FIRE_TRUCK: 3.8,
       BUS: 4.2,
       PATROL: 1.6,
@@ -2357,7 +2357,7 @@ export class CityTrackManager {
       SPORT_RED: 1.0
     };
     const radiusTable = {
-      HYPER_99999: 3.8,
+      HYPER_1000: 3.8,
       FIRE_TRUCK: 4.8,
       BUS: 5.4,
       PATROL: 3.5,
@@ -2369,7 +2369,7 @@ export class CityTrackManager {
 
     for (const item of fleetDefinitions) {
       let vehicleObj;
-      if (item.type === "HYPER_99999") {
+      if (item.type === "HYPER_1000") {
         vehicleObj = this._buildHyperSpeedNPC();
       } else if (item.type === "FIRE_TRUCK") {
         vehicleObj = this._buildFireTruck();
@@ -2982,7 +2982,7 @@ export class CityTrackManager {
           playerCar.applyCollisionImpulse(new THREE.Vector3(nx, 0.5, nz), hitIntensity, 0, contactPt);
 
           // 💥 Spawn flying 3D car parts and shattered glass
-          const trafficColor = (traffic.type === "HYPER_99999") ? 0x00ffff : ((traffic.type === "FIRE_TRUCK") ? 0xb91c1c : ((traffic.type === "BUS") ? 0x0284c7 : ((traffic.type === "PATROL") ? 0x0a0c12 : 0xf8fafc)));
+          const trafficColor = (traffic.type === "HYPER_1000") ? 0x00ffff : ((traffic.type === "FIRE_TRUCK") ? 0xb91c1c : ((traffic.type === "BUS") ? 0x0284c7 : ((traffic.type === "PATROL") ? 0x0a0c12 : 0xf8fafc)));
           this.spawnCrashDebris(contactPt, new THREE.Vector3(nx, 0.5, nz), hitIntensity, playerCar.bodyColorHex || 0xdc2626, trafficColor);
           cyberAudio.playGlassShatter(hitIntensity);
 
@@ -2990,11 +2990,11 @@ export class CityTrackManager {
           traffic.yawVelocity += (Math.random() - 0.5) * (hitIntensity / massRatio) * 12;
           traffic.laneOffset -= nx * (hitIntensity / massRatio) * 3.2;
 
-          if (Math.abs(playerSpeed) > 120 || traffic.type === "HYPER_99999") {
-            const pts = traffic.type === "HYPER_99999" ? 99999 : Math.round(200 * massRatio);
+          if (Math.abs(playerSpeed) > 120 || traffic.type === "HYPER_1000") {
+            const pts = traffic.type === "HYPER_1000" ? 1000 : Math.round(200 * massRatio);
             playerCar.totalScore += pts;
             if (this.onTakedownCallback) {
-              const label = traffic.type === "HYPER_99999" ? "🚀 ГИПЕР-СТОЛКНОВЕНИЕ НА 99,999 КМ/Ч!" : (traffic.type === "FIRE_TRUCK" ? "🚒 ТАРАН ПОЖАРНОЙ МАШИНЫ!" : (traffic.type === "BUS" ? "🚌 ТАРАН АВТОБУСА!" : (traffic.type === "PATROL" ? "🚔 ТАРАН ПОЛИЦЕЙСКОГО ПАТРУЛЯ!" : "🚗 СТОЛКНОВЕНИЕ В ТРАФИКЕ!")));
+              const label = traffic.type === "HYPER_1000" ? "🚀 СТОЛКНОВЕНИЕ С ГИПЕР-КАРОМ НА 1,000 КМ/Ч!" : (traffic.type === "FIRE_TRUCK" ? "🚒 ТАРАН ПОЖАРНОЙ МАШИНЫ!" : (traffic.type === "BUS" ? "🚌 ТАРАН АВТОБУСА!" : (traffic.type === "PATROL" ? "🚔 ТАРАН ПОЛИЦЕЙСКОГО ПАТРУЛЯ!" : "🚗 СТОЛКНОВЕНИЕ В ТРАФИКЕ!")));
               this.onTakedownCallback(`${label} +${pts} PTS`);
             }
           }
@@ -3312,7 +3312,7 @@ export class CityTrackManager {
       const d = car.mesh.position.distanceTo(playerPos);
       if (d < 16.0 && !car.passedAudio) {
         car.passedAudio = true;
-        if (car.type === "HYPER_99999") {
+        if (car.type === "HYPER_1000") {
           cyberAudio.playTrafficFlyby();
           cyberAudio.playTurboBlowoff();
         } else if (playerSpeed > 110) {
