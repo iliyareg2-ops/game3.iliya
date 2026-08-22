@@ -851,96 +851,21 @@ export class CyberCar {
     const contact = contactPoint || this.position.clone();
     this.emitCollisionSparks(contact, normalVec, impulseMagnitude);
 
-    const hitPower = Math.min(2.5, Math.max(0.3, impulseMagnitude));
-    const impactDamp = Math.max(0.15, 1.0 - (hitPower * 0.42));
+    // Realistic vehicle recoil & speed reduction
+    const speedRatio = Math.abs(this.speed) / 250;
+    const impactDamp = Math.max(0.2, 1.0 - (impulseMagnitude * 0.35));
     this.speed = this.speed * impactDamp;
 
-    // 🏎️ True Angular Torque & PIT Maneuver physics
-    const localContactX = (contact.x - this.position.x) * Math.cos(-this.heading) - (contact.z - this.position.z) * Math.sin(-this.heading);
-    const localContactZ = (contact.x - this.position.x) * Math.sin(-this.heading) + (contact.z - this.position.z) * Math.cos(-this.heading);
+    // Angular torque & spin
+    const tangent = new THREE.Vector3(-normalVec.z, 0, normalVec.x);
+    const spinSign = Math.sign((tangent.x * Math.sin(this.heading)) + (tangent.z * Math.cos(this.heading))) || 1;
+    this.angularVelocity += spinSign * impulseMagnitude * 1.8;
 
-    let spinTorque = -localContactZ * normalVec.x + localContactX * normalVec.z;
-    if (Math.abs(spinTorque) < 0.2) {
-      spinTorque = Math.sign(normalVec.x) || (Math.random() - 0.5);
-    }
-    this.angularVelocity += spinTorque * hitPower * 3.6;
+    // Dynamic chassis jolt & suspension roll
+    this.bodyRoll += spinSign * 0.22 * impulseMagnitude;
+    this.bodyPitch += 0.15 * impulseMagnitude;
 
-    // Dynamic suspension roll and pitch jolt
-    this.bodyRoll += THREE.MathUtils.clamp(spinTorque * 0.35 * hitPower, -0.6, 0.6);
-    this.bodyPitch += THREE.MathUtils.clamp((localContactZ > 0 ? 0.3 : -0.3) * hitPower, -0.5, 0.5);
-
-    // 💥 Visual Damage 1: Broken Headlights (glass shatter sound & spark burst)
-    if (localContactZ > 0.4) {
-      if (localContactX > 0.2 && this.damageState.headlightL && this.headlightL) {
-        this.damageState.headlightL = false;
-        this.headlightL.bulbMat.color.setHex(0x18181b);
-        this.emitCollisionSparks(this.headlightL.group.position, normalVec, 1.3);
-        cyberAudio.playGlassShatter(hitPower);
-      } else if (localContactX < -0.2 && this.damageState.headlightR && this.headlightR) {
-        this.damageState.headlightR = false;
-        this.headlightR.bulbMat.color.setHex(0x18181b);
-        this.emitCollisionSparks(this.headlightR.group.position, normalVec, 1.3);
-        cyberAudio.playGlassShatter(hitPower);
-      }
-    }
-
-    // 💥 Visual Damage 2: Detachable Spoiler / Wing on Heavy Impact
-    if (hitPower > 1.05 && this.spoilerMesh && !this.damageState.spoilerDetached) {
-      this.damageState.spoilerDetached = true;
-      this.spoilerMesh.visible = false;
-
-      const detachedMesh = this.spoilerMesh.clone();
-      detachedMesh.visible = true;
-      const worldSpoilerPos = new THREE.Vector3();
-      this.spoilerMesh.getWorldPosition(worldSpoilerPos);
-      detachedMesh.position.copy(worldSpoilerPos);
-      detachedMesh.rotation.copy(this.mesh.rotation);
-      this.detachedPartsGroup.add(detachedMesh);
-
-      this.detachedParts.push({
-        mesh: detachedMesh,
-        pos: worldSpoilerPos.clone(),
-        vel: new THREE.Vector3(
-          normalVec.x * 14 + (Math.random() - 0.5) * 12,
-          7.0 + Math.random() * 7.0,
-          normalVec.z * 14 + (Math.random() - 0.5) * 12
-        ),
-        rotVel: new THREE.Vector3(
-          (Math.random() - 0.5) * 22,
-          (Math.random() - 0.5) * 22,
-          (Math.random() - 0.5) * 22
-        ),
-        life: 14.0,
-      });
-
-      cyberAudio.playMetalTear(hitPower);
-      cyberAudio.playGlassShatter(hitPower);
-    }
-
-    cyberAudio.playHeavyImpact(hitPower);
-    cyberAudio.playMetalCrunch(hitPower);
-  }
-
-  repairCar() {
-    this.damageState.headlightL = true;
-    this.damageState.headlightR = true;
-    this.damageState.spoilerDetached = false;
-
-    if (this.headlightL && this.headlightL.bulbMat) {
-      this.headlightL.bulbMat.color.setHex(0xffffff);
-      this.headlightL.group.visible = true;
-    }
-    if (this.headlightR && this.headlightR.bulbMat) {
-      this.headlightR.bulbMat.color.setHex(0xffffff);
-      this.headlightR.group.visible = true;
-    }
-    if (this.spoilerMesh) {
-      this.spoilerMesh.visible = true;
-    }
-    while (this.detachedPartsGroup.children.length > 0) {
-      this.detachedPartsGroup.remove(this.detachedPartsGroup.children[0]);
-    }
-    this.detachedParts = [];
+    cyberAudio.playHeavyImpact(impulseMagnitude);
   }
 
   emitDriftSmoke() {

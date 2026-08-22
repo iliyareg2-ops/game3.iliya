@@ -2500,9 +2500,9 @@ export class CityTrackManager {
         rival.knockbackOffset.x -= nx * (overlap * 0.55);
         rival.knockbackOffset.z -= nz * (overlap * 0.55);
 
-        if (now - rival.lastCollisionTime > 150) {
+        if (now - rival.lastCollisionTime > 160) {
           rival.lastCollisionTime = now;
-          const hitIntensity = Math.min(2.5, Math.max(0.4, Math.abs(playerSpeed) / 85));
+          const hitIntensity = Math.min(2.2, Math.max(0.4, Math.abs(playerSpeed) / 100));
 
           const contactPt = new THREE.Vector3(
             (playerPos.x + rivalPos.x) * 0.5,
@@ -2512,18 +2512,12 @@ export class CityTrackManager {
 
           playerCar.applyCollisionImpulse(new THREE.Vector3(nx, 0.4, nz), hitIntensity, 0, contactPt);
 
-          // Realistic Angular PIT maneuver calculation
-          const rivalTang = this.trackCurve.getTangentAt(rival.u);
-          const rHeading = Math.atan2(rivalTang.x, rivalTang.z);
-          const rContactZ = (playerPos.x - rivalPos.x) * Math.sin(-rHeading) + (playerPos.z - rivalPos.z) * Math.cos(-rHeading);
-          const spinDir = rContactZ < 0 ? (Math.sign(nx) || 1) : -(Math.sign(nx) || 1);
+          rival.knockbackVelocity.set(-nx * hitIntensity * 32, 0, -nz * hitIntensity * 32);
+          rival.yawVelocity += (Math.random() - 0.5) * hitIntensity * 16;
+          rival.laneOffset -= nx * hitIntensity * 4.2;
+          rival.currentSpeedU *= 0.55;
 
-          rival.knockbackVelocity.set(-nx * hitIntensity * 36, 0, -nz * hitIntensity * 36);
-          rival.yawVelocity += spinDir * hitIntensity * 24;
-          rival.laneOffset -= nx * hitIntensity * 4.8;
-          rival.currentSpeedU *= Math.max(0.2, 1.0 - hitIntensity * 0.4);
-
-          if (Math.abs(playerSpeed) > 130) {
+          if (Math.abs(playerSpeed) > 135) {
             playerCar.totalScore += 500;
             if (this.onTakedownCallback) {
               this.onTakedownCallback(`💥 ТАКДАУН! СБИТ ${rival.name} +500 PTS`);
@@ -2558,9 +2552,9 @@ export class CityTrackManager {
         traffic.knockbackOffset.x -= nx * (overlap * trafficWeight);
         traffic.knockbackOffset.z -= nz * (overlap * trafficWeight);
 
-        if (now - traffic.lastCollisionTime > 150) {
+        if (now - traffic.lastCollisionTime > 160) {
           traffic.lastCollisionTime = now;
-          const hitIntensity = Math.min(2.6, Math.max(0.5, (Math.abs(playerSpeed) / 80) * Math.sqrt(massRatio)));
+          const hitIntensity = Math.min(2.5, Math.max(0.5, (Math.abs(playerSpeed) / 95) * Math.sqrt(massRatio)));
 
           const contactPt = new THREE.Vector3(
             (playerPos.x + trafficPos.x) * 0.5,
@@ -2570,16 +2564,11 @@ export class CityTrackManager {
 
           playerCar.applyCollisionImpulse(new THREE.Vector3(nx, 0.5, nz), hitIntensity, 0, contactPt);
 
-          const tTang = this.trackCurve.getTangentAt(traffic.u);
-          const tHeading = Math.atan2(tTang.x, tTang.z);
-          const tContactZ = (playerPos.x - trafficPos.x) * Math.sin(-tHeading) + (playerPos.z - trafficPos.z) * Math.cos(-tHeading);
-          const spinDir = tContactZ < 0 ? (Math.sign(nx) || 1) : -(Math.sign(nx) || 1);
+          traffic.knockbackVelocity.set(-nx * (hitIntensity / massRatio) * 26, 0, -nz * (hitIntensity / massRatio) * 26);
+          traffic.yawVelocity += (Math.random() - 0.5) * (hitIntensity / massRatio) * 12;
+          traffic.laneOffset -= nx * (hitIntensity / massRatio) * 3.2;
 
-          traffic.knockbackVelocity.set(-nx * (hitIntensity / massRatio) * 32, 0, -nz * (hitIntensity / massRatio) * 32);
-          traffic.yawVelocity += spinDir * (hitIntensity / massRatio) * 18;
-          traffic.laneOffset -= nx * (hitIntensity / massRatio) * 3.8;
-
-          if (Math.abs(playerSpeed) > 110) {
+          if (Math.abs(playerSpeed) > 120) {
             const pts = Math.round(200 * massRatio);
             playerCar.totalScore += pts;
             if (this.onTakedownCallback) {
