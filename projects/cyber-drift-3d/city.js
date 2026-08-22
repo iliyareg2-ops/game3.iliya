@@ -1198,79 +1198,82 @@ export class CityTrackManager {
     g.add(pillarL, barrierL, pillarR, barrierR, upperSpan, lowerSpan, bannerF, bannerB);
 
     // 4. 🚦 5 FIA FORMULA 1 STARTING LIGHT PODS (CLUSTERS)
-    // Placed in the center of the track spanning across x = -6 to +6 at height y = 8.5m, z = 0.4m
-    const podSpacing = 2.8;
-    const bulbGeom = new THREE.CylinderGeometry(0.38, 0.38, 0.15, 24);
+    // Suspended directly above the road, facing backwards (-Z) straight at the starting cars & camera!
+    const podSpacing = 2.6;
+    const bulbGeom = new THREE.CylinderGeometry(0.48, 0.48, 0.18, 28);
     bulbGeom.rotateX(Math.PI / 2);
 
-    const visorGeom = new THREE.CylinderGeometry(0.44, 0.44, 0.45, 24, 1, true, 0, Math.PI);
+    const visorGeom = new THREE.CylinderGeometry(0.54, 0.54, 0.55, 28, 1, true, 0, Math.PI);
     visorGeom.rotateZ(Math.PI);
     visorGeom.rotateX(Math.PI / 2);
 
     for (let i = 0; i < 5; i++) {
       const podX = (i - 2) * podSpacing;
       const podGroup = new THREE.Group();
-      podGroup.position.set(podX, 8.6, 0.4);
+      podGroup.position.set(podX, 6.8, -0.6);
 
       // Matte Black Pod Housing (FIA Box)
       const housingMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(1.6, 3.4, 0.6),
+        new THREE.BoxGeometry(1.8, 3.8, 0.7),
         darkSteelMat
       );
       housingMesh.castShadow = true;
       podGroup.add(housingMesh);
 
-      // Suspension Steel Struts attaching Pod to Gantry
-      const hanger = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.0, 8), trussMat);
-      hanger.position.set(0, 2.2, 0);
+      // Suspension Steel Struts attaching Pod to Overhead Gantry Truss
+      const hanger = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4.0, 8), trussMat);
+      hanger.position.set(0, 3.2, 0);
       podGroup.add(hanger);
 
-      // 3 Vertical Lamps per Pod:
+      // 3 Vertical Lamps per Pod (Facing -Z directly into windshield / chase camera):
       // Top: Status Light (White/Green)
       const topBulbMat = new THREE.MeshStandardMaterial({
-        color: 0x1e293b,
+        color: 0x0f172a,
         emissive: 0x000000,
         emissiveIntensity: 0.0,
-        roughness: 0.2,
-        metalness: 0.1,
+        roughness: 0.15,
+        metalness: 0.2,
       });
       const topBulb = new THREE.Mesh(bulbGeom, topBulbMat);
-      topBulb.position.set(0, 1.0, 0.3);
+      topBulb.position.set(0, 1.15, -0.36);
       const topVisor = new THREE.Mesh(visorGeom, hoodMat);
-      topVisor.position.set(0, 1.0, 0.45);
+      topVisor.position.set(0, 1.15, -0.55);
+      topVisor.rotation.y = Math.PI;
       podGroup.add(topBulb, topVisor);
 
       // Middle: Red LED 1
       const red1BulbMat = new THREE.MeshStandardMaterial({
-        color: 0x330000,
+        color: 0x2b0404,
         emissive: 0x000000,
         emissiveIntensity: 0.0,
         roughness: 0.15,
-        metalness: 0.1,
+        metalness: 0.2,
       });
       const red1Bulb = new THREE.Mesh(bulbGeom, red1BulbMat);
-      red1Bulb.position.set(0, 0.0, 0.3);
+      red1Bulb.position.set(0, 0.0, -0.36);
       const red1Visor = new THREE.Mesh(visorGeom, hoodMat);
-      red1Visor.position.set(0, 0.0, 0.45);
+      red1Visor.position.set(0, 0.0, -0.55);
+      red1Visor.rotation.y = Math.PI;
       podGroup.add(red1Bulb, red1Visor);
 
       // Bottom: Red LED 2
       const red2BulbMat = new THREE.MeshStandardMaterial({
-        color: 0x330000,
+        color: 0x2b0404,
         emissive: 0x000000,
         emissiveIntensity: 0.0,
         roughness: 0.15,
-        metalness: 0.1,
+        metalness: 0.2,
       });
       const red2Bulb = new THREE.Mesh(bulbGeom, red2BulbMat);
-      red2Bulb.position.set(0, -1.0, 0.3);
+      red2Bulb.position.set(0, -1.15, -0.36);
       const red2Visor = new THREE.Mesh(visorGeom, hoodMat);
-      red2Visor.position.set(0, -1.0, 0.45);
+      red2Visor.position.set(0, -1.15, -0.55);
+      red2Visor.rotation.y = Math.PI;
       podGroup.add(red2Bulb, red2Visor);
 
-      // Dynamic Spot/Point Light casting illumination onto starting cars
-      const pointLight = new THREE.PointLight(0xff0000, 0.0, 35, 1.2);
-      pointLight.position.set(0, -0.2, 1.2);
+      // Dynamic Point Light illuminating the track asphalt & car hood in front of the gantry
+      const pointLight = new THREE.PointLight(0xff0000, 0.0, 45, 1.2);
+      pointLight.position.set(0, 0.0, -2.2);
       podGroup.add(pointLight);
 
       this.f1LightUnits.push({
@@ -1292,10 +1295,10 @@ export class CityTrackManager {
 
     const gridBoxMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 });
     const gridPositions = [
-      { x: -5.5, z: 24 },
-      { x: 5.5, z: 24 },
-      { x: -5.5, z: 8 },
-      { x: 5.5, z: 8 },
+      { x: -5.5, z: -12 },
+      { x: 5.5, z: -12 },
+      { x: -5.5, z: -26 },
+      { x: 5.5, z: -26 },
     ];
 
     gridPositions.forEach((pos) => {
@@ -1304,7 +1307,8 @@ export class CityTrackManager {
       g.add(box);
     });
 
-    g.position.set(0, 0, 0);
+    // Place Gantry directly across the track at Z = 32 facing the grid cars at Z = 0..16
+    g.position.set(0, 0, 32);
     this.trackWorldGroup.add(g);
   }
 
@@ -1316,18 +1320,18 @@ export class CityTrackManager {
       const unit = this.f1LightUnits[i];
       if (activeRedCount >= (i + 1)) {
         // Red lights ON for this pod
-        unit.red1BulbMat.color.setHex(0xff1111);
+        unit.red1BulbMat.color.setHex(0xff0000);
         unit.red1BulbMat.emissive.setHex(0xff0000);
-        unit.red1BulbMat.emissiveIntensity = 4.2;
+        unit.red1BulbMat.emissiveIntensity = 5.5;
 
-        unit.red2BulbMat.color.setHex(0xff1111);
+        unit.red2BulbMat.color.setHex(0xff0000);
         unit.red2BulbMat.emissive.setHex(0xff0000);
-        unit.red2BulbMat.emissiveIntensity = 4.2;
+        unit.red2BulbMat.emissiveIntensity = 5.5;
 
         unit.topBulbMat.emissiveIntensity = 0.0;
 
         unit.pointLight.color.setHex(0xff1111);
-        unit.pointLight.intensity = 3.2;
+        unit.pointLight.intensity = 4.5;
       } else if (isGreen) {
         // Green Go Light ON
         unit.red1BulbMat.emissiveIntensity = 0.0;
@@ -1335,10 +1339,10 @@ export class CityTrackManager {
 
         unit.topBulbMat.color.setHex(0x22c55e);
         unit.topBulbMat.emissive.setHex(0x16a34a);
-        unit.topBulbMat.emissiveIntensity = 4.5;
+        unit.topBulbMat.emissiveIntensity = 6.0;
 
         unit.pointLight.color.setHex(0x22c55e);
-        unit.pointLight.intensity = 3.8;
+        unit.pointLight.intensity = 5.0;
       } else {
         // All Lights OFF
         unit.red1BulbMat.emissiveIntensity = 0.0;
