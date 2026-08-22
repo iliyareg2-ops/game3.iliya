@@ -126,6 +126,43 @@ export class CyberDriftGame {
     this.lastGamepadWeatherPress = 0;
     this.lastGamepadRadioPress = 0;
     this.lastGamepadResetPress = 0;
+
+    // 🚦 F1 Start Lights HUD State
+    this.f1GantryHudEl = document.getElementById("f1-gantry-hud");
+    this.f1HudStatusEl = document.getElementById("f1-hud-status");
+    this.f1LightStep = 0;
+  }
+
+  updateF1Hud(activeRedCount, isGreen = false) {
+    if (!this.f1GantryHudEl) return;
+    for (let i = 0; i < 5; i++) {
+      const pod = document.getElementById(`f1-pod-${i}`);
+      if (!pod) continue;
+      const statusLamp = pod.querySelector(".status-lamp");
+      const redLamp1 = pod.querySelector(".red-lamp-1");
+      const redLamp2 = pod.querySelector(".red-lamp-2");
+
+      if (activeRedCount >= (i + 1)) {
+        if (redLamp1) redLamp1.classList.add("active-red");
+        if (redLamp2) redLamp2.classList.add("active-red");
+        if (statusLamp) statusLamp.classList.remove("active-green");
+      } else if (isGreen) {
+        if (redLamp1) redLamp1.classList.remove("active-red");
+        if (redLamp2) redLamp2.classList.remove("active-red");
+        if (statusLamp) statusLamp.classList.add("active-green");
+      } else {
+        if (redLamp1) redLamp1.classList.remove("active-red");
+        if (redLamp2) redLamp2.classList.remove("active-red");
+        if (statusLamp) statusLamp.classList.remove("active-green");
+      }
+    }
+
+    if (this.f1HudStatusEl) {
+      if (activeRedCount === 0 && !isGreen) this.f1HudStatusEl.textContent = "FORMATION GRID READY";
+      else if (activeRedCount >= 1 && activeRedCount < 5) this.f1HudStatusEl.textContent = `RED LIGHTS ${activeRedCount} / 5`;
+      else if (activeRedCount === 5) this.f1HudStatusEl.textContent = "ALL 5 RED LIGHTS • REV ENGINES!";
+      else if (isGreen) this.f1HudStatusEl.textContent = "🟢 LIGHTS OUT AND AWAY WE GO!";
+    }
   }
 
   triggerGamepadVibration(durationMs = 200, weakMagnitude = 0.5, strongMagnitude = 0.5) {
@@ -689,11 +726,12 @@ export class CyberDriftGame {
 
       cyberAudio.setOceanAmbience(false);
       this.gameState = "COUNTDOWN";
-      this.countdownTimer = 3.2;
-      if (this.countdownEl) {
-        this.countdownEl.style.display = "block";
-        this.countdownEl.textContent = "3";
-      }
+      this.countdownTimer = 3.6;
+      this.f1LightStep = 0;
+      this.trackManager.setF1StartLights(0, false);
+      this.updateF1Hud(0, false);
+      if (this.f1GantryHudEl) this.f1GantryHudEl.style.display = "flex";
+      if (this.countdownEl) this.countdownEl.style.display = "none";
     }
   }
 
@@ -1045,17 +1083,36 @@ export class CyberDriftGame {
 
     if (this.gameState === "COUNTDOWN") {
       this.countdownTimer -= delta;
-      if (this.countdownEl) {
-        if (this.countdownTimer > 2.0) this.countdownEl.textContent = "3";
-        else if (this.countdownTimer > 1.0) this.countdownEl.textContent = "2";
-        else if (this.countdownTimer > 0.0) this.countdownEl.textContent = "1";
-        else {
-          this.countdownEl.textContent = "GO!";
-          setTimeout(() => {
-            if (this.countdownEl) this.countdownEl.style.display = "none";
-          }, 600);
+
+      let currentStep = 0;
+      if (this.countdownTimer > 2.8) currentStep = 1;
+      else if (this.countdownTimer > 2.1) currentStep = 2;
+      else if (this.countdownTimer > 1.4) currentStep = 3;
+      else if (this.countdownTimer > 0.7) currentStep = 4;
+      else if (this.countdownTimer > 0.0) currentStep = 5;
+      else currentStep = 6; // LIGHTS OUT!
+
+      if (currentStep !== this.f1LightStep) {
+        this.f1LightStep = currentStep;
+        if (currentStep >= 1 && currentStep <= 5) {
+          this.trackManager.setF1StartLights(currentStep, false);
+          this.updateF1Hud(currentStep, false);
+          cyberAudio.playF1Beep(850 + currentStep * 35);
+          this.triggerGamepadVibration(70, 0.35, 0.25);
+        } else if (currentStep === 6) {
+          // 🟢 LIGHTS OUT AND AWAY WE GO!
+          this.trackManager.setF1StartLights(0, true);
+          this.updateF1Hud(0, true);
+          cyberAudio.playF1Go();
+          this.triggerGamepadVibration(350, 0.95, 0.95);
           this.gameState = "RACING";
-          this.showBanner("🔥 СТАРТ! ОБГОНИ AKIRA, GHOST И RAZOR");
+          this.showBanner("🟢 LIGHTS OUT AND AWAY WE GO! 🏁", 3200);
+          this.showSkillBadge("🚀 RACING LAUNCH");
+
+          setTimeout(() => {
+            this.trackManager.setF1StartLights(0, false);
+            if (this.f1GantryHudEl) this.f1GantryHudEl.style.display = "none";
+          }, 1500);
         }
       }
 

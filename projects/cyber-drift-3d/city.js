@@ -44,6 +44,9 @@ export class CityTrackManager {
     this.scene.add(this.crashDebrisGroup);
     this.activeCrashDebris = [];
 
+    // 🚦 FIA Formula 1 Starting Lights System
+    this.f1LightUnits = [];
+
     this.initTextures();
     this.initLighting();
     this.buildTrackEnvironment();
@@ -1115,57 +1118,172 @@ export class CityTrackManager {
     const halfWidth = this.trackWidth / 2;
     const g = new THREE.Group();
 
-    const trussMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.8, roughness: 0.3 });
+    this.f1LightUnits = [];
+
+    const trussMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.85, roughness: 0.35 });
+    const darkSteelMat = new THREE.MeshStandardMaterial({ color: 0x111216, metalness: 0.9, roughness: 0.25 });
+    const barrierMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.7 });
+    const hoodMat = new THREE.MeshStandardMaterial({ color: 0x090a0f, roughness: 0.3, metalness: 0.8 });
+
+    // 1. Heavy Industrial Support Pillars & Concrete Crash Barriers
+    const pillarL = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, 17, 16), trussMat);
+    pillarL.position.set(-halfWidth - 4.5, 8.5, 0);
+    const barrierL = new THREE.Mesh(new THREE.BoxGeometry(3.6, 2.2, 8.0), barrierMat);
+    barrierL.position.set(-halfWidth - 4.5, 1.1, 0);
+
+    const pillarR = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, 17, 16), trussMat);
+    pillarR.position.set(halfWidth + 4.5, 8.5, 0);
+    const barrierR = new THREE.Mesh(new THREE.BoxGeometry(3.6, 2.2, 8.0), barrierMat);
+    barrierR.position.set(halfWidth + 4.5, 1.1, 0);
+
+    // 2. Overhead Truss Lattice Crossbeams
+    const upperSpan = new THREE.Mesh(new THREE.BoxGeometry(this.trackWidth + 10, 1.8, 2.8), trussMat);
+    upperSpan.position.set(0, 16.0, 0);
+
+    const lowerSpan = new THREE.Mesh(new THREE.BoxGeometry(this.trackWidth + 8, 1.2, 2.2), trussMat);
+    lowerSpan.position.set(0, 10.5, 0);
+
+    // Diagonal support struts
+    for (let x = -halfWidth + 2; x <= halfWidth - 2; x += 6) {
+      const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 5.8, 8), trussMat);
+      strut.position.set(x, 13.25, 0);
+      strut.rotation.z = (x % 12 === 0 ? 0.45 : -0.45);
+      g.add(strut);
+    }
+
+    // 3. F1 Official Timing & Rolex/Pirelli Grand Prix Digital Banner
     const bannerCanvas = document.createElement("canvas");
     bannerCanvas.width = 1024;
     bannerCanvas.height = 256;
     const bCtx = bannerCanvas.getContext("2d");
-    bCtx.fillStyle = "#1e293b";
+    bCtx.fillStyle = "#090d16";
     bCtx.fillRect(0, 0, 1024, 256);
 
+    // Checkered cyber border
     for (let x = 0; x < 1024; x += 32) {
       for (let y = 0; y < 256; y += 32) {
         if ((x / 32 + y / 32) % 2 === 0) {
-          bCtx.fillStyle = "#ffffff";
+          bCtx.fillStyle = "#1e293b";
           bCtx.fillRect(x, y, 32, 32);
         }
       }
     }
-    bCtx.fillStyle = "#0f172a";
-    bCtx.fillRect(140, 36, 744, 184);
+    bCtx.fillStyle = "#020617";
+    bCtx.fillRect(40, 24, 944, 208);
 
-    const titleText = this.trackIndex === 1 ? "TOUGE MOUNTAIN PASS" : (this.trackIndex === 2 ? "MIAMI COASTLINE CIRCUIT" : "F1 GRAND PRIX AUTODROME");
+    const titleText = this.trackIndex === 1 ? "TOUGE MOUNTAIN GP" : (this.trackIndex === 2 ? "MIAMI GRAND PRIX" : "FORMULA 1 GRAND PRIX");
 
-    bCtx.fillStyle = "#ffffff";
-    bCtx.font = "900 58px Segoe UI, sans-serif";
+    bCtx.fillStyle = "#e2e8f0";
+    bCtx.font = "900 56px Segoe UI, Arial, sans-serif";
     bCtx.textAlign = "center";
-    bCtx.fillText(titleText, 512, 120);
+    bCtx.fillText(`🏁 ${titleText}`, 512, 95);
 
-    bCtx.fillStyle = "#f59e0b";
-    bCtx.font = "800 32px Segoe UI, sans-serif";
-    bCtx.fillText("OFFICIAL TIMING & LAP SCORING", 512, 175);
+    bCtx.fillStyle = "#38bdf8";
+    bCtx.font = "800 28px Segoe UI, sans-serif";
+    bCtx.fillText("FIA OFFICIAL TIMING • LIGHTS OUT START", 512, 145);
+
+    bCtx.fillStyle = "#ef4444";
+    bCtx.font = "700 20px Segoe UI, sans-serif";
+    bCtx.fillText("⚫ ⚫ ⚫ ⚫ ⚫", 512, 195);
 
     const bannerTex = new THREE.CanvasTexture(bannerCanvas);
-    const bannerMat = new THREE.MeshStandardMaterial({ map: bannerTex, roughness: 0.5 });
+    const bannerMat = new THREE.MeshStandardMaterial({ map: bannerTex, roughness: 0.35, metalness: 0.5 });
 
-    const pillarL = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.0, 18, 12), trussMat);
-    pillarL.position.set(-halfWidth - 4.5, 9, 0);
-
-    const pillarR = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.0, 18, 12), trussMat);
-    pillarR.position.set(halfWidth + 4.5, 9, 0);
-
-    const span = new THREE.Mesh(new THREE.BoxGeometry(this.trackWidth + 10, 2.5, 3.2), trussMat);
-    span.position.set(0, 17.5, 0);
-
-    const bannerF = new THREE.Mesh(new THREE.PlaneGeometry(36, 9), bannerMat);
-    bannerF.position.set(0, 17.5, 1.65);
-
+    const bannerF = new THREE.Mesh(new THREE.PlaneGeometry(32, 7.5), bannerMat);
+    bannerF.position.set(0, 16.0, 1.45);
     const bannerB = bannerF.clone();
-    bannerB.position.z = -1.65;
+    bannerB.position.z = -1.45;
     bannerB.rotation.y = Math.PI;
 
-    g.add(pillarL, pillarR, span, bannerF, bannerB);
+    g.add(pillarL, barrierL, pillarR, barrierR, upperSpan, lowerSpan, bannerF, bannerB);
 
+    // 4. 🚦 5 FIA FORMULA 1 STARTING LIGHT PODS (CLUSTERS)
+    // Placed in the center of the track spanning across x = -6 to +6 at height y = 8.5m, z = 0.4m
+    const podSpacing = 2.8;
+    const bulbGeom = new THREE.CylinderGeometry(0.38, 0.38, 0.15, 24);
+    bulbGeom.rotateX(Math.PI / 2);
+
+    const visorGeom = new THREE.CylinderGeometry(0.44, 0.44, 0.45, 24, 1, true, 0, Math.PI);
+    visorGeom.rotateZ(Math.PI);
+    visorGeom.rotateX(Math.PI / 2);
+
+    for (let i = 0; i < 5; i++) {
+      const podX = (i - 2) * podSpacing;
+      const podGroup = new THREE.Group();
+      podGroup.position.set(podX, 8.6, 0.4);
+
+      // Matte Black Pod Housing (FIA Box)
+      const housingMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(1.6, 3.4, 0.6),
+        darkSteelMat
+      );
+      housingMesh.castShadow = true;
+      podGroup.add(housingMesh);
+
+      // Suspension Steel Struts attaching Pod to Gantry
+      const hanger = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.0, 8), trussMat);
+      hanger.position.set(0, 2.2, 0);
+      podGroup.add(hanger);
+
+      // 3 Vertical Lamps per Pod:
+      // Top: Status Light (White/Green)
+      const topBulbMat = new THREE.MeshStandardMaterial({
+        color: 0x1e293b,
+        emissive: 0x000000,
+        emissiveIntensity: 0.0,
+        roughness: 0.2,
+        metalness: 0.1,
+      });
+      const topBulb = new THREE.Mesh(bulbGeom, topBulbMat);
+      topBulb.position.set(0, 1.0, 0.3);
+      const topVisor = new THREE.Mesh(visorGeom, hoodMat);
+      topVisor.position.set(0, 1.0, 0.45);
+      podGroup.add(topBulb, topVisor);
+
+      // Middle: Red LED 1
+      const red1BulbMat = new THREE.MeshStandardMaterial({
+        color: 0x330000,
+        emissive: 0x000000,
+        emissiveIntensity: 0.0,
+        roughness: 0.15,
+        metalness: 0.1,
+      });
+      const red1Bulb = new THREE.Mesh(bulbGeom, red1BulbMat);
+      red1Bulb.position.set(0, 0.0, 0.3);
+      const red1Visor = new THREE.Mesh(visorGeom, hoodMat);
+      red1Visor.position.set(0, 0.0, 0.45);
+      podGroup.add(red1Bulb, red1Visor);
+
+      // Bottom: Red LED 2
+      const red2BulbMat = new THREE.MeshStandardMaterial({
+        color: 0x330000,
+        emissive: 0x000000,
+        emissiveIntensity: 0.0,
+        roughness: 0.15,
+        metalness: 0.1,
+      });
+      const red2Bulb = new THREE.Mesh(bulbGeom, red2BulbMat);
+      red2Bulb.position.set(0, -1.0, 0.3);
+      const red2Visor = new THREE.Mesh(visorGeom, hoodMat);
+      red2Visor.position.set(0, -1.0, 0.45);
+      podGroup.add(red2Bulb, red2Visor);
+
+      // Dynamic Spot/Point Light casting illumination onto starting cars
+      const pointLight = new THREE.PointLight(0xff0000, 0.0, 35, 1.2);
+      pointLight.position.set(0, -0.2, 1.2);
+      podGroup.add(pointLight);
+
+      this.f1LightUnits.push({
+        topBulbMat,
+        red1BulbMat,
+        red2BulbMat,
+        pointLight,
+      });
+
+      g.add(podGroup);
+    }
+
+    // 5. Checkered Finish Line & Grid Boxes
     const checkLineGeom = new THREE.PlaneGeometry(this.trackWidth, 4);
     checkLineGeom.rotateX(-Math.PI / 2);
     const checkLine = new THREE.Mesh(checkLineGeom, bannerMat);
@@ -1188,6 +1306,47 @@ export class CityTrackManager {
 
     g.position.set(0, 0, 0);
     this.trackWorldGroup.add(g);
+  }
+
+  // 🚦 FIA FORMULA 1 STARTING LIGHTS CONTROLLER
+  setF1StartLights(activeRedCount, isGreen = false) {
+    if (!this.f1LightUnits || this.f1LightUnits.length === 0) return;
+
+    for (let i = 0; i < this.f1LightUnits.length; i++) {
+      const unit = this.f1LightUnits[i];
+      if (activeRedCount >= (i + 1)) {
+        // Red lights ON for this pod
+        unit.red1BulbMat.color.setHex(0xff1111);
+        unit.red1BulbMat.emissive.setHex(0xff0000);
+        unit.red1BulbMat.emissiveIntensity = 4.2;
+
+        unit.red2BulbMat.color.setHex(0xff1111);
+        unit.red2BulbMat.emissive.setHex(0xff0000);
+        unit.red2BulbMat.emissiveIntensity = 4.2;
+
+        unit.topBulbMat.emissiveIntensity = 0.0;
+
+        unit.pointLight.color.setHex(0xff1111);
+        unit.pointLight.intensity = 3.2;
+      } else if (isGreen) {
+        // Green Go Light ON
+        unit.red1BulbMat.emissiveIntensity = 0.0;
+        unit.red2BulbMat.emissiveIntensity = 0.0;
+
+        unit.topBulbMat.color.setHex(0x22c55e);
+        unit.topBulbMat.emissive.setHex(0x16a34a);
+        unit.topBulbMat.emissiveIntensity = 4.5;
+
+        unit.pointLight.color.setHex(0x22c55e);
+        unit.pointLight.intensity = 3.8;
+      } else {
+        // All Lights OFF
+        unit.red1BulbMat.emissiveIntensity = 0.0;
+        unit.red2BulbMat.emissiveIntensity = 0.0;
+        unit.topBulbMat.emissiveIntensity = 0.0;
+        unit.pointLight.intensity = 0.0;
+      }
+    }
   }
 
   buildRoadsideStreetlights() {

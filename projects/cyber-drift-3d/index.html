@@ -669,12 +669,127 @@
       backdrop-filter: blur(14px);
       padding: 16px;
     }
+    /* 🚦 FIA FORMULA 1 STARTING LIGHTS GANTRY HUD */
+    #f1-gantry-hud {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 55;
+      display: none;
+      pointer-events: none;
+      flex-direction: column;
+      align-items: center;
+      filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.8));
+    }
+
+    .f1-hud-board {
+      background: linear-gradient(180deg, #181920 0%, #0d0e12 100%);
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 12px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 14px 40px rgba(0, 0, 0, 0.9);
+    }
+
+    .f1-hud-header {
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.2em;
+      color: #94a3b8;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .f1-hud-pods {
+      display: flex;
+      gap: 12px;
+      background: #090a0d;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .f1-hud-pod {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: #121318;
+      padding: 6px 5px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .f1-hud-lamp {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #1c1d24;
+      border: 2px solid #090a0d;
+      transition: all 0.06s ease;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.8);
+    }
+
+    .f1-hud-lamp.active-red {
+      background: #ef4444 !important;
+      box-shadow: 0 0 16px #ef4444, 0 0 32px #dc2626, inset 0 0 6px #ffffff !important;
+    }
+
+    .f1-hud-lamp.active-green {
+      background: #22c55e !important;
+      box-shadow: 0 0 18px #22c55e, 0 0 36px #16a34a, inset 0 0 6px #ffffff !important;
+    }
+
+    .f1-hud-status {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      color: #f59e0b;
+      margin-top: 8px;
+    }
   </style>
 </head>
 <body>
   <div id="canvas-container"></div>
   <div id="speed-vignette"></div>
   <div id="countdown-overlay">3</div>
+
+  <!-- 🚦 FORMULA 1 STARTING LIGHTS HUD CLUSTER -->
+  <div id="f1-gantry-hud">
+    <div class="f1-hud-board">
+      <div class="f1-hud-header">FIA FORMULA 1 GRAND PRIX START</div>
+      <div class="f1-hud-pods">
+        <div class="f1-hud-pod" id="f1-pod-0">
+          <div class="f1-hud-lamp status-lamp"></div>
+          <div class="f1-hud-lamp red-lamp-1"></div>
+          <div class="f1-hud-lamp red-lamp-2"></div>
+        </div>
+        <div class="f1-hud-pod" id="f1-pod-1">
+          <div class="f1-hud-lamp status-lamp"></div>
+          <div class="f1-hud-lamp red-lamp-1"></div>
+          <div class="f1-hud-lamp red-lamp-2"></div>
+        </div>
+        <div class="f1-hud-pod" id="f1-pod-2">
+          <div class="f1-hud-lamp status-lamp"></div>
+          <div class="f1-hud-lamp red-lamp-1"></div>
+          <div class="f1-hud-lamp red-lamp-2"></div>
+        </div>
+        <div class="f1-hud-pod" id="f1-pod-3">
+          <div class="f1-hud-lamp status-lamp"></div>
+          <div class="f1-hud-lamp red-lamp-1"></div>
+          <div class="f1-hud-lamp red-lamp-2"></div>
+        </div>
+        <div class="f1-hud-pod" id="f1-pod-4">
+          <div class="f1-hud-lamp status-lamp"></div>
+          <div class="f1-hud-lamp red-lamp-1"></div>
+          <div class="f1-hud-lamp red-lamp-2"></div>
+        </div>
+      </div>
+      <div class="f1-hud-status" id="f1-hud-status">FORMATION GRID READY</div>
+    </div>
+  </div>
 
   <!-- ⏪ REWIND OVERLAY -->
   <div id="rewind-overlay">
